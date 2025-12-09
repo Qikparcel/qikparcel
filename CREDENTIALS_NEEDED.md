@@ -10,12 +10,14 @@
 ### 1. **Twilio Account** ✅
 
 **What we need:**
+
 - [ ] **Account SID** - Found in Twilio Console > Settings
 - [ ] **Auth Token** - Found in Twilio Console > Settings (keep this secret!)
 - [ ] **WhatsApp Phone Number** - Your Twilio WhatsApp-enabled number (format: `+1234567890` or `whatsapp:+1234567890`)
 - [ ] **Sandbox Join Code** (for testing only) - If using WhatsApp Sandbox for testing
 
 **Where to find:**
+
 1. Log in to https://console.twilio.com
 2. Go to **Settings** (top right) → **General**
 3. Copy **Account SID** and **Auth Token**
@@ -23,11 +25,13 @@
 5. Find your WhatsApp-enabled number
 
 **For Testing (Sandbox):**
+
 - Go to **Messaging** → **Try it out** → **Send a WhatsApp message**
 - You'll see a join code like "join abc-xyz"
 - Users need to send this code to your Twilio WhatsApp number to join sandbox
 
 **For Production:**
+
 - Request WhatsApp Business API access from Twilio
 - This requires business verification
 
@@ -36,11 +40,13 @@
 ### 2. **Supabase Account** ✅
 
 **What we need:**
+
 - [ ] **Project URL** - Your Supabase project URL (format: `https://xxxxx.supabase.co`)
 - [ ] **Anon/Public Key** - Public API key (safe to expose in frontend)
 - [ ] **Service Role Key** - Private key (keep secret! Only for backend)
 
 **Where to find:**
+
 1. Log in to https://app.supabase.com
 2. Select your project
 3. Go to **Settings** (gear icon) → **API**
@@ -54,14 +60,17 @@
 ### 3. **Vercel Account** ✅
 
 **What we need:**
+
 - [ ] **Vercel Account Access** - Add developer as team member OR
 - [ ] **GitHub Repository Access** - If using GitHub integration
 
 **Options:**
+
 - **Option A:** Add developer email as team member in Vercel project
 - **Option B:** Provide GitHub repository access (developer can deploy via GitHub)
 
 **Where to set up:**
+
 1. Log in to https://vercel.com
 2. Go to your project (or create new)
 3. **Settings** → **Team** → Add team member
@@ -73,10 +82,12 @@
 ### 4. **GitHub Repository** (Optional but Recommended)
 
 **What we need:**
+
 - [ ] **Repository URL** - GitHub repository link
 - [ ] **Access** - Add developer as collaborator with write access
 
 **Where to set up:**
+
 1. Create repository at https://github.com (private recommended)
 2. Go to **Settings** → **Collaborators** → **Add people**
 3. Add developer email with **Write** access
@@ -109,6 +120,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ### Vercel Production
 
 Same variables, but set in Vercel dashboard:
+
 1. Go to project → **Settings** → **Environment Variables**
 2. Add each variable
 3. Select environments (Production, Preview, Development)
@@ -154,4 +166,3 @@ Before we can proceed with Milestone 1:
 ## 📞 Questions?
 
 If you have any issues getting these credentials, let me know and I can help guide you through the process!
-

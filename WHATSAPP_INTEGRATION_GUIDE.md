@@ -353,4 +353,3 @@ delivered → "Parcel delivered! 🎉"
 - Need to update client requirements doc
 
 **What do you prefer?** I can switch to Twilio if you think it's better for the MVP timeline.
-
