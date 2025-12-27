@@ -21,6 +21,8 @@ export interface Database {
           full_name: string | null
           role: 'sender' | 'courier' | 'admin'
           whatsapp_number: string | null
+          address: string | null
+          email: string | null
           created_at: string
           updated_at: string
         }
@@ -30,6 +32,8 @@ export interface Database {
           full_name?: string | null
           role: 'sender' | 'courier' | 'admin'
           whatsapp_number?: string | null
+          address?: string | null
+          email?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -39,6 +43,8 @@ export interface Database {
           full_name?: string | null
           role?: 'sender' | 'courier' | 'admin'
           whatsapp_number?: string | null
+          address?: string | null
+          email?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -385,6 +391,32 @@ export interface Database {
           status?: string
           notes?: string | null
           location?: string | null
+          created_at?: string
+        }
+      }
+      otp_codes: {
+        Row: {
+          id: string
+          phone_number: string
+          otp_code: string
+          expires_at: string
+          used: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          phone_number: string
+          otp_code: string
+          expires_at: string
+          used?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          phone_number?: string
+          otp_code?: string
+          expires_at?: string
+          used?: boolean
           created_at?: string
         }
       }
