@@ -14,6 +14,7 @@ This guide will walk you through deploying QikParcel MVP to Vercel.
 ### Step 1: Push Code to GitHub
 
 1. If you haven't already, initialize a Git repository:
+
    ```bash
    git init
    git add .
@@ -21,6 +22,7 @@ This guide will walk you through deploying QikParcel MVP to Vercel.
    ```
 
 2. Create a new repository on GitHub:
+
    - Go to https://github.com/new
    - Name it: `qikparcel-mvp` (or your preferred name)
    - Choose Private (recommended) or Public
@@ -58,6 +60,7 @@ This guide will walk you through deploying QikParcel MVP to Vercel.
 Click **"Environment Variables"** and add each one:
 
 #### Supabase Variables:
+
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -65,6 +68,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 #### Twilio Variables:
+
 ```
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
 TWILIO_AUTH_TOKEN=your_twilio_auth_token
@@ -73,6 +77,7 @@ TWILIO_CONTENT_SID=your_twilio_content_template_sid
 ```
 
 #### Application Variables:
+
 ```
 NEXT_PUBLIC_APP_URL=https://your-project.vercel.app
 ```
@@ -80,6 +85,7 @@ NEXT_PUBLIC_APP_URL=https://your-project.vercel.app
 **Note**: After first deployment, update `NEXT_PUBLIC_APP_URL` with your actual Vercel URL.
 
 #### For Each Environment:
+
 - ✅ Production
 - ✅ Preview
 - ✅ Development
@@ -96,6 +102,7 @@ Click **"Save"** after adding all variables.
 ### Step 6: Update Environment Variables (if needed)
 
 After first deployment:
+
 1. Go to **Settings** → **Environment Variables**
 2. Update `NEXT_PUBLIC_APP_URL` with your actual deployment URL
 3. Redeploy (Vercel will auto-redeploy, or trigger manually)
@@ -151,6 +158,7 @@ vercel env add NEXT_PUBLIC_APP_URL
 
 1. Go to Supabase Dashboard → **Authentication** → **URL Configuration**
 2. Add your Vercel URL to **Redirect URLs**:
+
    - `https://your-project.vercel.app/**`
    - `https://your-project.vercel.app/dashboard`
    - `https://your-project.vercel.app/login`
@@ -161,6 +169,7 @@ vercel env add NEXT_PUBLIC_APP_URL
 ### 2. Update Twilio Webhook (if using)
 
 If you have WhatsApp webhooks configured:
+
 1. Go to Twilio Console → **Messaging** → **WhatsApp Sandbox** (or your WhatsApp sender)
 2. Update webhook URL to: `https://your-project.vercel.app/api/whatsapp/webhook`
 
@@ -175,6 +184,7 @@ If you have WhatsApp webhooks configured:
 ### 4. Verify Environment Variables
 
 Check that all variables are set correctly:
+
 1. Go to Vercel Dashboard → Your Project → **Settings** → **Environment Variables**
 2. Verify all variables are present
 3. Make sure they're enabled for the correct environments
@@ -183,16 +193,16 @@ Check that all variables are set correctly:
 
 ### Required Variables:
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL | `https://xxxxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | `eyJhbGc...` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (keep secret!) | `eyJhbGc...` |
-| `TWILIO_ACCOUNT_SID` | Twilio Account SID | `ACxxxxxxxxxxxxx` |
-| `TWILIO_AUTH_TOKEN` | Twilio Auth Token | `your_auth_token` |
-| `TWILIO_MESSAGING_SERVICE_SID` | Twilio Messaging Service SID | `MG6b9f0c807e8e0870fabb911bc69473e6` |
-| `TWILIO_CONTENT_SID` | Twilio Content Template SID | `HX3d88c55ab0f20871ef1ab83d9ae64040` |
-| `NEXT_PUBLIC_APP_URL` | Your Vercel deployment URL | `https://qikparcel-mvp.vercel.app` |
+| Variable                        | Description                              | Example                              |
+| ------------------------------- | ---------------------------------------- | ------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Your Supabase project URL                | `https://xxxxx.supabase.co`          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key                   | `eyJhbGc...`                         |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Supabase service role key (keep secret!) | `eyJhbGc...`                         |
+| `TWILIO_ACCOUNT_SID`            | Twilio Account SID                       | `ACxxxxxxxxxxxxx`                    |
+| `TWILIO_AUTH_TOKEN`             | Twilio Auth Token                        | `your_auth_token`                    |
+| `TWILIO_MESSAGING_SERVICE_SID`  | Twilio Messaging Service SID             | `MG6b9f0c807e8e0870fabb911bc69473e6` |
+| `TWILIO_CONTENT_SID`            | Twilio Content Template SID              | `HX3d88c55ab0f20871ef1ab83d9ae64040` |
+| `NEXT_PUBLIC_APP_URL`           | Your Vercel deployment URL               | `https://qikparcel-mvp.vercel.app`   |
 
 ### Where to Find These Values:
 
@@ -205,38 +215,45 @@ Check that all variables are set correctly:
 ### Build Fails
 
 **Error: "Module not found"**
+
 - Make sure all dependencies are in `package.json`
 - Run `npm install` locally to verify
 - Check that `node_modules` is in `.gitignore`
 
 **Error: "Environment variable missing"**
+
 - Add all required environment variables in Vercel
 - Make sure variables are set for the correct environment (Production/Preview)
 
 ### Deployment Succeeds but App Doesn't Work
 
 **Error: "Invalid Supabase URL"**
+
 - Check `NEXT_PUBLIC_SUPABASE_URL` is correct
 - Make sure it starts with `https://`
 
 **Error: "Failed to send OTP"**
+
 - Verify Twilio credentials are correct
 - Check Twilio account has sufficient balance
 - Verify `TWILIO_CONTENT_SID` is correct
 
 **Error: "Storage bucket not found"**
+
 - Make sure you created the `courier-documents` bucket in Supabase
 - Verify storage policies are set up
 
 ### Preview Deployments
 
 Every push to your repository will create a preview deployment:
+
 - Preview URLs: `https://qikparcel-mvp-git-branch-username.vercel.app`
 - Use preview deployments to test before merging to main
 
 ## Continuous Deployment
 
 Once connected to GitHub:
+
 - ✅ Every push to `main` → Production deployment
 - ✅ Every pull request → Preview deployment
 - ✅ Automatic deployments enabled by default
@@ -261,8 +278,8 @@ Once connected to GitHub:
 ## Support
 
 If you encounter issues:
+
 1. Check Vercel build logs in the dashboard
 2. Check function logs for API route errors
 3. Verify all environment variables are set
 4. Test locally with production environment variables (use `.env.local`)
-

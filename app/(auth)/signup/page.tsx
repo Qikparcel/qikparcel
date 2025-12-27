@@ -421,7 +421,7 @@ export default function SignUpPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
               />
               <p className="mt-1 text-xs text-gray-500">
-                Include country code. We'll send verification code via WhatsApp
+                Include country code. We&apos;ll send verification code via WhatsApp
               </p>
             </div>
 
@@ -503,7 +503,7 @@ export default function SignUpPage() {
                   >
                     <option value="national_id">National ID</option>
                     <option value="passport">Passport</option>
-                    <option value="drivers_license">Driver's License</option>
+                    <option value="drivers_license">Driver&apos;s License</option>
                   </select>
                 </div>
 

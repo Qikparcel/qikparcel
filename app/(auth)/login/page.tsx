@@ -256,12 +256,12 @@ export default function LoginPage() {
         )}
 
         <p className="mt-6 text-center text-xs text-gray-500">
-          By continuing, you agree to QikParcel's Terms of Service
+          By continuing, you agree to QikParcel&apos;s Terms of Service
         </p>
 
         <div className="mt-6 pt-6 border-t border-gray-200">
           <p className="text-center text-sm text-gray-600">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/signup" className="font-medium" style={{ color: '#29772F' }}>
               Sign up
             </Link>
