@@ -1,0 +1,16 @@
+# Vercel ignore file
+# Files/folders listed here won't be uploaded to Vercel
+
+# Environment files (use Vercel's environment variables instead)
+.env
+.env.local
+.env.*.local
+
+# Documentation (optional - remove if you want docs in deployment)
+*.md
+!README.md
+
+# Development files
+.vscode
+.idea
+

@@ -6,6 +6,9 @@ This directory contains the database schema and migrations for QikParcel MVP.
 
 - `migrations/001_initial_schema.sql` - Creates all database tables, indexes, and triggers
 - `migrations/002_rls_policies.sql` - Sets up Row Level Security (RLS) policies
+- `migrations/003_otp_storage.sql` - Creates OTP storage table for phone authentication
+- `migrations/004_add_profile_fields.sql` - Adds address and email fields to profiles table
+- `migrations/005_create_courier_documents_storage.sql` - Creates storage bucket policies for courier documents
 
 ## Setup Instructions
 
@@ -16,6 +19,30 @@ This directory contains the database schema and migrations for QikParcel MVP.
 3. Copy and paste the contents of `001_initial_schema.sql`
 4. Click **Run** to execute
 5. Repeat for `002_rls_policies.sql`
+6. Repeat for `003_otp_storage.sql`
+7. Repeat for `004_add_profile_fields.sql`
+8. For `005_create_courier_documents_storage.sql`: First create the storage bucket manually (see Step 5 below), then run the SQL policies
+
+### Step 4: Add Profile Fields
+
+1. Create a new query in SQL Editor
+2. Open `supabase/migrations/004_add_profile_fields.sql`
+3. Copy the entire contents
+4. Paste into the SQL Editor
+5. Click **Run**
+
+### Step 5: Create Storage Bucket for Courier Documents
+
+See detailed instructions in [`../SETUP_STORAGE_BUCKET.md`](../SETUP_STORAGE_BUCKET.md)
+
+**Quick Steps:**
+1. Go to **Storage** in Supabase Dashboard
+2. Click **Create a new bucket**
+3. Name it: `courier-documents` (must be exact, lowercase with hyphen)
+4. Set it to **Private** (do NOT check "Public bucket")
+5. Click **Create bucket**
+6. Go to **SQL Editor** and run the policies from `supabase/migrations/005_create_courier_documents_storage.sql`
+7. Verify policies were created successfully
 
 ### Option 2: Using Supabase CLI
 
@@ -32,6 +59,8 @@ supabase link --project-ref your-project-ref
 supabase db push
 ```
 
+**Note:** For storage bucket, you still need to create it manually in the dashboard as storage buckets cannot be created via SQL.
+
 ### Option 3: Using psql
 
 If you have direct database access:
@@ -39,7 +68,11 @@ If you have direct database access:
 ```bash
 psql -h your-db-host -U postgres -d postgres -f supabase/migrations/001_initial_schema.sql
 psql -h your-db-host -U postgres -d postgres -f supabase/migrations/002_rls_policies.sql
+psql -h your-db-host -U postgres -d postgres -f supabase/migrations/003_otp_storage.sql
+psql -h your-db-host -U postgres -d postgres -f supabase/migrations/004_add_profile_fields.sql
 ```
+
+**Note:** Storage bucket still needs to be created manually in the dashboard.
 
 ## Database Schema Overview
 

@@ -3,15 +3,28 @@
  * Run with: node scripts/test-whatsapp.js
  */
 
-import dotenv from 'dotenv'
+import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-// Load environment variables
-dotenv.config({ path: join(__dirname, '..', '.env.local') })
+// Load environment variables from .env.local
+const envPath = join(__dirname, '..', '.env.local')
+const envFile = readFileSync(envPath, 'utf-8')
+const envVars = {}
+envFile.split('\n').forEach(line => {
+  const match = line.match(/^([^#=]+)=(.*)$/)
+  if (match) {
+    const key = match[1].trim()
+    const value = match[2].trim().replace(/^["']|["']$/g, '')
+    envVars[key] = value
+  }
+})
+
+// Set environment variables
+Object.assign(process.env, envVars)
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN

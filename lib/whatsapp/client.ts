@@ -3,23 +3,43 @@
  * Handles all WhatsApp messaging operations via Twilio
  */
 
+import { normalizePhoneNumber, formatPhoneForTwilio } from '@/lib/utils/phone'
+
 interface TwilioConfig {
   accountSid: string
   authToken: string
-  whatsappNumber: string
+  messagingServiceSid?: string
+  whatsappNumber?: string // Fallback if messaging service is not available
 }
 
 class WhatsAppClient {
   private accountSid: string
   private authToken: string
-  private whatsappNumber: string
+  private messagingServiceSid?: string
+  private whatsappNumber?: string
   private twilioApiBase: string
 
   constructor(config: TwilioConfig) {
     this.accountSid = config.accountSid
     this.authToken = config.authToken
+    this.messagingServiceSid = config.messagingServiceSid
     this.whatsappNumber = config.whatsappNumber
     this.twilioApiBase = `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}`
+  }
+
+  /**
+   * Get the From field value - prefer messaging service SID over phone number
+   */
+  private getFromField(): string {
+    if (this.messagingServiceSid) {
+      // Use messaging service SID directly (no whatsapp: prefix needed)
+      return this.messagingServiceSid
+    }
+    if (this.whatsappNumber) {
+      // Fallback to phone number with formatting
+      return formatPhoneForTwilio(this.whatsappNumber)
+    }
+    throw new Error('Either messagingServiceSid or whatsappNumber must be provided')
   }
 
   /**
@@ -28,14 +48,9 @@ class WhatsAppClient {
   async sendTextMessage(to: string, message: string) {
     const url = `${this.twilioApiBase}/Messages.json`
 
-    // Format phone number (ensure it starts with whatsapp:)
-    const from = this.whatsappNumber.startsWith('whatsapp:')
-      ? this.whatsappNumber
-      : `whatsapp:${this.whatsappNumber}`
-    
-    const toFormatted = to.startsWith('whatsapp:')
-      ? to
-      : `whatsapp:${to}`
+    // Get From field (messaging service SID or phone number)
+    const from = this.getFromField()
+    const toFormatted = formatPhoneForTwilio(to)
 
     // Create Basic Auth header
     const credentials = Buffer.from(`${this.accountSid}:${this.authToken}`).toString('base64')
@@ -54,11 +69,41 @@ class WhatsAppClient {
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Twilio API error: ${error}`)
+      const errorText = await response.text()
+      let errorMessage = `Twilio API error (${response.status}): ${errorText}`
+      
+      // Try to parse error for better message
+      try {
+        const errorJson = JSON.parse(errorText)
+        if (errorJson.message) {
+          errorMessage = `Twilio API error: ${errorJson.message}`
+          if (errorJson.code) {
+            errorMessage += ` (Code: ${errorJson.code})`
+          }
+        }
+      } catch (e) {
+        // If JSON parse fails, use the text as-is
+      }
+      
+      console.error('Twilio API Error Details:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        from,
+        to: toFormatted,
+      })
+      
+      throw new Error(errorMessage)
     }
 
-    return response.json()
+    const result = await response.json()
+    console.log('Twilio message sent successfully:', {
+      messageSid: result.sid,
+      status: result.status,
+      to: result.to,
+    })
+    
+    return result
   }
 
   /**
@@ -71,13 +116,9 @@ class WhatsAppClient {
   ) {
     const url = `${this.twilioApiBase}/Messages.json`
 
-    const from = this.whatsappNumber.startsWith('whatsapp:')
-      ? this.whatsappNumber
-      : `whatsapp:${this.whatsappNumber}`
-    
-    const toFormatted = to.startsWith('whatsapp:')
-      ? to
-      : `whatsapp:${to}`
+    // Get From field (messaging service SID or phone number)
+    const from = this.getFromField()
+    const toFormatted = formatPhoneForTwilio(to)
 
     const credentials = Buffer.from(`${this.accountSid}:${this.authToken}`).toString('base64')
 
@@ -121,13 +162,9 @@ class WhatsAppClient {
   ) {
     const url = `${this.twilioApiBase}/Messages.json`
 
-    const from = this.whatsappNumber.startsWith('whatsapp:')
-      ? this.whatsappNumber
-      : `whatsapp:${this.whatsappNumber}`
-    
-    const toFormatted = to.startsWith('whatsapp:')
-      ? to
-      : `whatsapp:${to}`
+    // Get From field (messaging service SID or phone number)
+    const from = this.getFromField()
+    const toFormatted = formatPhoneForTwilio(to)
 
     const credentials = Buffer.from(`${this.accountSid}:${this.authToken}`).toString('base64')
 
@@ -156,11 +193,43 @@ class WhatsAppClient {
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Twilio API error: ${error}`)
+      const errorText = await response.text()
+      let errorMessage = `Twilio API error (${response.status}): ${errorText}`
+      
+      // Try to parse error for better message
+      try {
+        const errorJson = JSON.parse(errorText)
+        if (errorJson.message) {
+          errorMessage = `Twilio API error: ${errorJson.message}`
+          if (errorJson.code) {
+            errorMessage += ` (Code: ${errorJson.code})`
+          }
+        }
+      } catch (e) {
+        // If JSON parse fails, use the text as-is
+      }
+      
+      console.error('Twilio Content API Error Details:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        from,
+        to: toFormatted,
+        contentSid,
+      })
+      
+      throw new Error(errorMessage)
     }
 
-    return response.json()
+    const result = await response.json()
+    console.log('Twilio template message sent successfully:', {
+      messageSid: result.sid,
+      status: result.status,
+      to: result.to,
+      contentSid,
+    })
+    
+    return result
   }
 
   /**
@@ -189,19 +258,26 @@ class WhatsAppClient {
 
 /**
  * Create WhatsApp client instance using Twilio
+ * Uses Messaging Service SID if available, falls back to phone number
  */
 export const createWhatsAppClient = (): WhatsAppClient => {
   const accountSid = process.env.TWILIO_ACCOUNT_SID
   const authToken = process.env.TWILIO_AUTH_TOKEN
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID
   const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER
 
-  if (!accountSid || !authToken || !whatsappNumber) {
-    throw new Error('Missing Twilio environment variables')
+  if (!accountSid || !authToken) {
+    throw new Error('Missing required Twilio environment variables: TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are required')
+  }
+
+  if (!messagingServiceSid && !whatsappNumber) {
+    throw new Error('Either TWILIO_MESSAGING_SERVICE_SID or TWILIO_WHATSAPP_NUMBER must be provided')
   }
 
   return new WhatsAppClient({
     accountSid,
     authToken,
+    messagingServiceSid,
     whatsappNumber,
   })
 }
