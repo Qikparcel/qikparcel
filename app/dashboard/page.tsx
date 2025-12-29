@@ -61,7 +61,6 @@ export default function DashboardPage() {
     try {
       const supabase = createSupabaseClient();
       await supabase.auth.signOut();
-      toast.success("Logged out successfully");
       router.push("/login");
       router.refresh();
     } catch (error) {

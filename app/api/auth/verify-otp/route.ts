@@ -228,8 +228,9 @@ export async function POST(request: NextRequest) {
     console.log('📋 Creating/updating profile for user:', user.id)
 
       // Check if profile exists
-    const { data: existingProfile, error: profileCheckError } = await adminSupabase
-        .from('profiles')
+      // @ts-ignore - TypeScript inference issue with profiles table
+      const { data: existingProfile, error: profileCheckError } = await (adminSupabase
+        .from('profiles') as any)
       .select('*')
         .eq('id', user.id)
       .maybeSingle()
@@ -246,8 +247,9 @@ export async function POST(request: NextRequest) {
       if (existingProfile) {
       console.log('📝 Profile exists, updating...')
         // Update existing profile
-      const { data: updatedProfile, error: updateError } = await adminSupabase
-          .from('profiles')
+      // @ts-ignore - TypeScript inference issue with profiles table
+      const { data: updatedProfile, error: updateError } = await (adminSupabase
+          .from('profiles') as any)
           .update({
             phone_number: formattedPhone,
             whatsapp_number: formattedPhone,
@@ -282,8 +284,9 @@ export async function POST(request: NextRequest) {
       
       console.log('Inserting profile with data:', { ...profileData, phone_number: '[REDACTED]' })
       
-      const { data: newProfile, error: insertError } = await adminSupabase
-        .from('profiles')
+      // @ts-ignore - TypeScript inference issue with profiles table
+      const { data: newProfile, error: insertError } = await (adminSupabase
+        .from('profiles') as any)
         .insert(profileData)
         .select()
       

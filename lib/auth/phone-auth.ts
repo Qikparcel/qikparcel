@@ -126,8 +126,9 @@ async function createOrUpdateProfile(userId: string, phoneNumber: string) {
     
     if (existingProfile) {
       // Update existing profile
-      await supabase
-        .from('profiles')
+      // @ts-ignore - TypeScript inference issue with profiles table
+      await (supabase
+        .from('profiles') as any)
         .update({
           phone_number: phoneNumber,
           whatsapp_number: phoneNumber,
@@ -136,8 +137,9 @@ async function createOrUpdateProfile(userId: string, phoneNumber: string) {
         .eq('id', userId)
     } else {
       // Create new profile
-      await supabase
-        .from('profiles')
+      // @ts-ignore - TypeScript inference issue with profiles table
+      await (supabase
+        .from('profiles') as any)
         .insert({
           id: userId,
           phone_number: phoneNumber,

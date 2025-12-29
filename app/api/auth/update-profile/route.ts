@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
     if (email) updateData.email = email
 
     // Update profile
-    const { error: updateError } = await adminSupabase
-      .from('profiles')
+    const { error: updateError } = await (adminSupabase
+      .from('profiles') as any)
       .update(updateData)
       .eq('id', userId)
 
@@ -43,19 +43,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If courier and document provided, update courier_kyc table
-    if (role === 'courier' && documentPath) {
-      const { error: kycError } = await adminSupabase
-        .from('courier_kyc')
-        .upsert({
-          courier_id: userId,
-          id_document_url: documentPath,
-          id_document_type: documentType || 'national_id',
-          verification_status: 'pending',
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'courier_id',
-        })
+        // If courier and document provided, update courier_kyc table
+        if (role === 'courier' && documentPath) {
+          const { error: kycError } = await (adminSupabase
+            .from('courier_kyc') as any)
+            .upsert({
+              courier_id: userId,
+              id_document_url: documentPath,
+              id_document_type: documentType || 'national_id',
+              verification_status: 'pending',
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'courier_id',
+            })
 
       if (kycError) {
         console.error('KYC update error:', kycError)
