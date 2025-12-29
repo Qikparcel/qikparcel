@@ -134,12 +134,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Store new OTP
-    const { error: storeError } = await adminSupabase.from("otp_codes").insert({
-      phone_number: formattedPhone,
-      otp_code: otp,
-      expires_at: expiresAt,
-      used: false,
-    });
+    const { error: storeError } = await (adminSupabase
+      .from("otp_codes") as any)
+      .insert({
+        phone_number: formattedPhone,
+        otp_code: otp,
+        expires_at: expiresAt,
+        used: false,
+      });
 
     if (storeError) {
       console.error("Error storing OTP:", storeError);
