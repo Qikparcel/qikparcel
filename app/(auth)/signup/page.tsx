@@ -48,98 +48,21 @@ export default function SignUpPage() {
     }
   }, [])
 
-  // Check for auth tokens in URL hash (from magic link redirect)
+  // Check if user is already authenticated
   useEffect(() => {
-    const handleMagicLinkAuth = async () => {
+    const checkSession = async () => {
       if (typeof window === 'undefined') return
 
-      const hash = window.location.hash.substring(1)
-      if (!hash) return
-
-      const params = new URLSearchParams(hash)
-      const accessToken = params.get('access_token')
-      const refreshToken = params.get('refresh_token')
-
-      if (accessToken && refreshToken) {
-        try {
-          setLoading(true)
-          const supabase = createSupabaseClient()
-          
-          console.log('Setting session with tokens from URL hash (signup)')
-          
-          const { data: { session }, error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
-
-          if (sessionError) {
-            console.error('Error setting session:', sessionError)
-            toast.error('Failed to complete sign-up: ' + sessionError.message)
-            window.history.replaceState(null, '', '/signup')
-            localStorage.removeItem('signup_form_data')
-            setLoading(false)
-            return
-          }
-
-          if (!session || !session.user) {
-            console.error('Session not created after setting tokens')
-            toast.error('Failed to create session')
-            window.history.replaceState(null, '', '/signup')
-            localStorage.removeItem('signup_form_data')
-            setLoading(false)
-            return
-          }
-
-          console.log('Session created successfully:', session.user.id)
-
-          // Clear the hash from URL
-          window.history.replaceState(null, '', '/signup')
-
-          // Wait for session to be persisted to cookies
-          await new Promise((resolve) => setTimeout(resolve, 500))
-
-          // Verify session is still there after delay
-          const { data: { session: verifySession } } = await supabase.auth.getSession()
-
-          if (!verifySession) {
-            console.error('Session lost after setting')
-            toast.error('Session was not persisted. Please try again.')
-            localStorage.removeItem('signup_form_data')
-            setLoading(false)
-            return
-          }
-
-          // Load saved form data
-          const savedData = localStorage.getItem('signup_form_data')
-          if (savedData) {
-            const data = JSON.parse(savedData)
-            
-            // Update profile with saved data (document should already be uploaded before redirect)
-            await updateProfileFromSavedData(session.user.id, data)
-            
-            // Clear saved data
-            localStorage.removeItem('signup_form_data')
-          } else {
-            console.warn('No saved form data found, profile may not have all fields')
-          }
-          
-          console.log('Session verified, redirecting to dashboard')
-          toast.success('Account created successfully!')
-          
-          // Use full page reload to ensure cookies are properly read by middleware
-          window.location.href = '/dashboard'
-        } catch (err: any) {
-          console.error('Error handling magic link auth:', err)
-          toast.error('Failed to complete sign-up')
-          window.history.replaceState(null, '', '/signup')
-          localStorage.removeItem('signup_form_data')
-        } finally {
-          setLoading(false)
-        }
+      // Check if user is already authenticated
+      const supabase = createSupabaseClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        router.push('/dashboard')
+        router.refresh()
       }
     }
 
-    handleMagicLinkAuth()
+    checkSession()
   }, [router])
 
   const updateProfileFromSavedData = async (userId: string, data: any) => {

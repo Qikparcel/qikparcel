@@ -345,15 +345,14 @@ export async function POST(request: NextRequest) {
     })
 
     // Use 'magiclink' type - works for both new and existing users
-    // IMPORTANT: Redirect to /login instead of /dashboard
-    // This allows the login page to handle the tokens and set the session properly
+    // IMPORTANT: Redirect to /callback page which will handle tokens and set session cookies
     const baseUrl = getBaseUrl()
     
     const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
       type: 'magiclink',
       email: userEmail,
       options: {
-        redirectTo: `${baseUrl}/login`,
+        redirectTo: `${baseUrl}/callback`,
       },
     })
 
