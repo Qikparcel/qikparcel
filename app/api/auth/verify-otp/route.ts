@@ -12,15 +12,15 @@ export async function POST(request: NextRequest) {
     
     // Get base URL for redirects (works in both local and production)
     const getBaseUrl = () => {
-      // Vercel provides VERCEL_URL automatically
-      if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}`
+      // In production, always use the production domain
+      if (process.env.NODE_ENV === 'production') {
+        return 'https://app.qikparcel.com'
       }
-      // Fallback to NEXT_PUBLIC_APP_URL if set
+      // Fallback to NEXT_PUBLIC_APP_URL if set (for local development)
       if (process.env.NEXT_PUBLIC_APP_URL) {
         return process.env.NEXT_PUBLIC_APP_URL
       }
-      // Use request origin as last resort
+      // Use request origin as last resort (for local development)
       return request.nextUrl.origin
     }
 
@@ -347,12 +347,15 @@ export async function POST(request: NextRequest) {
     // Use 'magiclink' type - works for both new and existing users
     // IMPORTANT: Redirect to /callback page which will handle tokens and set session cookies
     const baseUrl = getBaseUrl()
+    console.log('[VERIFY-OTP] Using base URL for redirect:', baseUrl)
+    const redirectUrl = `${baseUrl}/callback`
+    console.log('[VERIFY-OTP] Full redirect URL:', redirectUrl)
     
     const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
       type: 'magiclink',
       email: userEmail,
       options: {
-        redirectTo: `${baseUrl}/callback`,
+        redirectTo: redirectUrl,
       },
     })
 
