@@ -24,6 +24,7 @@ You need to add the following URLs to the **"Redirect URLs"** section:
 
 ```
 http://localhost:3000/**
+http://localhost:3000/callback
 http://localhost:3000/dashboard
 http://localhost:3000/login
 http://localhost:3000/signup
@@ -33,10 +34,13 @@ http://localhost:3000/signup
 
 ```
 https://your-project.vercel.app/**
+https://your-project.vercel.app/callback
 https://your-project.vercel.app/dashboard
 https://your-project.vercel.app/login
 https://your-project.vercel.app/signup
 ```
+
+**⚠️ IMPORTANT:** The `/callback` URL is **REQUIRED** - this is where the magic link redirects to handle authentication tokens!
 
 **Important:** Use `/**` to allow all paths under that domain, or list specific paths.
 

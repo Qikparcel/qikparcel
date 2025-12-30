@@ -15,13 +15,22 @@ export function createClient() {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, {
+                ...options,
+                // Ensure secure cookies in production (HTTPS)
+                secure: process.env.NODE_ENV === 'production',
+                // SameSite for CSRF protection
+                sameSite: 'lax' as const,
+                // HttpOnly for security (if not already set)
+                httpOnly: options?.httpOnly ?? true,
+              })
+            })
+          } catch (error) {
             // The `setAll` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing
             // user sessions.
+            console.error('Error setting cookies:', error)
           }
         },
       },
