@@ -73,24 +73,30 @@ export default function LoginPage() {
 
           console.log("Session created successfully:", session.user.id);
 
-          // Clear the hash first
+          // Clear the hash from URL
           window.history.replaceState(null, "", "/login");
 
-          // Small delay to ensure session is persisted to cookies
-          await new Promise((resolve) => setTimeout(resolve, 200));
+          // Wait for session to be persisted to cookies
+          // This is important for SSR cookie handling
+          await new Promise((resolve) => setTimeout(resolve, 500));
 
-          // Verify session is still there
+          // Verify session is still there after delay
           const {
             data: { session: verifySession },
           } = await supabase.auth.getSession();
+
           if (!verifySession) {
-            console.error("Session lost after setting");
-            toast.error("Session was not persisted");
+            console.error(
+              "Session lost after setting - cookies may not be set"
+            );
+            toast.error("Session was not persisted. Please try again.");
             setLoading(false);
             return;
           }
 
-          // Success! Use full page reload to ensure cookies are properly read
+          console.log("Session verified, redirecting to dashboard");
+
+          // Success! Use full page reload to ensure cookies are properly read by middleware
           toast.success("Logged in successfully!");
           window.location.href = "/dashboard";
         } catch (err: any) {
@@ -99,7 +105,6 @@ export default function LoginPage() {
             "Failed to complete sign-in: " + (err.message || "Unknown error")
           );
           window.history.replaceState(null, "", "/login");
-        } finally {
           setLoading(false);
         }
       } else {

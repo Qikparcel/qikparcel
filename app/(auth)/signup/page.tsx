@@ -65,16 +65,47 @@ export default function SignUpPage() {
           setLoading(true)
           const supabase = createSupabaseClient()
           
-          const { data: { user }, error: sessionError } = await supabase.auth.setSession({
+          console.log('Setting session with tokens from URL hash (signup)')
+          
+          const { data: { session }, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           })
 
-          if (sessionError || !user) {
+          if (sessionError) {
             console.error('Error setting session:', sessionError)
-            toast.error('Failed to complete sign-in')
+            toast.error('Failed to complete sign-up: ' + sessionError.message)
             window.history.replaceState(null, '', '/signup')
             localStorage.removeItem('signup_form_data')
+            setLoading(false)
+            return
+          }
+
+          if (!session || !session.user) {
+            console.error('Session not created after setting tokens')
+            toast.error('Failed to create session')
+            window.history.replaceState(null, '', '/signup')
+            localStorage.removeItem('signup_form_data')
+            setLoading(false)
+            return
+          }
+
+          console.log('Session created successfully:', session.user.id)
+
+          // Clear the hash from URL
+          window.history.replaceState(null, '', '/signup')
+
+          // Wait for session to be persisted to cookies
+          await new Promise((resolve) => setTimeout(resolve, 500))
+
+          // Verify session is still there after delay
+          const { data: { session: verifySession } } = await supabase.auth.getSession()
+
+          if (!verifySession) {
+            console.error('Session lost after setting')
+            toast.error('Session was not persisted. Please try again.')
+            localStorage.removeItem('signup_form_data')
+            setLoading(false)
             return
           }
 
@@ -84,7 +115,7 @@ export default function SignUpPage() {
             const data = JSON.parse(savedData)
             
             // Update profile with saved data (document should already be uploaded before redirect)
-            await updateProfileFromSavedData(user.id, data)
+            await updateProfileFromSavedData(session.user.id, data)
             
             // Clear saved data
             localStorage.removeItem('signup_form_data')
@@ -92,10 +123,11 @@ export default function SignUpPage() {
             console.warn('No saved form data found, profile may not have all fields')
           }
           
+          console.log('Session verified, redirecting to dashboard')
           toast.success('Account created successfully!')
-          window.history.replaceState(null, '', '/signup')
-          router.push('/dashboard')
-          router.refresh()
+          
+          // Use full page reload to ensure cookies are properly read by middleware
+          window.location.href = '/dashboard'
         } catch (err: any) {
           console.error('Error handling magic link auth:', err)
           toast.error('Failed to complete sign-up')
