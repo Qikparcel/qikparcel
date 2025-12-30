@@ -255,7 +255,7 @@ export default function LoginPage() {
               className="font-medium"
               style={{ color: "#29772F" }}
             >
-              Sign up
+              Sign up HEHEHEHEHEH
             </Link>
           </p>
         </div>
