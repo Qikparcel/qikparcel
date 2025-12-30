@@ -16,10 +16,17 @@ export default function AuthCallbackPage() {
     const handleCallback = async () => {
       if (typeof window === 'undefined') return
 
+      console.log('[CALLBACK] Starting callback handler')
+      console.log('[CALLBACK] Current URL:', window.location.href)
+      console.log('[CALLBACK] URL hash:', window.location.hash)
+
       try {
         // Extract tokens from URL hash
         const hash = window.location.hash.substring(1)
+        console.log('[CALLBACK] Hash substring:', hash ? 'found' : 'empty')
+        
         if (!hash) {
+          console.error('[CALLBACK] ERROR: No hash found in URL')
           throw new Error('No tokens found in URL')
         }
 
@@ -27,13 +34,22 @@ export default function AuthCallbackPage() {
         const accessToken = params.get('access_token')
         const refreshToken = params.get('refresh_token')
 
+        console.log('[CALLBACK] Tokens extracted:', {
+          hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken,
+          accessTokenLength: accessToken?.length || 0,
+          refreshTokenLength: refreshToken?.length || 0,
+        })
+
         if (!accessToken || !refreshToken) {
+          console.error('[CALLBACK] ERROR: Missing tokens', { accessToken: !!accessToken, refreshToken: !!refreshToken })
           throw new Error('Missing authentication tokens')
         }
 
-        console.log('Calling API to set session cookies...')
+        console.log('[CALLBACK] Calling API to set session cookies...')
 
         // Call API route to set session cookies server-side
+        console.log('[CALLBACK] Fetching /api/auth/callback...')
         const response = await fetch('/api/auth/callback', {
           method: 'POST',
           headers: {
@@ -45,49 +61,96 @@ export default function AuthCallbackPage() {
           }),
         })
 
+        console.log('[CALLBACK] API response status:', response.status, response.statusText)
         const data = await response.json()
+        console.log('[CALLBACK] API response data:', { success: data.success, error: data.error })
 
         if (!response.ok) {
+          console.error('[CALLBACK] API ERROR:', data)
           throw new Error(data.error || 'Failed to set session')
         }
 
-        console.log('Session set successfully')
+        console.log('[CALLBACK] Session set successfully via API')
+
+        // Also set session client-side to ensure it's accessible
+        console.log('[CALLBACK] Setting session client-side...')
+        const { createSupabaseClient } = await import('@/lib/supabase/client')
+        const supabase = createSupabaseClient()
+        
+        // Set session client-side as well (this ensures cookies are set on both server and client)
+        const { data: { session: clientSession }, error: clientError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+
+        if (clientError || !clientSession) {
+          console.error('[CALLBACK] WARNING: Failed to set session client-side:', clientError)
+          // Don't throw here, server-side session might still work
+        } else {
+          console.log('[CALLBACK] Session set client-side successfully:', {
+            userId: clientSession.user.id,
+            email: clientSession.user.email,
+            expiresAt: clientSession.expires_at,
+          })
+        }
+
+        // Wait a bit for cookies to propagate
+        console.log('[CALLBACK] Waiting 300ms for cookies to propagate...')
+        await new Promise((resolve) => setTimeout(resolve, 300))
+
+        // Verify session is accessible
+        console.log('[CALLBACK] Verifying session is accessible...')
+        const { data: { session: verifySession }, error: sessionError } = await supabase.auth.getSession()
+
+        if (sessionError || !verifySession) {
+          console.error('[CALLBACK] ERROR: Session not accessible after setting:', {
+            error: sessionError,
+            hasSession: !!verifySession,
+          })
+          throw new Error('Session was not properly set. Please try again.')
+        }
+
+        console.log('[CALLBACK] Session verified successfully:', {
+          userId: verifySession.user.id,
+          email: verifySession.user.email,
+          expiresAt: verifySession.expires_at,
+        })
 
         // Check if this is from signup (has saved form data)
+        console.log('[CALLBACK] Checking for signup form data...')
         const savedData = localStorage.getItem('signup_form_data')
         if (savedData) {
           try {
             const data = JSON.parse(savedData)
-            console.log('Found signup form data, updating profile...')
+            console.log('[CALLBACK] Found signup form data, updating profile...', {
+              hasFullName: !!data.fullName,
+              hasRole: !!data.role,
+              hasAddress: !!data.address,
+              hasEmail: !!data.email,
+            })
 
-            // Get user ID from session
-            const sessionResponse = await fetch('/api/auth/get-session')
-            const sessionData = await sessionResponse.json()
+            // Use the verified session user ID
+            const updateResponse = await fetch('/api/auth/update-profile', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: verifySession.user.id,
+                fullName: data.fullName,
+                role: data.role,
+                address: data.address,
+                email: data.email,
+                documentType: data.documentType,
+                documentPath: data.documentPath,
+              }),
+            })
 
-            if (sessionData.user?.id) {
-              // Update profile with saved data
-              const updateResponse = await fetch('/api/auth/update-profile', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  userId: sessionData.user.id,
-                  fullName: data.fullName,
-                  role: data.role,
-                  address: data.address,
-                  email: data.email,
-                  documentType: data.documentType,
-                  documentPath: data.documentPath,
-                }),
-              })
-
-              if (updateResponse.ok) {
-                console.log('Profile updated successfully')
-                localStorage.removeItem('signup_form_data')
-              } else {
-                console.error('Failed to update profile')
-              }
+            if (updateResponse.ok) {
+              console.log('Profile updated successfully')
+              localStorage.removeItem('signup_form_data')
+            } else {
+              console.error('Failed to update profile')
             }
           } catch (err: any) {
             console.error('Error updating profile:', err)
@@ -97,16 +160,20 @@ export default function AuthCallbackPage() {
         setStatus('success')
         toast.success('Logged in successfully!')
 
-        // Small delay before redirect to ensure cookies are set
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 300)
+        // Use full page reload to ensure cookies are read by middleware
+        console.log('[CALLBACK] All checks passed, redirecting to /dashboard...')
+        window.location.href = '/dashboard'
       } catch (error: any) {
-        console.error('Callback error:', error)
+        console.error('[CALLBACK] FATAL ERROR:', {
+          message: error.message,
+          stack: error.stack,
+          error: error,
+        })
         setStatus('error')
         toast.error('Authentication failed: ' + (error.message || 'Unknown error'))
         
         // Redirect to login after error
+        console.log('[CALLBACK] Redirecting to /login after error...')
         setTimeout(() => {
           window.location.href = '/login'
         }, 2000)
