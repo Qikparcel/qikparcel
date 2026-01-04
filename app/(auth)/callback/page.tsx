@@ -130,32 +130,63 @@ export default function AuthCallbackPage() {
             })
 
             // Use the verified session user ID
+            console.log('[CALLBACK] Calling update-profile API with data:', {
+              userId: verifySession.user.id,
+              hasFullName: !!data.fullName,
+              hasRole: !!data.role,
+              hasStreetAddress: !!data.streetAddress,
+              hasAddressLine2: data.addressLine2 !== undefined,
+              hasCity: !!data.city,
+              hasState: !!data.state,
+              hasPostcode: !!data.postcode,
+              hasCountry: !!data.country,
+              hasEmail: !!data.email,
+            })
+
+            // Build request body - include all fields for both sender and courier
+            const updateBody: any = {
+              userId: verifySession.user.id,
+            }
+            
+            // Required fields for both sender and courier
+            if (data.fullName) updateBody.fullName = data.fullName
+            if (data.role) updateBody.role = data.role
+            
+            // Address fields - required for both sender and courier
+            if (data.streetAddress) updateBody.streetAddress = data.streetAddress
+            if (data.addressLine2 !== undefined) updateBody.addressLine2 = data.addressLine2
+            if (data.city) updateBody.city = data.city
+            if (data.state) updateBody.state = data.state
+            if (data.postcode) updateBody.postcode = data.postcode
+            if (data.country) updateBody.country = data.country
+            
+            // Optional fields
+            if (data.email !== undefined) updateBody.email = data.email || null
+            if (data.documentType) updateBody.documentType = data.documentType
+            if (data.documentPath) updateBody.documentPath = data.documentPath
+
+            console.log('[CALLBACK] Update body:', updateBody)
+
             const updateResponse = await fetch('/api/auth/update-profile', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
-                  body: JSON.stringify({
-                    userId: verifySession.user.id,
-                    fullName: data.fullName,
-                    role: data.role,
-                    streetAddress: data.streetAddress,
-                    addressLine2: data.addressLine2,
-                    city: data.city,
-                    state: data.state,
-                    postcode: data.postcode,
-                    country: data.country,
-                    email: data.email,
-                    documentType: data.documentType,
-                    documentPath: data.documentPath,
-                  }),
+              body: JSON.stringify(updateBody),
             })
 
+            const updateResult = await updateResponse.json()
+
             if (updateResponse.ok) {
-              console.log('Profile updated successfully')
+              console.log('[CALLBACK] Profile updated successfully:', updateResult)
               localStorage.removeItem('signup_form_data')
+              toast.success('Profile information saved!')
             } else {
-              console.error('Failed to update profile')
+              console.error('[CALLBACK] Failed to update profile:', {
+                status: updateResponse.status,
+                error: updateResult,
+              })
+              toast.error(`Failed to save profile: ${updateResult.error || 'Unknown error'}`)
             }
           } catch (err: any) {
             console.error('Error updating profile:', err)
