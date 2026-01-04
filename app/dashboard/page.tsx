@@ -142,14 +142,14 @@ export default function DashboardPage() {
     return (
       <DashboardLayout>
         <div className="mb-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Parcels</h1>
-              <p className="mt-2 text-gray-600">Manage your parcel requests and track deliveries</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Parcels</h1>
+              <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Manage your parcel requests and track deliveries</p>
             </div>
             <Link
               href="/dashboard/parcels/new"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+              className="w-full sm:w-auto text-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
               style={{ backgroundColor: '#29772F' }}
             >
               Create Parcel
@@ -159,7 +159,7 @@ export default function DashboardPage() {
 
         {/* Stats Cards */}
         {stats.total > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
               <div className="text-sm text-gray-600">Total Parcels</div>
@@ -190,31 +190,31 @@ export default function DashboardPage() {
                 <Link
                   key={parcel.id}
                   href={`/dashboard/parcels/${parcel.id}`}
-                  className="block p-6 hover:bg-gray-50 transition"
+                  className="block p-4 sm:p-6 hover:bg-gray-50 transition"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                  <div className="flex items-start sm:items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                           Parcel #{parcel.id.slice(0, 8)}
                         </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[parcel.status]?.color || 'bg-gray-100 text-gray-800'}`}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusConfig[parcel.status]?.color || 'bg-gray-100 text-gray-800'}`}>
                           {statusConfig[parcel.status]?.label || parcel.status}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        <span className="font-medium">From:</span> {parcel.pickup_address.substring(0, 50)}
-                        {parcel.pickup_address.length > 50 && '...'}
+                      <p className="text-xs sm:text-sm text-gray-600 mb-1 truncate">
+                        <span className="font-medium">From:</span> <span className="truncate block sm:inline">{parcel.pickup_address.substring(0, 40)}</span>
+                        {parcel.pickup_address.length > 40 && '...'}
                       </p>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">To:</span> {parcel.delivery_address.substring(0, 50)}
-                        {parcel.delivery_address.length > 50 && '...'}
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">
+                        <span className="font-medium">To:</span> <span className="truncate block sm:inline">{parcel.delivery_address.substring(0, 40)}</span>
+                        {parcel.delivery_address.length > 40 && '...'}
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
                         Created {formatDate(parcel.created_at)}
                       </p>
                     </div>
-                    <div className="ml-4">
+                    <div className="flex-shrink-0">
                       <svg
                         className="w-5 h-5 text-gray-400"
                         fill="none"
@@ -235,16 +235,16 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
+          <div className="bg-white rounded-lg shadow p-8 sm:p-12 text-center">
             <div className="max-w-md mx-auto">
-              <div className="text-6xl mb-4">📦</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">No parcels yet</h2>
-              <p className="text-gray-600 mb-6">
+              <div className="text-5xl sm:text-6xl mb-4">📦</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">No parcels yet</h2>
+              <p className="text-sm sm:text-base text-gray-600 mb-6">
                 Get started by creating your first parcel request
               </p>
               <Link
                 href="/dashboard/parcels/new"
-                className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                className="inline-block w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
                 style={{ backgroundColor: '#29772F' }}
               >
                 Create Your First Parcel
@@ -268,14 +268,14 @@ export default function DashboardPage() {
     return (
       <DashboardLayout>
         <div className="mb-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Trips</h1>
-              <p className="mt-2 text-gray-600">Manage your trip routes and deliveries</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Trips</h1>
+              <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Manage your trip routes and deliveries</p>
             </div>
             <Link
               href="/dashboard/trips/new"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+              className="w-full sm:w-auto text-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
               style={{ backgroundColor: '#29772F' }}
             >
               Create Trip
@@ -285,7 +285,7 @@ export default function DashboardPage() {
 
         {/* Stats Cards */}
         {stats.total > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
               <div className="text-sm text-gray-600">Total Trips</div>
@@ -316,31 +316,31 @@ export default function DashboardPage() {
                 <Link
                   key={trip.id}
                   href={`/dashboard/trips/${trip.id}`}
-                  className="block p-6 hover:bg-gray-50 transition"
+                  className="block p-4 sm:p-6 hover:bg-gray-50 transition"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                  <div className="flex items-start sm:items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                           Trip #{trip.id.slice(0, 8)}
                         </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[trip.status]?.color || 'bg-gray-100 text-gray-800'}`}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusConfig[trip.status]?.color || 'bg-gray-100 text-gray-800'}`}>
                           {statusConfig[trip.status]?.label || trip.status}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        <span className="font-medium">From:</span> {trip.origin_address.substring(0, 50)}
-                        {trip.origin_address.length > 50 && '...'}
+                      <p className="text-xs sm:text-sm text-gray-600 mb-1 truncate">
+                        <span className="font-medium">From:</span> <span className="truncate block sm:inline">{trip.origin_address.substring(0, 40)}</span>
+                        {trip.origin_address.length > 40 && '...'}
                       </p>
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">To:</span> {trip.destination_address.substring(0, 50)}
-                        {trip.destination_address.length > 50 && '...'}
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">
+                        <span className="font-medium">To:</span> <span className="truncate block sm:inline">{trip.destination_address.substring(0, 40)}</span>
+                        {trip.destination_address.length > 40 && '...'}
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
                         Created {formatDate(trip.created_at)}
                       </p>
                     </div>
-                    <div className="ml-4">
+                    <div className="flex-shrink-0">
                       <svg
                         className="w-5 h-5 text-gray-400"
                         fill="none"
@@ -361,16 +361,16 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
+          <div className="bg-white rounded-lg shadow p-8 sm:p-12 text-center">
             <div className="max-w-md mx-auto">
-              <div className="text-6xl mb-4">🚚</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">No trips yet</h2>
-              <p className="text-gray-600 mb-6">
+              <div className="text-5xl sm:text-6xl mb-4">🚚</div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">No trips yet</h2>
+              <p className="text-sm sm:text-base text-gray-600 mb-6">
                 Get started by creating your first trip route
               </p>
               <Link
                 href="/dashboard/trips/new"
-                className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                className="inline-block w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
                 style={{ backgroundColor: '#29772F' }}
               >
                 Create Your First Trip
