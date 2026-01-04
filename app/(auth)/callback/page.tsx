@@ -11,6 +11,8 @@ import toast from 'react-hot-toast'
 export default function AuthCallbackPage() {
   const router = useRouter()
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
+  const [errorMessage, setErrorMessage] = useState<string>('')
+  const [profileUpdateError, setProfileUpdateError] = useState<string | null>(null)
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -180,13 +182,46 @@ export default function AuthCallbackPage() {
             if (updateResponse.ok) {
               console.log('[CALLBACK] Profile updated successfully:', updateResult)
               localStorage.removeItem('signup_form_data')
+              localStorage.removeItem('profile_update_error') // Clear any previous errors
               toast.success('Profile information saved!')
             } else {
+              // Build detailed error message
+              const errorMsg = updateResult.error || updateResult.message || 'Unknown error'
+              const detailsMsg = updateResult.details ? `\nDetails: ${updateResult.details}` : ''
+              const hintMsg = updateResult.hint ? `\nHint: ${updateResult.hint}` : ''
+              const fullErrorMsg = `Failed to save profile: ${errorMsg}${detailsMsg}${hintMsg}`
+              
               console.error('[CALLBACK] Failed to update profile:', {
                 status: updateResponse.status,
+                statusText: updateResponse.statusText,
                 error: updateResult,
+                updateBody,
+                fullError: fullErrorMsg,
               })
-              toast.error(`Failed to save profile: ${updateResult.error || 'Unknown error'}`)
+              
+              // Store error in localStorage so it persists after redirect
+              const errorData = {
+                message: fullErrorMsg,
+                details: updateResult.details || '',
+                hint: updateResult.hint || '',
+                timestamp: new Date().toISOString(),
+                updateBody: updateBody,
+              }
+              localStorage.setItem('profile_update_error', JSON.stringify(errorData))
+              
+              // Set state to show error on page
+              setProfileUpdateError(fullErrorMsg)
+              
+              // Show toast with error
+              toast.error(fullErrorMsg, {
+                duration: 10000,
+              })
+              
+              // Don't block the user from continuing - they can update profile later
+              console.warn('[CALLBACK] Continuing despite profile update failure - user can update profile later')
+              
+              // Wait a bit so user can see the error
+              await new Promise((resolve) => setTimeout(resolve, 3000))
             }
           } catch (err: any) {
             console.error('Error updating profile:', err)
@@ -198,21 +233,40 @@ export default function AuthCallbackPage() {
 
         // Use full page reload to ensure cookies are read by middleware
         console.log('[CALLBACK] All checks passed, redirecting to /dashboard...')
-        window.location.href = '/dashboard'
+        
+        // Delay redirect slightly to ensure error messages are logged
+        setTimeout(() => {
+          window.location.href = '/dashboard'
+        }, 1000)
       } catch (error: any) {
+        const errorMsg = error.message || 'Unknown error'
+        const fullError = `Authentication failed: ${errorMsg}`
+        
         console.error('[CALLBACK] FATAL ERROR:', {
           message: error.message,
           stack: error.stack,
           error: error,
+          fullError: fullError,
         })
-        setStatus('error')
-        toast.error('Authentication failed: ' + (error.message || 'Unknown error'))
         
-        // Redirect to login after error
+        // Store error in localStorage for persistence
+        localStorage.setItem('auth_callback_error', JSON.stringify({
+          message: fullError,
+          details: error.stack || '',
+          timestamp: new Date().toISOString(),
+        }))
+        
+        setStatus('error')
+        setErrorMessage(fullError)
+        toast.error(fullError, {
+          duration: 10000,
+        })
+        
+        // Redirect to login after error (with delay to show error)
         console.log('[CALLBACK] Redirecting to /login after error...')
         setTimeout(() => {
           window.location.href = '/login'
-        }, 2000)
+        }, 5000) // Longer delay to see error
       }
     }
 
@@ -220,13 +274,20 @@ export default function AuthCallbackPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 text-center">
         {status === 'processing' && (
           <>
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
             <h2 className="text-xl font-semibold text-gray-700">Completing sign-in...</h2>
             <p className="text-gray-500 mt-2">Please wait</p>
+            {profileUpdateError && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm text-left">
+                <p className="font-medium">Profile update warning:</p>
+                <p className="mt-1 whitespace-pre-wrap">{profileUpdateError}</p>
+                <p className="mt-2 text-xs">You can update your profile later in settings.</p>
+              </div>
+            )}
           </>
         )}
         {status === 'success' && (
@@ -234,13 +295,27 @@ export default function AuthCallbackPage() {
             <div className="text-green-500 text-5xl mb-4">✓</div>
             <h2 className="text-xl font-semibold text-gray-700">Sign-in successful!</h2>
             <p className="text-gray-500 mt-2">Redirecting to dashboard...</p>
+            {profileUpdateError && (
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm text-left">
+                <p className="font-medium">Note:</p>
+                <p className="mt-1 whitespace-pre-wrap">{profileUpdateError}</p>
+                <p className="mt-2 text-xs">You can update your profile in settings.</p>
+              </div>
+            )}
           </>
         )}
         {status === 'error' && (
           <>
             <div className="text-red-500 text-5xl mb-4">✗</div>
             <h2 className="text-xl font-semibold text-gray-700">Sign-in failed</h2>
-            <p className="text-gray-500 mt-2">Redirecting to login...</p>
+            {errorMessage && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-800 text-sm text-left">
+                <p className="font-medium">Error details:</p>
+                <p className="mt-1 whitespace-pre-wrap">{errorMessage}</p>
+                <p className="mt-2 text-xs">Check the browser console (F12) for more details.</p>
+              </div>
+            )}
+            <p className="text-gray-500 mt-4">Redirecting to login...</p>
           </>
         )}
       </div>
