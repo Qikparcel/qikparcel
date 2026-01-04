@@ -109,31 +109,31 @@ export default function SettingsPage() {
           >
             ← Back to Dashboard
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="mt-2 text-gray-600">Manage your account information</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
+          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Manage your account information</p>
         </div>
 
         <div className="space-y-6">
           {/* Account Type / Role Card */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Account Type</h2>
-            <div className="flex items-center gap-4">
-              <div className="text-4xl">{roleInfo.icon}</div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${roleInfo.color}`}>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Account Type</h2>
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="text-3xl sm:text-4xl">{roleInfo.icon}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                  <span className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${roleInfo.color}`}>
                     {roleInfo.label}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600">{roleInfo.description}</p>
+                <p className="text-xs sm:text-sm text-gray-600">{roleInfo.description}</p>
               </div>
             </div>
           </div>
 
           {/* Personal Information */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Personal Information</h2>
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Personal Information</h2>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Full Name</dt>
                 <dd className="mt-1 text-sm text-gray-900">
@@ -169,8 +169,8 @@ export default function SettingsPage() {
           </div>
 
           {/* Address Information */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Address Information</h2>
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Address Information</h2>
             <dl className="space-y-4">
               {profile.street_address || profile.address ? (
                 <>
