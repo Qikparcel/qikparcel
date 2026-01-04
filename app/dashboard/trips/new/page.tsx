@@ -1,0 +1,506 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import DashboardLayout from "@/components/DashboardLayout";
+import { createSupabaseClient } from "@/lib/supabase/client";
+
+export default function CreateTripPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [roleCheckLoading, setRoleCheckLoading] = useState(true);
+
+  // Origin address fields
+  const [originStreetAddress, setOriginStreetAddress] = useState("");
+  const [originAddressLine2, setOriginAddressLine2] = useState("");
+  const [originCity, setOriginCity] = useState("");
+  const [originState, setOriginState] = useState("");
+  const [originPostcode, setOriginPostcode] = useState("");
+  const [originCountry, setOriginCountry] = useState("");
+
+  // Destination address fields
+  const [destinationStreetAddress, setDestinationStreetAddress] = useState("");
+  const [destinationAddressLine2, setDestinationAddressLine2] = useState("");
+  const [destinationCity, setDestinationCity] = useState("");
+  const [destinationState, setDestinationState] = useState("");
+  const [destinationPostcode, setDestinationPostcode] = useState("");
+  const [destinationCountry, setDestinationCountry] = useState("");
+
+  // Other fields
+  const [departureTime, setDepartureTime] = useState("");
+  const [estimatedArrival, setEstimatedArrival] = useState("");
+  const [availableCapacity, setAvailableCapacity] = useState("");
+
+  // Verify user role on mount
+  useEffect(() => {
+    async function checkRole() {
+      const supabase = createSupabaseClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single<{ role: 'sender' | 'courier' | 'admin' }>();
+
+      if (!profile || profile?.role !== "courier") {
+        toast.error("Only couriers can create trips");
+        router.push("/dashboard");
+        return;
+      }
+
+      setRoleCheckLoading(false);
+    }
+
+    checkRole();
+  }, [router]);
+
+  const buildAddressString = (
+    street: string,
+    line2: string,
+    city: string,
+    state: string,
+    postcode: string,
+    country: string
+  ): string => {
+    const parts = [];
+    if (street) parts.push(street);
+    if (line2) parts.push(line2);
+    if (city) parts.push(city);
+    if (state) parts.push(state);
+    if (postcode) parts.push(postcode);
+    if (country) parts.push(country);
+    return parts.join(", ");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Validate required address fields
+      if (
+        !originStreetAddress.trim() ||
+        !originCity.trim() ||
+        !originState.trim() ||
+        !originPostcode.trim() ||
+        !originCountry.trim()
+      ) {
+        toast.error("Please fill in all required origin address fields");
+        setLoading(false);
+        return;
+      }
+
+      if (
+        !destinationStreetAddress.trim() ||
+        !destinationCity.trim() ||
+        !destinationState.trim() ||
+        !destinationPostcode.trim() ||
+        !destinationCountry.trim()
+      ) {
+        toast.error("Please fill in all required destination address fields");
+        setLoading(false);
+        return;
+      }
+
+      // Build address strings
+      const originAddress = buildAddressString(
+        originStreetAddress,
+        originAddressLine2,
+        originCity,
+        originState,
+        originPostcode,
+        originCountry
+      );
+
+      const destinationAddress = buildAddressString(
+        destinationStreetAddress,
+        destinationAddressLine2,
+        destinationCity,
+        destinationState,
+        destinationPostcode,
+        destinationCountry
+      );
+
+      const response = await fetch("/api/trips", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          origin_address: originAddress,
+          destination_address: destinationAddress,
+          departure_time: departureTime || null,
+          estimated_arrival: estimatedArrival || null,
+          available_capacity: availableCapacity || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Failed to create trip");
+      }
+
+      toast.success("Trip created successfully!");
+      router.push(`/dashboard/trips/${data.trip.id}`);
+    } catch (error: any) {
+      console.error("Error creating trip:", error);
+      toast.error(error.message || "Failed to create trip");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (roleCheckLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="max-w-2xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Create New Trip</h1>
+          <p className="mt-2 text-gray-600">
+            Fill in the details to create a trip route
+          </p>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-lg shadow p-6 space-y-8"
+        >
+          {/* Origin Address */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">
+              Origin Address
+            </h2>
+
+            <div>
+              <label
+                htmlFor="origin_street_address"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Street Address *
+              </label>
+              <input
+                type="text"
+                id="origin_street_address"
+                value={originStreetAddress}
+                onChange={(e) => setOriginStreetAddress(e.target.value)}
+                placeholder="123 Main Street"
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="origin_address_line_2"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Address Line 2 (Optional)
+              </label>
+              <input
+                type="text"
+                id="origin_address_line_2"
+                value={originAddressLine2}
+                onChange={(e) => setOriginAddressLine2(e.target.value)}
+                placeholder="Apartment, suite, unit, etc."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="origin_city"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  City *
+                </label>
+                <input
+                  type="text"
+                  id="origin_city"
+                  value={originCity}
+                  onChange={(e) => setOriginCity(e.target.value)}
+                  placeholder="City"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="origin_state"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  State/Province *
+                </label>
+                <input
+                  type="text"
+                  id="origin_state"
+                  value={originState}
+                  onChange={(e) => setOriginState(e.target.value)}
+                  placeholder="State"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="origin_postcode"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Postcode/ZIP *
+                </label>
+                <input
+                  type="text"
+                  id="origin_postcode"
+                  value={originPostcode}
+                  onChange={(e) => setOriginPostcode(e.target.value)}
+                  placeholder="12345"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="origin_country"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Country *
+                </label>
+                <input
+                  type="text"
+                  id="origin_country"
+                  value={originCountry}
+                  onChange={(e) => setOriginCountry(e.target.value)}
+                  placeholder="Country"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Destination Address */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">
+              Destination Address
+            </h2>
+
+            <div>
+              <label
+                htmlFor="destination_street_address"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Street Address *
+              </label>
+              <input
+                type="text"
+                id="destination_street_address"
+                value={destinationStreetAddress}
+                onChange={(e) => setDestinationStreetAddress(e.target.value)}
+                placeholder="123 Main Street"
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="destination_address_line_2"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Address Line 2 (Optional)
+              </label>
+              <input
+                type="text"
+                id="destination_address_line_2"
+                value={destinationAddressLine2}
+                onChange={(e) => setDestinationAddressLine2(e.target.value)}
+                placeholder="Apartment, suite, unit, etc."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="destination_city"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  City *
+                </label>
+                <input
+                  type="text"
+                  id="destination_city"
+                  value={destinationCity}
+                  onChange={(e) => setDestinationCity(e.target.value)}
+                  placeholder="City"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="destination_state"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  State/Province *
+                </label>
+                <input
+                  type="text"
+                  id="destination_state"
+                  value={destinationState}
+                  onChange={(e) => setDestinationState(e.target.value)}
+                  placeholder="State"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="destination_postcode"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Postcode/ZIP *
+                </label>
+                <input
+                  type="text"
+                  id="destination_postcode"
+                  value={destinationPostcode}
+                  onChange={(e) => setDestinationPostcode(e.target.value)}
+                  placeholder="12345"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="destination_country"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Country *
+                </label>
+                <input
+                  type="text"
+                  id="destination_country"
+                  value={destinationCountry}
+                  onChange={(e) => setDestinationCountry(e.target.value)}
+                  placeholder="Country"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Trip Details */}
+          <div className="space-y-4 border-t pt-6">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Trip Details
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="departure_time"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Departure Time
+                </label>
+                <input
+                  type="datetime-local"
+                  id="departure_time"
+                  value={departureTime}
+                  onChange={(e) => setDepartureTime(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="estimated_arrival"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Estimated Arrival
+                </label>
+                <input
+                  type="datetime-local"
+                  id="estimated_arrival"
+                  value={estimatedArrival}
+                  onChange={(e) => setEstimatedArrival(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="available_capacity"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Available Capacity
+              </label>
+              <select
+                id="available_capacity"
+                value={availableCapacity}
+                onChange={(e) => setAvailableCapacity(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+              >
+                <option value="">Select capacity</option>
+                <option value="small">Small (upto 3kg)</option>
+                <option value="medium">Medium (upto 5kg)</option>
+                <option value="large">Large (upto 10kg)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: "#29772F" }}
+            >
+              {loading ? "Creating..." : "Create Trip"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </DashboardLayout>
+  );
+}

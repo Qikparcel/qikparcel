@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import toast from 'react-hot-toast'
 import { createSupabaseClient } from '@/lib/supabase/client'
+import CountryCodeSelector from '@/components/CountryCodeSelector'
 
 type SignupStep = 'basic' | 'details' | 'otp'
 
@@ -14,11 +15,17 @@ export default function SignUpPage() {
   
   // Basic info
   const [fullName, setFullName] = useState('')
+  const [countryCode, setCountryCode] = useState('+92') // Default to Pakistan
   const [phoneNumber, setPhoneNumber] = useState('')
   const [role, setRole] = useState<'sender' | 'courier'>('sender')
   
-  // Role-specific details
-  const [address, setAddress] = useState('')
+  // Role-specific details - Structured Address Fields
+  const [streetAddress, setStreetAddress] = useState('')
+  const [addressLine2, setAddressLine2] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [postcode, setPostcode] = useState('')
+  const [country, setCountry] = useState('')
   const [email, setEmail] = useState('') // For sender only
   const [documentFile, setDocumentFile] = useState<File | null>(null) // For courier only
   const [documentType, setDocumentType] = useState('national_id')
@@ -38,7 +45,12 @@ export default function SignUpPage() {
         setFullName(data.fullName || '')
         setPhoneNumber(data.phoneNumber || '')
         setRole(data.role || 'sender')
-        setAddress(data.address || '')
+        setStreetAddress(data.streetAddress || '')
+        setAddressLine2(data.addressLine2 || '')
+        setCity(data.city || '')
+        setState(data.state || '')
+        setPostcode(data.postcode || '')
+        setCountry(data.country || '')
         setEmail(data.email || '')
         setDocumentType(data.documentType || 'national_id')
         // Note: documentFile cannot be restored from localStorage, but we'll upload it before redirect
@@ -77,7 +89,12 @@ export default function SignUpPage() {
           userId,
           fullName: data.fullName,
           role: data.role,
-          address: data.address,
+          streetAddress: data.streetAddress,
+          addressLine2: data.addressLine2,
+          city: data.city,
+          state: data.state,
+          postcode: data.postcode,
+          country: data.country,
           email: data.role === 'sender' ? data.email : undefined,
           documentPath: data.documentPath, // Should be set if document was uploaded before redirect
           documentType: data.documentType,
@@ -128,7 +145,12 @@ export default function SignUpPage() {
           userId,
           fullName,
           role,
-          address,
+          streetAddress,
+          addressLine2,
+          city,
+          state,
+          postcode,
+          country,
           email: role === 'sender' ? email : undefined,
           documentPath,
           documentType,
@@ -163,9 +185,29 @@ export default function SignUpPage() {
     setLoading(true)
 
     try {
-      // Validate role-specific fields
-      if (!address.trim()) {
-        setError('Address is required')
+      // Validate address fields
+      if (!streetAddress.trim()) {
+        setError('Street address is required')
+        setLoading(false)
+        return
+      }
+      if (!city.trim()) {
+        setError('City is required')
+        setLoading(false)
+        return
+      }
+      if (!state.trim()) {
+        setError('State/Province is required')
+        setLoading(false)
+        return
+      }
+      if (!postcode.trim()) {
+        setError('Postcode is required')
+        setLoading(false)
+        return
+      }
+      if (!country.trim()) {
+        setError('Country is required')
         setLoading(false)
         return
       }
@@ -182,10 +224,10 @@ export default function SignUpPage() {
         return
       }
 
-      // Format phone number
+      // Format phone number with country code
       const formatted = phoneNumber.startsWith('+')
         ? phoneNumber
-        : `+${phoneNumber}`
+        : `${countryCode}${phoneNumber}`
 
       // Send OTP
       const response = await fetch('/api/auth/send-otp', {
@@ -209,7 +251,14 @@ export default function SignUpPage() {
           }, 2000)
           return
         }
-        throw new Error(data.error || 'Failed to send OTP')
+        // Show user-friendly error message
+        const errorMessage = data.message || data.error || 'Failed to send OTP'
+        setError(errorMessage)
+        toast.error(errorMessage, {
+          duration: 5000,
+        })
+        setLoading(false)
+        return
       }
 
       toast.success('Verification code sent to your WhatsApp!')
@@ -281,7 +330,12 @@ export default function SignUpPage() {
         fullName,
         phoneNumber: formatted,
         role,
-        address,
+        streetAddress,
+        addressLine2,
+        city,
+        state,
+        postcode,
+        country,
         email,
         documentType,
         documentPath, // Include uploaded document path if available
@@ -366,17 +420,28 @@ export default function SignUpPage() {
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
                 Phone Number *
               </label>
-              <input
-                type="tel"
-                id="phone"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+1234567890"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
+              <div className="flex">
+                <CountryCodeSelector
+                  value={countryCode}
+                  onChange={setCountryCode}
+                  className="flex-shrink-0"
+                />
+                <input
+                  type="tel"
+                  id="phone"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    // Only allow digits
+                    const value = e.target.value.replace(/\D/g, '')
+                    setPhoneNumber(value)
+                  }}
+                  placeholder="1234567890"
+                  required
+                  className="flex-1 px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
               <p className="mt-1 text-xs text-gray-500">
-                Include country code. We&apos;ll send verification code via WhatsApp
+                We&apos;ll send verification code via WhatsApp
               </p>
             </div>
 
@@ -411,19 +476,99 @@ export default function SignUpPage() {
 
         {step === 'details' && (
           <form onSubmit={handleDetailsSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                Address *
-              </label>
-              <textarea
-                id="address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Enter your full address"
-                rows={3}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="streetAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                  Street Address *
+                </label>
+                <input
+                  type="text"
+                  id="streetAddress"
+                  value={streetAddress}
+                  onChange={(e) => setStreetAddress(e.target.value)}
+                  placeholder="123 Main Street"
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="addressLine2" className="block text-sm font-medium text-gray-700 mb-2">
+                  Address Line 2 (Optional)
+                </label>
+                <input
+                  type="text"
+                  id="addressLine2"
+                  value={addressLine2}
+                  onChange={(e) => setAddressLine2(e.target.value)}
+                  placeholder="Apartment, suite, unit, etc."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="City"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
+                    State/Province *
+                  </label>
+                  <input
+                    type="text"
+                    id="state"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    placeholder="State"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="postcode" className="block text-sm font-medium text-gray-700 mb-2">
+                    Postcode/ZIP *
+                  </label>
+                  <input
+                    type="text"
+                    id="postcode"
+                    value={postcode}
+                    onChange={(e) => setPostcode(e.target.value)}
+                    placeholder="12345"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
+                    Country *
+                  </label>
+                  <input
+                    type="text"
+                    id="country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    placeholder="Country"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                  />
+                </div>
+              </div>
             </div>
 
             {role === 'sender' && (
@@ -522,7 +667,7 @@ export default function SignUpPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-2xl tracking-widest text-black"
               />
               <p className="mt-2 text-sm text-gray-600">
-                We sent a code to {phoneNumber} via WhatsApp
+                We sent a code to {countryCode}{phoneNumber} via WhatsApp
               </p>
             </div>
 

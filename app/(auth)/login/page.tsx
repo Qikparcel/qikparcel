@@ -6,9 +6,11 @@ import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import CountryCodeSelector from "@/components/CountryCodeSelector";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [countryCode, setCountryCode] = useState("+92"); // Default to Pakistan
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -43,7 +45,7 @@ export default function LoginPage() {
       // Format phone number
       const formatted = phoneNumber.startsWith("+")
         ? phoneNumber
-        : `+${phoneNumber}`;
+        : `${countryCode}${phoneNumber}`;
 
       const response = await fetch("/api/auth/send-otp", {
         method: "POST",
@@ -56,7 +58,14 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to send OTP");
+        // Show user-friendly error message
+        const errorMessage = data.message || data.error || "Failed to send OTP";
+        setError(errorMessage);
+        toast.error(errorMessage, {
+          duration: 5000,
+        });
+        setLoading(false);
+        return;
       }
 
       // Show success message
@@ -79,7 +88,7 @@ export default function LoginPage() {
     try {
       const formatted = phoneNumber.startsWith("+")
         ? phoneNumber
-        : `+${phoneNumber}`;
+        : `${countryCode}${phoneNumber}`;
 
       const response = await fetch("/api/auth/verify-otp", {
         method: "POST",
@@ -150,17 +159,31 @@ export default function LoginPage() {
               >
                 Phone Number *
               </label>
-              <input
-                type="tel"
-                id="phone"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+1234567890"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
-              <p className="mt-1 text-xs text-gray-500">
+              <div className="flex">
+                <CountryCodeSelector
+                  value={countryCode}
+                  onChange={setCountryCode}
+                  className="flex-shrink-0"
+                />
+                <input
+                  type="tel"
+                  id="phone"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    // Only allow digits
+                    const value = e.target.value.replace(/\D/g, "");
+                    setPhoneNumber(value);
+                  }}
+                  placeholder="1234567890"
+                  required
+                  className="flex-1 px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500 ">
                 Include country code (e.g., +1234567890)
+              </p>
+              <p className="mt-1 text-xs text-gray-500 font-bold">
+                Verification code will be sent to Whatsapp
               </p>
             </div>
 
@@ -201,7 +224,8 @@ export default function LoginPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-2xl tracking-widest text-black"
               />
               <p className="mt-2 text-sm text-gray-600">
-                We sent a code to {phoneNumber} via WhatsApp
+                We sent a code to {countryCode}
+                {phoneNumber} via WhatsApp
               </p>
             </div>
 
@@ -244,7 +268,14 @@ export default function LoginPage() {
         )}
 
         <p className="mt-6 text-center text-xs text-gray-500">
-          By continuing, you agree to QikParcel&apos;s Terms of Service
+          By continuing, you agree to{' '}
+          <Link
+            href="/terms/general"
+            className="text-primary-600 hover:text-primary-700 underline"
+            style={{ color: '#29772F' }}
+          >
+            QikParcel&apos;s Terms of Service
+          </Link>
         </p>
 
         <div className="mt-6 pt-6 border-t border-gray-200">

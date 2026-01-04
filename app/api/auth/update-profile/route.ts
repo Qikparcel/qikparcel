@@ -8,7 +8,20 @@ import { createSupabaseAdminClient } from '@/lib/supabase/client'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { fullName, role, address, email, documentPath, documentType, userId } = body
+    const { 
+      fullName, 
+      role, 
+      streetAddress, 
+      addressLine2, 
+      city, 
+      state, 
+      postcode, 
+      country, 
+      email, 
+      documentPath, 
+      documentType, 
+      userId 
+    } = body
 
     if (!userId) {
       return NextResponse.json(
@@ -26,7 +39,12 @@ export async function POST(request: NextRequest) {
 
     if (fullName) updateData.full_name = fullName
     if (role) updateData.role = role
-    if (address) updateData.address = address
+    if (streetAddress) updateData.street_address = streetAddress
+    if (addressLine2 !== undefined) updateData.address_line_2 = addressLine2
+    if (city) updateData.city = city
+    if (state) updateData.state = state
+    if (postcode) updateData.postcode = postcode
+    if (country) updateData.country = country
     if (email) updateData.email = email
 
     // Update profile

@@ -125,7 +125,7 @@ export default function AuthCallbackPage() {
             console.log('[CALLBACK] Found signup form data, updating profile...', {
               hasFullName: !!data.fullName,
               hasRole: !!data.role,
-              hasAddress: !!data.address,
+              hasAddress: !!(data.streetAddress && data.city && data.country),
               hasEmail: !!data.email,
             })
 
@@ -135,15 +135,20 @@ export default function AuthCallbackPage() {
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                userId: verifySession.user.id,
-                fullName: data.fullName,
-                role: data.role,
-                address: data.address,
-                email: data.email,
-                documentType: data.documentType,
-                documentPath: data.documentPath,
-              }),
+                  body: JSON.stringify({
+                    userId: verifySession.user.id,
+                    fullName: data.fullName,
+                    role: data.role,
+                    streetAddress: data.streetAddress,
+                    addressLine2: data.addressLine2,
+                    city: data.city,
+                    state: data.state,
+                    postcode: data.postcode,
+                    country: data.country,
+                    email: data.email,
+                    documentType: data.documentType,
+                    documentPath: data.documentPath,
+                  }),
             })
 
             if (updateResponse.ok) {

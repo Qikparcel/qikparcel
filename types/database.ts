@@ -22,6 +22,12 @@ export interface Database {
           role: 'sender' | 'courier' | 'admin'
           whatsapp_number: string | null
           address: string | null
+          street_address: string | null
+          address_line_2: string | null
+          city: string | null
+          state: string | null
+          postcode: string | null
+          country: string | null
           email: string | null
           created_at: string
           updated_at: string
@@ -33,6 +39,12 @@ export interface Database {
           role: 'sender' | 'courier' | 'admin'
           whatsapp_number?: string | null
           address?: string | null
+          street_address?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          state?: string | null
+          postcode?: string | null
+          country?: string | null
           email?: string | null
           created_at?: string
           updated_at?: string
@@ -44,6 +56,12 @@ export interface Database {
           role?: 'sender' | 'courier' | 'admin'
           whatsapp_number?: string | null
           address?: string | null
+          street_address?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          state?: string | null
+          postcode?: string | null
+          country?: string | null
           email?: string | null
           created_at?: string
           updated_at?: string
