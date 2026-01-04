@@ -1,276 +1,364 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { createSupabaseClient } from "@/lib/supabase/client";
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import DashboardLayout from '@/components/DashboardLayout'
+import { Database } from '@/types/database'
+import { createSupabaseClient } from '@/lib/supabase/client'
+
+type Parcel = Database['public']['Tables']['parcels']['Row']
+type Trip = Database['public']['Tables']['trips']['Row']
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter()
+  const [profile, setProfile] = useState<any>(null)
+  const [parcels, setParcels] = useState<Parcel[]>([])
+  const [trips, setTrips] = useState<Trip[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function loadUser() {
-      const supabase = createSupabaseClient();
+    async function loadData() {
+      try {
+        const supabase = createSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
 
-      // Get current session first
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login')
+          return
+        }
 
-      if (!session) {
-        router.push("/login");
-        return;
+        // Get user profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        if (profileData) {
+          setProfile(profileData as any)
+
+          // Load parcels or trips based on role
+          const role = (profileData as any)?.role
+          if (role === 'sender') {
+            const parcelsResponse = await fetch('/api/parcels')
+            const parcelsData = await parcelsResponse.json()
+            if (parcelsData.success) {
+              setParcels(parcelsData.parcels || [])
+            }
+          } else if (role === 'courier') {
+            const tripsResponse = await fetch('/api/trips')
+            const tripsData = await tripsResponse.json()
+            if (tripsData.success) {
+              setTrips(tripsData.trips || [])
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error)
+      } finally {
+        setLoading(false)
       }
-
-      setUser(session.user);
-
-      // Get user profile
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-
-      setProfile(profileData);
-      setLoading(false);
     }
 
-    loadUser();
+    loadData()
+  }, [router])
 
-    // Listen for auth changes
-    const supabase = createSupabaseClient();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
-        router.push("/login");
-      } else if (session) {
-        setUser(session.user);
-      }
-    });
+  const statusConfig: Record<string, { label: string; color: string }> = {
+    // Parcel statuses
+    pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
+    matched: { label: 'Matched', color: 'bg-blue-100 text-blue-800' },
+    picked_up: { label: 'Picked Up', color: 'bg-purple-100 text-purple-800' },
+    in_transit: { label: 'In Transit', color: 'bg-indigo-100 text-indigo-800' },
+    delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800' },
+    cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' },
+    // Trip statuses
+    scheduled: { label: 'Scheduled', color: 'bg-blue-100 text-blue-800' },
+    in_progress: { label: 'In Progress', color: 'bg-purple-100 text-purple-800' },
+    completed: { label: 'Completed', color: 'bg-green-100 text-green-800' },
+  }
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
-
-  const handleLogout = async () => {
-    try {
-      const supabase = createSupabaseClient();
-      await supabase.auth.signOut();
-      router.push("/login");
-      router.refresh();
-    } catch (error) {
-      console.error("Logout error:", error);
-      // Still redirect even if logout fails
-      router.push("/login");
-    }
-  };
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
-      </div>
-    );
+      </DashboardLayout>
+    )
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/logo.jpeg"
-                alt="QikParcel Logo"
-                width={60}
-                height={60}
-              />
-              <h1 className="text-xl font-bold text-gray-800">QikParcel</h1>
+  // Sender Dashboard
+  if (profile?.role === 'sender') {
+    const stats = {
+      total: parcels.length,
+      pending: parcels.filter(p => p.status === 'pending').length,
+      inProgress: parcels.filter(p => ['matched', 'picked_up', 'in_transit'].includes(p.status)).length,
+      completed: parcels.filter(p => p.status === 'delivered').length,
+    }
+
+    return (
+      <DashboardLayout>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">My Parcels</h1>
+              <p className="mt-2 text-gray-600">Manage your parcel requests and track deliveries</p>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                {profile?.full_name || profile?.phone_number}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-                style={{ border: "1px solid #e5e7eb" }}
-              >
-                Logout
-              </button>
-            </div>
+            <Link
+              href="/dashboard/parcels/new"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+              style={{ backgroundColor: '#29772F' }}
+            >
+              Create Parcel
+            </Link>
           </div>
         </div>
-      </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Cards */}
+        {stats.total > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+              <div className="text-sm text-gray-600">Total Parcels</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+              <div className="text-sm text-gray-600">Pending</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-2xl font-bold text-purple-600">{stats.inProgress}</div>
+              <div className="text-sm text-gray-600">In Progress</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+              <div className="text-sm text-gray-600">Delivered</div>
+            </div>
+          </div>
+        )}
+
+        {/* Parcels List */}
+        {parcels.length > 0 ? (
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">My Parcels</h2>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {parcels.map((parcel) => (
+                <Link
+                  key={parcel.id}
+                  href={`/dashboard/parcels/${parcel.id}`}
+                  className="block p-6 hover:bg-gray-50 transition"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Parcel #{parcel.id.slice(0, 8)}
+                        </h3>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[parcel.status]?.color || 'bg-gray-100 text-gray-800'}`}>
+                          {statusConfig[parcel.status]?.label || parcel.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">
+                        <span className="font-medium">From:</span> {parcel.pickup_address.substring(0, 50)}
+                        {parcel.pickup_address.length > 50 && '...'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium">To:</span> {parcel.delivery_address.substring(0, 50)}
+                        {parcel.delivery_address.length > 50 && '...'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Created {formatDate(parcel.created_at)}
+                      </p>
+                    </div>
+                    <div className="ml-4">
+                      <svg
+                        className="w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="text-6xl mb-4">📦</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">No parcels yet</h2>
+              <p className="text-gray-600 mb-6">
+                Get started by creating your first parcel request
+              </p>
+              <Link
+                href="/dashboard/parcels/new"
+                className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                style={{ backgroundColor: '#29772F' }}
+              >
+                Create Your First Parcel
+              </Link>
+            </div>
+          </div>
+        )}
+      </DashboardLayout>
+    )
+  }
+
+  // Courier Dashboard
+  if (profile?.role === 'courier') {
+    const stats = {
+      total: trips.length,
+      pending: trips.filter(t => t.status === 'scheduled').length,
+      inProgress: trips.filter(t => t.status === 'in_progress').length,
+      completed: trips.filter(t => t.status === 'completed').length,
+    }
+
+    return (
+      <DashboardLayout>
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome, {profile?.full_name || profile?.phone_number || "User"}!
-          </h1>
-          <p className="mt-2 text-gray-600">
-            {profile?.role === "sender" &&
-              "Manage your parcels and track deliveries"}
-            {profile?.role === "courier" && "Manage your trips and deliveries"}
-            {profile?.role === "admin" && "Manage the platform and users"}
-            {!profile?.role && "Welcome to QikParcel"}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">My Trips</h1>
+              <p className="mt-2 text-gray-600">Manage your trip routes and deliveries</p>
+            </div>
+            <Link
+              href="/dashboard/trips/new"
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+              style={{ backgroundColor: '#29772F' }}
+            >
+              Create Trip
+            </Link>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        {stats.total > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+              <div className="text-sm text-gray-600">Total Trips</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-2xl font-bold text-blue-600">{stats.pending}</div>
+              <div className="text-sm text-gray-600">Scheduled</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-2xl font-bold text-purple-600">{stats.inProgress}</div>
+              <div className="text-sm text-gray-600">In Progress</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+              <div className="text-sm text-gray-600">Completed</div>
+            </div>
+          </div>
+        )}
+
+        {/* Trips List */}
+        {trips.length > 0 ? (
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">My Trips</h2>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {trips.map((trip) => (
+                <Link
+                  key={trip.id}
+                  href={`/dashboard/trips/${trip.id}`}
+                  className="block p-6 hover:bg-gray-50 transition"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Trip #{trip.id.slice(0, 8)}
+                        </h3>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig[trip.status]?.color || 'bg-gray-100 text-gray-800'}`}>
+                          {statusConfig[trip.status]?.label || trip.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">
+                        <span className="font-medium">From:</span> {trip.origin_address.substring(0, 50)}
+                        {trip.origin_address.length > 50 && '...'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium">To:</span> {trip.destination_address.substring(0, 50)}
+                        {trip.destination_address.length > 50 && '...'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Created {formatDate(trip.created_at)}
+                      </p>
+                    </div>
+                    <div className="ml-4">
+                      <svg
+                        className="w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <div className="max-w-md mx-auto">
+              <div className="text-6xl mb-4">🚚</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">No trips yet</h2>
+              <p className="text-gray-600 mb-6">
+                Get started by creating your first trip route
+              </p>
+              <Link
+                href="/dashboard/trips/new"
+                className="inline-block px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                style={{ backgroundColor: '#29772F' }}
+              >
+                Create Your First Trip
+              </Link>
+            </div>
+          </div>
+        )}
+      </DashboardLayout>
+    )
+  }
+
+  // Fallback for users without a role or admin
+  return (
+    <DashboardLayout>
+      <div className="bg-white rounded-lg shadow p-12 text-center">
+        <div className="max-w-md mx-auto">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to QikParcel</h2>
+          <p className="text-gray-600 mb-6">
+            Your account is being set up. Please contact support if you need assistance.
           </p>
         </div>
-
-        {/* Role-based Dashboard Content */}
-        {profile?.role === "sender" && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-2xl font-bold mb-4 text-gray-900">
-                Sender Dashboard
-              </h2>
-              <div className="space-y-4">
-                <div className="border-l-4 border-blue-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">
-                    Create New Parcel
-                  </h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Send your parcel and find a courier to deliver it.
-                  </p>
-                  <button className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
-                    Create Parcel (Coming Soon)
-                  </button>
-                </div>
-                <div className="border-l-4 border-green-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">My Parcels</h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    View and track all your parcel requests.
-                  </p>
-                  <button className="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">
-                    View Parcels (Coming Soon)
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {profile?.role === "courier" && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-2xl font-bold mb-4 text-gray-900">
-                Courier Dashboard
-              </h2>
-              <div className="space-y-4">
-                <div className="border-l-4 border-purple-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">
-                    Create New Trip
-                  </h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Create a trip route and start accepting parcel deliveries.
-                  </p>
-                  <button className="mt-3 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm">
-                    Create Trip (Coming Soon)
-                  </button>
-                </div>
-                <div className="border-l-4 border-orange-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">
-                    Available Parcels
-                  </h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Browse parcels that match your route.
-                  </p>
-                  <button className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition text-sm">
-                    Browse Parcels (Coming Soon)
-                  </button>
-                </div>
-                <div className="border-l-4 border-green-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">My Deliveries</h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Track your active and completed deliveries.
-                  </p>
-                  <button className="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">
-                    View Deliveries (Coming Soon)
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {profile?.role === "admin" && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-2xl font-bold mb-4 text-gray-900">
-                Admin Dashboard
-              </h2>
-              <div className="space-y-4">
-                <div className="border-l-4 border-red-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">
-                    User Management
-                  </h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Manage users, roles, and permissions.
-                  </p>
-                  <button className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
-                    Manage Users (Coming Soon)
-                  </button>
-                </div>
-                <div className="border-l-4 border-yellow-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">Disputes</h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Review and resolve parcel disputes.
-                  </p>
-                  <button className="mt-3 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition text-sm">
-                    View Disputes (Coming Soon)
-                  </button>
-                </div>
-                <div className="border-l-4 border-indigo-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">
-                    Platform Analytics
-                  </h3>
-                  <p className="text-gray-600 text-sm mt-1">
-                    View platform statistics and reports.
-                  </p>
-                  <button className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm">
-                    View Analytics (Coming Soon)
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Profile Section */}
-        <div className="mt-6 bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-900">Your Profile</h2>
-          <dl className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">
-                Phone Number
-              </dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {profile?.phone_number || "N/A"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {profile?.full_name || "Not set"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Role</dt>
-              <dd className="mt-1 text-sm text-gray-900 capitalize">
-                {profile?.role || "sender"}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </main>
-    </div>
-  );
+      </div>
+    </DashboardLayout>
+  )
 }

@@ -195,14 +195,36 @@ class WhatsAppClient {
     if (!response.ok) {
       const errorText = await response.text()
       let errorMessage = `Twilio API error (${response.status}): ${errorText}`
+      let userFriendlyMessage = 'Failed to send message'
+      let errorCode: string | undefined
       
       // Try to parse error for better message
       try {
         const errorJson = JSON.parse(errorText)
+        errorCode = errorJson.code
         if (errorJson.message) {
           errorMessage = `Twilio API error: ${errorJson.message}`
-          if (errorJson.code) {
-            errorMessage += ` (Code: ${errorJson.code})`
+          
+          // Handle specific error codes with user-friendly messages
+          if (errorJson.code === '21211') {
+            // Invalid phone number
+            userFriendlyMessage = 'The phone number is not valid. Please check the number and try again.'
+            errorMessage = `Invalid phone number: ${errorJson.message}`
+          } else if (errorJson.code === '21608') {
+            // Unsubscribed recipient
+            userFriendlyMessage = 'This phone number is not subscribed to receive WhatsApp messages. Please join the WhatsApp Sandbox or contact support.'
+          } else if (errorJson.code === '21610') {
+            // Unsubscribed recipient (alternative)
+            userFriendlyMessage = 'This phone number is not registered to receive WhatsApp messages. Please ensure you have joined the WhatsApp Sandbox for testing.'
+          } else if (errorJson.code === '21614') {
+            // Invalid WhatsApp number
+            userFriendlyMessage = 'This phone number is not a valid WhatsApp number. Please use a number that has WhatsApp installed.'
+          } else {
+            // Generic error with code
+            userFriendlyMessage = errorJson.message || 'Failed to send message. Please try again later.'
+            if (errorJson.code) {
+              errorMessage += ` (Code: ${errorJson.code})`
+            }
           }
         }
       } catch (e) {
@@ -218,7 +240,11 @@ class WhatsAppClient {
         contentSid,
       })
       
-      throw new Error(errorMessage)
+      // Create error object with both technical and user-friendly messages
+      const error = new Error(errorMessage) as any
+      error.userMessage = userFriendlyMessage
+      error.code = errorCode
+      throw error
     }
 
     const result = await response.json()
