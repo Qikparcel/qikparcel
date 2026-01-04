@@ -277,9 +277,10 @@ export default function SignUpPage() {
     setLoading(true)
 
     try {
+      // Format phone number with country code (same format as when sending OTP)
       const formatted = phoneNumber.startsWith('+')
         ? phoneNumber
-        : `+${phoneNumber}`
+        : `${countryCode}${phoneNumber}`
 
       const response = await fetch('/api/auth/verify-otp', {
         method: 'POST',
@@ -696,7 +697,10 @@ export default function SignUpPage() {
               onClick={async () => {
                 setLoading(true)
                 try {
-                  const formatted = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`
+                  // Format phone number with country code (same format as initial send)
+                  const formatted = phoneNumber.startsWith('+')
+                    ? phoneNumber
+                    : `${countryCode}${phoneNumber}`
                   const response = await fetch('/api/auth/send-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
