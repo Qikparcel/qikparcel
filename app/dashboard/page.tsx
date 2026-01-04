@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/DashboardLayout'
 import { Database } from '@/types/database'
 import { createSupabaseClient } from '@/lib/supabase/client'
@@ -18,6 +19,39 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Check for stored errors from callback page
+    const checkStoredErrors = () => {
+      const profileError = localStorage.getItem('profile_update_error')
+      const authError = localStorage.getItem('auth_callback_error')
+      
+      if (profileError) {
+        try {
+          const errorData = JSON.parse(profileError)
+          console.error('[DASHBOARD] Profile update error from callback:', errorData)
+          toast.error(`Profile update failed: ${errorData.message}`, {
+            duration: 10000,
+          })
+          // Clear error after showing
+          localStorage.removeItem('profile_update_error')
+        } catch (err) {
+          console.error('Error parsing stored profile error:', err)
+        }
+      }
+      
+      if (authError) {
+        try {
+          const errorData = JSON.parse(authError)
+          console.error('[DASHBOARD] Auth callback error:', errorData)
+          // Clear error after logging
+          localStorage.removeItem('auth_callback_error')
+        } catch (err) {
+          console.error('Error parsing stored auth error:', err)
+        }
+      }
+    }
+    
+    checkStoredErrors()
+
     async function loadData() {
       try {
         const supabase = createSupabaseClient()
