@@ -92,7 +92,7 @@ export default function HelpPage() {
                       You create a parcel request with pickup and delivery
                       details. QikParcel matches your parcel with a verified
                       traveller. Once picked up, you can track the parcel until
-                      it&apos;s delivered.
+                      it is delivered.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
                       Simple. Transparent. Tracked.
@@ -142,7 +142,7 @@ export default function HelpPage() {
                       Can I track my parcel?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      Yes. You&apos;ll see real-time status updates:
+                      Yes. You will see real-time status updates:
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium mb-1">
                       Pending → Matched → Picked Up → In Transit → Delivered
@@ -157,7 +157,7 @@ export default function HelpPage() {
                       What happens if something goes wrong?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      If there&apos;s a delay, issue, or dispute:
+                      If there is a delay, issue, or dispute:
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm ml-2 mb-2">
                       <li>The delivery is paused</li>
@@ -165,7 +165,7 @@ export default function HelpPage() {
                       <li>Funds remain protected until resolution</li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
-                      We don&apos;t disappear when things get complicated.
+                      We do not disappear when things get complicated.
                     </p>
                   </div>
 
@@ -215,8 +215,8 @@ export default function HelpPage() {
                       </li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      You&apos;re not an employee. You&apos;re an independent
-                      traveller using the platform.
+                      You are not an employee. You are an independent traveller
+                      using the platform.
                     </p>
                   </div>
 
@@ -225,8 +225,8 @@ export default function HelpPage() {
                       How do I earn money?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      You earn by carrying parcels along routes you&apos;re
-                      already taking. No shifts. No quotas. No fixed hours.
+                      You earn by carrying parcels along routes you are already
+                      taking. No shifts. No quotas. No fixed hours.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
                       Complete delivery → confirmation logged → payment released
@@ -290,8 +290,8 @@ export default function HelpPage() {
                       <li>Delivery urgency</li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
-                      You&apos;ll see the full price before confirming. No
-                      surprise fees.
+                      You will see the full price before confirming. No surprise
+                      fees.
                     </p>
                   </div>
 
@@ -314,7 +314,7 @@ export default function HelpPage() {
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
                       After successful delivery and confirmation, payments are
-                      released automatically to the traveller&apos;s account.
+                      released automatically to the traveller account.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
                       No chasing. No awkward conversations.
@@ -340,7 +340,7 @@ export default function HelpPage() {
                       operate on the platform.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
-                      Bad actors don&apos;t last long here.
+                      Bad actors do not last long here.
                     </p>
                   </div>
 
@@ -350,8 +350,8 @@ export default function HelpPage() {
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm">
                       Yes. QikParcel complies with GDPR and applicable UK & EU
-                      data protection laws. We collect only what&apos;s
-                      necessary and never sell personal data.
+                      data protection laws. We collect only what is necessary
+                      and never sell personal data.
                     </p>
                   </div>
 
@@ -381,8 +381,8 @@ export default function HelpPage() {
                     How is QikParcel eco-friendly?
                   </h4>
                   <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                    We don&apos;t create new delivery journeys. We use journeys
-                    that are already happening.
+                    We do not create new delivery journeys. We use journeys that
+                    are already happening.
                   </p>
                   <p className="text-gray-700 leading-relaxed text-sm mb-1">
                     That means:
@@ -678,7 +678,7 @@ export default function HelpPage() {
                     The sender provides inaccurate or misleading information
                   </li>
                   <li>
-                    Circumstances beyond the traveller&apos;s control prevent
+                    Circumstances beyond the traveller control prevent
                     completion
                   </li>
                 </ul>
