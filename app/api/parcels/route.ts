@@ -8,6 +8,24 @@ type ParcelInsert = Database['public']['Tables']['parcels']['Insert']
 type ParcelStatusHistoryInsert = Database['public']['Tables']['parcel_status_history']['Insert']
 
 /**
+ * Normalize address string for comparison
+ */
+function normalizeAddress(address: string): string {
+  return address
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s,]/g, '') // Remove special characters except commas
+}
+
+/**
+ * Check if two addresses are the same (normalized comparison)
+ */
+function areAddressesSame(address1: string, address2: string): boolean {
+  return normalizeAddress(address1) === normalizeAddress(address2)
+}
+
+/**
  * POST /api/parcels
  * Create a new parcel request
  */
@@ -58,12 +76,21 @@ export async function POST(request: NextRequest) {
       weight_kg,
       dimensions,
       estimated_value,
+      estimated_value_currency,
     } = body
 
     // Validate required fields
     if (!pickup_address || !delivery_address) {
       return NextResponse.json(
         { error: 'Pickup and delivery addresses are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate that pickup and delivery addresses are different
+    if (areAddressesSame(pickup_address, delivery_address)) {
+      return NextResponse.json(
+        { error: 'Pickup and delivery addresses cannot be the same' },
         { status: 400 }
       )
     }
@@ -81,8 +108,9 @@ export async function POST(request: NextRequest) {
       weight_kg: weight_kg || null,
       dimensions: dimensions || null,
       estimated_value: estimated_value || null,
+      estimated_value_currency: estimated_value_currency || null,
       status: 'pending',
-    }
+    } as any
 
     const { data: parcel, error: insertError } = await supabase
       .from('parcels')

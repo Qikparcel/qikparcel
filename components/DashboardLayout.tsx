@@ -215,6 +215,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   Settings
                 </Link>
                 <Link
+                  href="/terms/help"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/terms/help")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Help & Support
+                </Link>
+                <Link
                   href="/terms"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block py-2 px-3 rounded-lg text-sm font-medium ${
@@ -261,6 +272,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   }`}
                 >
                   Settings
+                </Link>
+                <Link
+                  href="/terms/help"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/terms/help")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Help & Support
                 </Link>
                 <Link
                   href="/terms"
@@ -315,6 +337,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 Settings
               </Link>
               <Link
+                href="/terms/help"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/terms/help")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Help & Support
+              </Link>
+              <Link
                 href="/terms"
                 className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                   isActive("/terms")
@@ -362,6 +394,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 Settings
+              </Link>
+              <Link
+                href="/terms/help"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/terms/help")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Help & Support
               </Link>
               <Link
                 href="/terms"

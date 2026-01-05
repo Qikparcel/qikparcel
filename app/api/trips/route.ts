@@ -7,6 +7,24 @@ type Trip = Database['public']['Tables']['trips']['Row']
 type TripInsert = Database['public']['Tables']['trips']['Insert']
 
 /**
+ * Normalize address string for comparison
+ */
+function normalizeAddress(address: string): string {
+  return address
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s,]/g, '') // Remove special characters except commas
+}
+
+/**
+ * Check if two addresses are the same (normalized comparison)
+ */
+function areAddressesSame(address1: string, address2: string): boolean {
+  return normalizeAddress(address1) === normalizeAddress(address2)
+}
+
+/**
  * POST /api/trips
  * Create a new trip route
  */
@@ -62,6 +80,14 @@ export async function POST(request: NextRequest) {
     if (!origin_address || !destination_address) {
       return NextResponse.json(
         { error: 'Origin and destination addresses are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate that origin and destination addresses are different
+    if (areAddressesSame(origin_address, destination_address)) {
+      return NextResponse.json(
+        { error: 'Origin and destination addresses cannot be the same' },
         { status: 400 }
       )
     }

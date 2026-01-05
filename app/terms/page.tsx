@@ -143,10 +143,66 @@ export default function TermsPage() {
               </p>
             </div>
           )}
+
+          {/* Additional Resources */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            <Link
+              href="/terms/faq"
+              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
+            >
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Frequently Asked Questions</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Find answers to common questions about QikParcel
+              </p>
+              <span className="text-primary-600 hover:text-primary-700 text-sm font-medium inline-flex items-center">
+                View FAQ
+                <svg
+                  className="w-4 h-4 ml-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </span>
+            </Link>
+
+            <Link
+              href="/terms/cancellation"
+              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition cursor-pointer"
+            >
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Cancellation Policy</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Learn about cancellation terms and refund policies
+              </p>
+              <span className="text-primary-600 hover:text-primary-700 text-sm font-medium inline-flex items-center">
+                View Policy
+                <svg
+                  className="w-4 h-4 ml-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </span>
+            </Link>
+          </div>
         </div>
       </div>
     </DashboardLayout>
   )
 }
+
 
 
