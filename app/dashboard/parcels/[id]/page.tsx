@@ -86,6 +86,25 @@ export default function ParcelDetailPage() {
     })
   }
 
+  const getCurrencySymbol = (currency: string | null | undefined) => {
+    switch (currency) {
+      case 'USD':
+        return '$'
+      case 'EUR':
+        return '€'
+      case 'GBP':
+        return '£'
+      default:
+        return '$' // Default to USD
+    }
+  }
+
+  const formatCurrency = (value: number | null, currency: string | null | undefined) => {
+    if (!value) return null
+    const symbol = getCurrencySymbol(currency)
+    return `${symbol}${value.toFixed(2)}`
+  }
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
@@ -147,7 +166,9 @@ export default function ParcelDetailPage() {
                 {parcel.estimated_value && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Estimated Value</dt>
-                    <dd className="mt-1 text-sm text-gray-900">${parcel.estimated_value.toFixed(2)}</dd>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {formatCurrency(parcel.estimated_value, (parcel as any).estimated_value_currency)}
+                    </dd>
                   </div>
                 )}
 
@@ -188,5 +209,6 @@ export default function ParcelDetailPage() {
     </DashboardLayout>
   )
 }
+
 
 

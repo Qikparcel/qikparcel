@@ -81,6 +81,45 @@ export default function CreateTripPage() {
     return parts.join(", ");
   };
 
+  const normalizeAddress = (
+    street: string,
+    line2: string,
+    city: string,
+    state: string,
+    postcode: string,
+    country: string
+  ): string => {
+    // Normalize by trimming, lowercasing, and removing extra spaces
+    const parts = [
+      street.trim().toLowerCase(),
+      line2.trim().toLowerCase(),
+      city.trim().toLowerCase(),
+      state.trim().toLowerCase(),
+      postcode.trim().toLowerCase(),
+      country.trim().toLowerCase(),
+    ].filter(part => part.length > 0);
+    return parts.join(" ").replace(/\s+/g, " ");
+  };
+
+  const areAddressesSame = (
+    street1: string,
+    line2_1: string,
+    city1: string,
+    state1: string,
+    postcode1: string,
+    country1: string,
+    street2: string,
+    line2_2: string,
+    city2: string,
+    state2: string,
+    postcode2: string,
+    country2: string
+  ): boolean => {
+    const normalized1 = normalizeAddress(street1, line2_1, city1, state1, postcode1, country1);
+    const normalized2 = normalizeAddress(street2, line2_2, city2, state2, postcode2, country2);
+    return normalized1 === normalized2;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -107,6 +146,28 @@ export default function CreateTripPage() {
         !destinationCountry.trim()
       ) {
         toast.error("Please fill in all required destination address fields");
+        setLoading(false);
+        return;
+      }
+
+      // Check if origin and destination addresses are the same
+      if (
+        areAddressesSame(
+          originStreetAddress,
+          originAddressLine2,
+          originCity,
+          originState,
+          originPostcode,
+          originCountry,
+          destinationStreetAddress,
+          destinationAddressLine2,
+          destinationCity,
+          destinationState,
+          destinationPostcode,
+          destinationCountry
+        )
+      ) {
+        toast.error("Origin and destination addresses cannot be the same");
         setLoading(false);
         return;
       }

@@ -129,3 +129,4 @@ Row Level Security (RLS) policies in Supabase ensure:
 - Permission caching for performance
 
 
+

@@ -35,6 +35,7 @@ export default function CreateParcelPage() {
     weight_kg: '',
     dimensions: '',
     estimated_value: '',
+    estimated_value_currency: 'USD',
   })
 
   // Verify user role on mount
@@ -84,6 +85,45 @@ export default function CreateParcelPage() {
     return parts.join(', ')
   }
 
+  const normalizeAddress = (
+    street: string,
+    line2: string,
+    city: string,
+    state: string,
+    postcode: string,
+    country: string
+  ): string => {
+    // Normalize by trimming, lowercasing, and removing extra spaces
+    const parts = [
+      street.trim().toLowerCase(),
+      line2.trim().toLowerCase(),
+      city.trim().toLowerCase(),
+      state.trim().toLowerCase(),
+      postcode.trim().toLowerCase(),
+      country.trim().toLowerCase(),
+    ].filter(part => part.length > 0)
+    return parts.join(' ').replace(/\s+/g, ' ')
+  }
+
+  const areAddressesSame = (
+    street1: string,
+    line2_1: string,
+    city1: string,
+    state1: string,
+    postcode1: string,
+    country1: string,
+    street2: string,
+    line2_2: string,
+    city2: string,
+    state2: string,
+    postcode2: string,
+    country2: string
+  ): boolean => {
+    const normalized1 = normalizeAddress(street1, line2_1, city1, state1, postcode1, country1)
+    const normalized2 = normalizeAddress(street2, line2_2, city2, state2, postcode2, country2)
+    return normalized1 === normalized2
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -100,6 +140,27 @@ export default function CreateParcelPage() {
 
     if (!deliveryStreetAddress.trim() || !deliveryCity.trim() || !deliveryState.trim() || !deliveryPostcode.trim() || !deliveryCountry.trim()) {
       toast.error('Please fill in all required delivery address fields')
+      return
+    }
+
+    // Check if pickup and delivery addresses are the same
+    if (
+      areAddressesSame(
+        pickupStreetAddress,
+        pickupAddressLine2,
+        pickupCity,
+        pickupState,
+        pickupPostcode,
+        pickupCountry,
+        deliveryStreetAddress,
+        deliveryAddressLine2,
+        deliveryCity,
+        deliveryState,
+        deliveryPostcode,
+        deliveryCountry
+      )
+    ) {
+      toast.error('Pickup and delivery addresses cannot be the same')
       return
     }
 
@@ -137,6 +198,7 @@ export default function CreateParcelPage() {
           weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
           dimensions: formData.dimensions.trim() || null,
           estimated_value: formData.estimated_value ? parseFloat(formData.estimated_value) : null,
+          estimated_value_currency: formData.estimated_value ? formData.estimated_value_currency : null,
         }),
       })
 
@@ -435,17 +497,30 @@ export default function CreateParcelPage() {
             <label htmlFor="estimated_value" className="block text-sm font-medium text-gray-700 mb-2">
               Estimated Value
             </label>
-            <input
-              type="number"
-              id="estimated_value"
-              name="estimated_value"
-              value={formData.estimated_value}
-              onChange={handleChange}
-              placeholder="0.00"
-              step="0.01"
-              min="0"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                id="estimated_value"
+                name="estimated_value"
+                value={formData.estimated_value}
+                onChange={handleChange}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+              />
+              <select
+                id="estimated_value_currency"
+                name="estimated_value_currency"
+                value={formData.estimated_value_currency}
+                onChange={(e) => setFormData({ ...formData, estimated_value_currency: e.target.value })}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black bg-white"
+              >
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+              </select>
+            </div>
           </div>
           </div>
 

@@ -21,3 +21,4 @@ CREATE INDEX IF NOT EXISTS idx_profiles_postcode ON public.profiles(postcode);
 -- ALTER TABLE public.profiles DROP COLUMN IF EXISTS address;
 
 
+
