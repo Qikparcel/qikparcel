@@ -61,7 +61,7 @@ export default function FAQPage() {
                     How does QikParcel work for sending a parcel?
                   </h3>
                   <p className="text-gray-700 leading-relaxed">
-                    You create a parcel request with pickup and delivery details. QikParcel matches your parcel with a verified traveller. Once picked up, you can track the parcel until it's delivered.
+                    You create a parcel request with pickup and delivery details. QikParcel matches your parcel with a verified traveller. Once picked up, you can track the parcel until it is delivered.
                   </p>
                   <p className="text-gray-700 leading-relaxed mt-2 font-medium">
                     Simple. Transparent. Tracked.
@@ -104,7 +104,7 @@ export default function FAQPage() {
                     Can I track my parcel?
                   </h3>
                   <p className="text-gray-700 leading-relaxed mb-2">
-                    Yes. You'll see real-time status updates:
+                    Yes. You will see real-time status updates:
                   </p>
                   <p className="text-gray-700 leading-relaxed font-medium">
                     Pending → Matched → Picked Up → In Transit → Delivered
@@ -119,7 +119,7 @@ export default function FAQPage() {
                     What happens if something goes wrong?
                   </h3>
                   <p className="text-gray-700 leading-relaxed mb-2">
-                    If there's a delay, issue, or dispute:
+                    If there is a delay, issue, or dispute:
                   </p>
                   <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                     <li>The delivery is paused</li>
@@ -127,7 +127,7 @@ export default function FAQPage() {
                     <li>Funds remain protected until resolution</li>
                   </ul>
                   <p className="text-gray-700 leading-relaxed mt-3 font-medium">
-                    We don't disappear when things get complicated.
+                    We do not disappear when things get complicated.
                   </p>
                 </div>
 
@@ -171,7 +171,7 @@ export default function FAQPage() {
                     <li>Is already travelling (walking, driving, cycling, or flying)</li>
                   </ul>
                   <p className="text-gray-700 leading-relaxed mt-3">
-                    You're not an employee. You're an independent traveller using the platform.
+                    You are not an employee. You are an independent traveller using the platform.
                   </p>
                 </div>
 
@@ -180,7 +180,7 @@ export default function FAQPage() {
                     How do I earn money?
                   </h3>
                   <p className="text-gray-700 leading-relaxed">
-                    You earn by carrying parcels along routes you're already taking. No shifts. No quotas. No fixed hours.
+                    You earn by carrying parcels along routes you are already taking. No shifts. No quotas. No fixed hours.
                   </p>
                   <p className="text-gray-700 leading-relaxed mt-2 font-medium">
                     Complete delivery → confirmation logged → payment released weekly.
@@ -235,7 +235,7 @@ export default function FAQPage() {
                     <li>Delivery urgency</li>
                   </ul>
                   <p className="text-gray-700 leading-relaxed mt-3 font-medium">
-                    You'll see the full price before confirming. No surprise fees.
+                    You will see the full price before confirming. No surprise fees.
                   </p>
                 </div>
 
@@ -256,7 +256,7 @@ export default function FAQPage() {
                     How do travellers get paid?
                   </h3>
                   <p className="text-gray-700 leading-relaxed">
-                    After successful delivery and confirmation, payments are released automatically to the traveller's account.
+                    After successful delivery and confirmation, payments are released automatically to the traveller account.
                   </p>
                   <p className="text-gray-700 leading-relaxed mt-2 font-medium">
                     No chasing. No awkward conversations.
@@ -278,7 +278,7 @@ export default function FAQPage() {
                     We use identity checks, activity monitoring, and behavioural safeguards to ensure only trusted users operate on the platform.
                   </p>
                   <p className="text-gray-700 leading-relaxed mt-2 font-medium">
-                    Bad actors don't last long here.
+                    Bad actors do not last long here.
                   </p>
                 </div>
 
@@ -287,7 +287,7 @@ export default function FAQPage() {
                     Is my data safe?
                   </h3>
                   <p className="text-gray-700 leading-relaxed">
-                    Yes. QikParcel complies with GDPR and applicable UK & EU data protection laws. We collect only what's necessary and never sell personal data.
+                    Yes. QikParcel complies with GDPR and applicable UK & EU data protection laws. We collect only what is necessary and never sell personal data.
                   </p>
                 </div>
 
@@ -314,7 +314,7 @@ export default function FAQPage() {
                   How is QikParcel eco-friendly?
                 </h3>
                 <p className="text-gray-700 leading-relaxed mb-2">
-                  We don't create new delivery journeys. We use journeys that are already happening.
+                  We do not create new delivery journeys. We use journeys that are already happening.
                 </p>
                 <p className="text-gray-700 leading-relaxed mb-2">
                   That means:

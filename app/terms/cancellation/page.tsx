@@ -144,7 +144,7 @@ export default function CancellationPolicyPage() {
               <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4 mb-4">
                 <li>The parcel appears unsafe or prohibited</li>
                 <li>The sender provides inaccurate or misleading information</li>
-                <li>Circumstances beyond the traveller's control prevent completion</li>
+                <li>Circumstances beyond the traveller control prevent completion</li>
               </ul>
               <p className="text-gray-700 leading-relaxed mb-2">
                 In such cases:
