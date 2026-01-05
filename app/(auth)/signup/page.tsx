@@ -417,12 +417,46 @@ export default function SignUpPage() {
         documentType,
         documentPath, // Include uploaded document path if available
       };
-      localStorage.setItem("signup_form_data", JSON.stringify(formDataToSave));
+
+      // Save to localStorage with error handling
+      try {
+        localStorage.setItem(
+          "signup_form_data",
+          JSON.stringify(formDataToSave)
+        );
+        console.log("Form data saved to localStorage:", {
+          hasFullName: !!fullName,
+          hasRole: !!role,
+          hasAddress: !!(streetAddress && city && country),
+        });
+
+        // Verify it was saved (important for mobile browsers)
+        const saved = localStorage.getItem("signup_form_data");
+        if (!saved) {
+          console.error(
+            "WARNING: localStorage save failed - data not found after save"
+          );
+          toast.error("Failed to save form data. Please try again.");
+          setLoading(false);
+          return;
+        }
+      } catch (storageError: any) {
+        console.error("Error saving to localStorage:", storageError);
+        toast.error("Failed to save form data. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Small delay to ensure localStorage is persisted (especially on mobile)
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Redirect to magic link - profile will be updated when redirect completes
       if (data.redirectUrl) {
         toast.success("Verifying...");
-        window.location.href = data.redirectUrl;
+        // Use setTimeout to ensure localStorage is written before redirect
+        setTimeout(() => {
+          window.location.href = data.redirectUrl;
+        }, 50);
       } else {
         throw new Error("No redirect URL received from server");
       }
@@ -540,26 +574,74 @@ export default function SignUpPage() {
             </div>
 
             <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-3">
                 I am a *
               </label>
-              <select
-                id="role"
-                value={role}
-                onChange={(e) =>
-                  setRole(e.target.value as "sender" | "courier")
-                }
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              >
-                <option value="sender">Sender (I want to send parcels)</option>
-                <option value="courier">
-                  Courier (I want to deliver parcels)
-                </option>
-              </select>
+              <div className="grid grid-cols-1 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRole("sender")}
+                  className={`w-full px-4 py-4 text-left border-2 rounded-lg transition-all ${
+                    role === "sender"
+                      ? "border-primary-500 bg-primary-50 text-primary-700 shadow-md"
+                      : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`text-2xl ${
+                        role === "sender" ? "" : "opacity-60"
+                      }`}
+                    >
+                      📦
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-base">Sender</div>
+                      <div className="text-sm mt-1 opacity-80">
+                        I want to send parcels
+                      </div>
+                    </div>
+                    {role === "sender" && (
+                      <div className="text-primary-500 text-xl">✓</div>
+                    )}
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("courier")}
+                  className={`w-full px-4 py-4 text-left border-2 rounded-lg transition-all ${
+                    role === "courier"
+                      ? "border-primary-500 bg-primary-50 text-primary-700 shadow-md"
+                      : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`text-2xl ${
+                        role === "courier" ? "" : "opacity-60"
+                      }`}
+                    >
+                      🚚
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-base">Courier</div>
+                      <div className="text-sm mt-1 opacity-80">
+                        I want to deliver parcels
+                      </div>
+                    </div>
+                    {role === "courier" && (
+                      <div className="text-primary-500 text-xl">✓</div>
+                    )}
+                  </div>
+                </button>
+              </div>
+              <p className="mt-3 text-xs text-gray-600">
+                {role === "sender"
+                  ? "You will be able to create parcel requests and find couriers"
+                  : "You will be able to accept delivery requests and earn money"}
+              </p>
+              {/* Hidden input for form validation */}
+              <input type="hidden" name="role" value={role} required />
             </div>
 
             <button
