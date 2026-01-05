@@ -120,7 +120,19 @@ export default function AuthCallbackPage() {
 
         // Check if this is from signup (has saved form data)
         console.log('[CALLBACK] Checking for signup form data...')
-        const savedData = localStorage.getItem('signup_form_data')
+        
+        // Wait a bit for localStorage to be accessible (mobile browsers sometimes need a moment)
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        
+        let savedData = localStorage.getItem('signup_form_data')
+        
+        // If not found, try again after a short delay (mobile browser quirk)
+        if (!savedData) {
+          console.log('[CALLBACK] Form data not found, waiting 300ms and retrying...')
+          await new Promise((resolve) => setTimeout(resolve, 300))
+          savedData = localStorage.getItem('signup_form_data')
+        }
+        
         if (savedData) {
           try {
             const data = JSON.parse(savedData)
@@ -151,23 +163,53 @@ export default function AuthCallbackPage() {
             }
             
             // Required fields for both sender and courier
-            if (data.fullName) updateBody.fullName = data.fullName
-            if (data.role) updateBody.role = data.role
+            if (data.fullName && data.fullName.trim()) {
+              updateBody.fullName = data.fullName.trim()
+            }
+            if (data.role) {
+              updateBody.role = data.role
+            }
             
             // Address fields - required for both sender and courier
-            if (data.streetAddress) updateBody.streetAddress = data.streetAddress
-            if (data.addressLine2 !== undefined) updateBody.addressLine2 = data.addressLine2
-            if (data.city) updateBody.city = data.city
-            if (data.state) updateBody.state = data.state
-            if (data.postcode) updateBody.postcode = data.postcode
-            if (data.country) updateBody.country = data.country
+            if (data.streetAddress && data.streetAddress.trim()) {
+              updateBody.streetAddress = data.streetAddress.trim()
+            }
+            if (data.addressLine2 !== undefined) {
+              updateBody.addressLine2 = data.addressLine2?.trim() || null
+            }
+            if (data.city && data.city.trim()) {
+              updateBody.city = data.city.trim()
+            }
+            if (data.state && data.state.trim()) {
+              updateBody.state = data.state.trim()
+            }
+            if (data.postcode && data.postcode.trim()) {
+              updateBody.postcode = data.postcode.trim()
+            }
+            if (data.country && data.country.trim()) {
+              updateBody.country = data.country.trim()
+            }
             
             // Optional fields
-            if (data.email !== undefined) updateBody.email = data.email || null
-            if (data.documentType) updateBody.documentType = data.documentType
-            if (data.documentPath) updateBody.documentPath = data.documentPath
+            if (data.email !== undefined) {
+              updateBody.email = data.email?.trim() || null
+            }
+            if (data.documentType) {
+              updateBody.documentType = data.documentType
+            }
+            if (data.documentPath) {
+              updateBody.documentPath = data.documentPath
+            }
 
-            console.log('[CALLBACK] Update body:', updateBody)
+            console.log('[CALLBACK] Update body:', {
+              ...updateBody,
+              userId: verifySession.user.id,
+              hasFullName: !!updateBody.fullName,
+              hasRole: !!updateBody.role,
+              hasStreetAddress: !!updateBody.streetAddress,
+              hasCity: !!updateBody.city,
+              hasCountry: !!updateBody.country,
+            })
 
             const updateResponse = await fetch('/api/auth/update-profile', {
               method: 'POST',
