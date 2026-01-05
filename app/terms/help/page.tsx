@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import Image from 'next/image'
+import Link from "next/link";
+import Image from "next/image";
 
 export default function HelpPage() {
   return (
@@ -39,7 +39,7 @@ export default function HelpPage() {
           </p>
           <div className="mt-4 p-4 bg-primary-50 border border-primary-200 rounded-lg">
             <p className="text-sm text-gray-700">
-              <strong>Need help?</strong> Contact our support team at{' '}
+              <strong>Need help?</strong> Contact our support team at{" "}
               <a
                 href="mailto:support@qikparcel.com"
                 className="text-primary-600 hover:text-primary-700 underline font-medium"
@@ -54,30 +54,45 @@ export default function HelpPage() {
           {/* FAQ Column */}
           <div className="bg-white rounded-lg shadow p-6 md:p-8">
             <div className="mb-6 pb-4 border-b">
-              <h2 className="text-2xl font-bold text-gray-900">Frequently Asked Questions</h2>
-              <p className="text-sm text-gray-600 mt-1">Last updated: 01/03/2026</p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Frequently Asked Questions
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Last updated: 01/03/2026
+              </p>
             </div>
 
             <div className="prose prose-sm max-w-none max-h-[calc(100vh-300px)] overflow-y-auto">
               {/* Introduction */}
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">What is QikParcel?</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  What is QikParcel?
+                </h3>
                 <p className="text-gray-700 leading-relaxed text-sm">
-                  QikParcel is an AI-powered delivery platform that connects people who need to send parcels with trusted travellers already heading in the same direction. Instead of running empty vehicles, we use real journeys — making deliveries faster, cheaper, and more eco-friendly.
+                  QikParcel is an AI-powered delivery platform that connects
+                  people who need to send parcels with trusted travellers
+                  already heading in the same direction. Instead of running
+                  empty vehicles, we use real journeys — making deliveries
+                  faster, cheaper, and more eco-friendly.
                 </p>
               </div>
 
               {/* For Senders Section */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">For Senders</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  For Senders
+                </h3>
+
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-base font-semibold text-gray-900 mb-2">
                       How does QikParcel work for sending a parcel?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      You create a parcel request with pickup and delivery details. QikParcel matches your parcel with a verified traveller. Once picked up, you can track the parcel until it's delivered.
+                      You create a parcel request with pickup and delivery
+                      details. QikParcel matches your parcel with a verified
+                      traveller. Once picked up, you can track the parcel until
+                      it is delivered.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
                       Simple. Transparent. Tracked.
@@ -89,13 +104,20 @@ export default function HelpPage() {
                       What can I send?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      You can send every day, non-restricted items such as documents, gifts, clothing, electronics (non-hazardous), and personal items.
+                      You can send every day, non-restricted items such as
+                      documents, gifts, clothing, electronics (non-hazardous),
+                      and personal items.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      You cannot send prohibited or dangerous items. These are clearly listed in our{' '}
-                      <Link href="/terms/prohibited-items" className="text-primary-600 hover:text-primary-700 underline">
+                      You cannot send prohibited or dangerous items. These are
+                      clearly listed in our{" "}
+                      <Link
+                        href="/terms/prohibited-items"
+                        className="text-primary-600 hover:text-primary-700 underline"
+                      >
                         Prohibited Items Policy
-                      </Link>.
+                      </Link>
+                      .
                     </p>
                   </div>
 
@@ -120,7 +142,7 @@ export default function HelpPage() {
                       Can I track my parcel?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      Yes. You'll see real-time status updates:
+                      Yes. You will see real-time status updates:
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium mb-1">
                       Pending → Matched → Picked Up → In Transit → Delivered
@@ -135,7 +157,7 @@ export default function HelpPage() {
                       What happens if something goes wrong?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      If there's a delay, issue, or dispute:
+                      If there is a delay, issue, or dispute:
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm ml-2 mb-2">
                       <li>The delivery is paused</li>
@@ -143,7 +165,7 @@ export default function HelpPage() {
                       <li>Funds remain protected until resolution</li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
-                      We don't disappear when things get complicated.
+                      We do not disappear when things get complicated.
                     </p>
                   </div>
 
@@ -156,10 +178,14 @@ export default function HelpPage() {
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm ml-2 mb-2">
                       <li>Before pickup: full refund</li>
-                      <li>After pickup: refunds depend on delivery stage and costs already incurred</li>
+                      <li>
+                        After pickup: refunds depend on delivery stage and costs
+                        already incurred
+                      </li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      Details are outlined clearly in our Cancellation Policy (see right column).
+                      Details are outlined clearly in our Cancellation Policy
+                      (see right column).
                     </p>
                   </div>
                 </div>
@@ -167,8 +193,10 @@ export default function HelpPage() {
 
               {/* For Travellers Section */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">For Travellers / Couriers</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  For Travellers / Couriers
+                </h3>
+
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-base font-semibold text-gray-900 mb-2">
@@ -181,10 +209,14 @@ export default function HelpPage() {
                       <li>Is 18+</li>
                       <li>Has valid ID</li>
                       <li>Passes verification checks</li>
-                      <li>Is already travelling (walking, driving, cycling, or flying)</li>
+                      <li>
+                        Is already travelling (walking, driving, cycling, or
+                        flying)
+                      </li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      You're not an employee. You're an independent traveller using the platform.
+                      You are not an employee. You are an independent traveller
+                      using the platform.
                     </p>
                   </div>
 
@@ -193,10 +225,12 @@ export default function HelpPage() {
                       How do I earn money?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      You earn by carrying parcels along routes you're already taking. No shifts. No quotas. No fixed hours.
+                      You earn by carrying parcels along routes you are already
+                      taking. No shifts. No quotas. No fixed hours.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
-                      Complete delivery → confirmation logged → payment released weekly.
+                      Complete delivery → confirmation logged → payment released
+                      weekly.
                     </p>
                   </div>
 
@@ -205,7 +239,9 @@ export default function HelpPage() {
                       Do I need special insurance?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      No additional insurance is required to join. However, travellers must act responsibly and comply with platform rules and local laws.
+                      No additional insurance is required to join. However,
+                      travellers must act responsibly and comply with platform
+                      rules and local laws.
                     </p>
                   </div>
 
@@ -214,7 +250,9 @@ export default function HelpPage() {
                       What if a sender gives me a prohibited item?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      You must refuse pickup and report it immediately in the app. You will not be penalised for refusing unsafe or illegal items.
+                      You must refuse pickup and report it immediately in the
+                      app. You will not be penalised for refusing unsafe or
+                      illegal items.
                     </p>
                   </div>
 
@@ -223,7 +261,9 @@ export default function HelpPage() {
                       Am I an employee of QikParcel?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      No. QikParcel is a technology platform, not a delivery employer. Travellers operate independently and choose when, where, and whether to carry parcels.
+                      No. QikParcel is a technology platform, not a delivery
+                      employer. Travellers operate independently and choose
+                      when, where, and whether to carry parcels.
                     </p>
                   </div>
                 </div>
@@ -231,8 +271,10 @@ export default function HelpPage() {
 
               {/* Payments & Pricing */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Payments & Pricing</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Payments & Pricing
+                </h3>
+
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-base font-semibold text-gray-900 mb-2">
@@ -248,7 +290,8 @@ export default function HelpPage() {
                       <li>Delivery urgency</li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
-                      You'll see the full price before confirming. No surprise fees.
+                      You will see the full price before confirming. No surprise
+                      fees.
                     </p>
                   </div>
 
@@ -257,7 +300,8 @@ export default function HelpPage() {
                       How are payments handled?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      Sender payments are held securely in escrow. Funds are only released once delivery is confirmed.
+                      Sender payments are held securely in escrow. Funds are
+                      only released once delivery is confirmed.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm">
                       This protects both senders and travellers.
@@ -269,7 +313,8 @@ export default function HelpPage() {
                       How do travellers get paid?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      After successful delivery and confirmation, payments are released automatically to the traveller's account.
+                      After successful delivery and confirmation, payments are
+                      released automatically to the traveller account.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
                       No chasing. No awkward conversations.
@@ -280,18 +325,22 @@ export default function HelpPage() {
 
               {/* Trust, Safety & Privacy */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Trust, Safety & Privacy</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Trust, Safety & Privacy
+                </h3>
+
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-base font-semibold text-gray-900 mb-2">
                       How are users verified?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      We use identity checks, activity monitoring, and behavioural safeguards to ensure only trusted users operate on the platform.
+                      We use identity checks, activity monitoring, and
+                      behavioural safeguards to ensure only trusted users
+                      operate on the platform.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm font-medium">
-                      Bad actors don't last long here.
+                      Bad actors do not last long here.
                     </p>
                   </div>
 
@@ -300,7 +349,9 @@ export default function HelpPage() {
                       Is my data safe?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      Yes. QikParcel complies with GDPR and applicable UK & EU data protection laws. We collect only what's necessary and never sell personal data.
+                      Yes. QikParcel complies with GDPR and applicable UK & EU
+                      data protection laws. We collect only what is necessary
+                      and never sell personal data.
                     </p>
                   </div>
 
@@ -309,7 +360,8 @@ export default function HelpPage() {
                       Does QikParcel inspect parcels?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      Travellers are not required to open parcels. Senders are legally responsible for the contents they declare.
+                      Travellers are not required to open parcels. Senders are
+                      legally responsible for the contents they declare.
                     </p>
                     <p className="text-gray-700 leading-relaxed text-sm">
                       Random checks may occur to maintain platform safety.
@@ -320,14 +372,17 @@ export default function HelpPage() {
 
               {/* Environment & Impact */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Environment & Impact</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Environment & Impact
+                </h3>
+
                 <div>
                   <h4 className="text-base font-semibold text-gray-900 mb-2">
                     How is QikParcel eco-friendly?
                   </h4>
                   <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                    We don't create new delivery journeys. We use journeys that are already happening.
+                    We do not create new delivery journeys. We use journeys that
+                    are already happening.
                   </p>
                   <p className="text-gray-700 leading-relaxed text-sm mb-1">
                     That means:
@@ -345,8 +400,10 @@ export default function HelpPage() {
 
               {/* Support */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Support</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Support
+                </h3>
+
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-base font-semibold text-gray-900 mb-2">
@@ -359,7 +416,7 @@ export default function HelpPage() {
                       <li>In-app chat</li>
                       <li>WhatsApp</li>
                       <li>
-                        Email:{' '}
+                        Email:{" "}
                         <a
                           href="mailto:support@qikparcel.com"
                           className="text-primary-600 hover:text-primary-700 underline"
@@ -378,7 +435,8 @@ export default function HelpPage() {
                       What if I have feedback or suggestions?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      We actively use user feedback to improve the platform. Smart platforms evolve. Static ones die.
+                      We actively use user feedback to improve the platform.
+                      Smart platforms evolve. Static ones die.
                     </p>
                   </div>
                 </div>
@@ -386,15 +444,19 @@ export default function HelpPage() {
 
               {/* Legal & Compliance */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Legal & Compliance</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Legal & Compliance
+                </h3>
+
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-base font-semibold text-gray-900 mb-2">
                       Is QikParcel legal?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      Yes. QikParcel operates as a technology marketplace and complies with applicable platform, consumer, and data protection laws in each region it serves.
+                      Yes. QikParcel operates as a technology marketplace and
+                      complies with applicable platform, consumer, and data
+                      protection laws in each region it serves.
                     </p>
                   </div>
 
@@ -403,26 +465,39 @@ export default function HelpPage() {
                       Where can I find the Terms & Policies?
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm mb-1">
-                      All legal documents are available on our website and in the app, including:
+                      All legal documents are available on our website and in
+                      the app, including:
                     </p>
                     <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm ml-2">
                       <li>
-                        <Link href="/terms/general" className="text-primary-600 hover:text-primary-700 underline">
+                        <Link
+                          href="/terms/general"
+                          className="text-primary-600 hover:text-primary-700 underline"
+                        >
                           Terms & Conditions
                         </Link>
                       </li>
                       <li>
-                        <Link href="/terms/general" className="text-primary-600 hover:text-primary-700 underline">
+                        <Link
+                          href="/terms/general"
+                          className="text-primary-600 hover:text-primary-700 underline"
+                        >
                           Privacy Policy
                         </Link>
                       </li>
                       <li>
-                        <Link href="/terms/prohibited-items" className="text-primary-600 hover:text-primary-700 underline">
+                        <Link
+                          href="/terms/prohibited-items"
+                          className="text-primary-600 hover:text-primary-700 underline"
+                        >
                           Prohibited Items Policy
                         </Link>
                       </li>
                       <li>
-                        <Link href="/terms/cancellation" className="text-primary-600 hover:text-primary-700 underline">
+                        <Link
+                          href="/terms/cancellation"
+                          className="text-primary-600 hover:text-primary-700 underline"
+                        >
                           Cancellation Policy
                         </Link>
                       </li>
@@ -439,24 +514,34 @@ export default function HelpPage() {
           {/* Cancellation Policy Column */}
           <div className="bg-white rounded-lg shadow p-6 md:p-8">
             <div className="mb-6 pb-4 border-b">
-              <h2 className="text-2xl font-bold text-gray-900">Cancellation Policy</h2>
-              <p className="text-sm text-gray-600 mt-1">Last updated: 01/03/2026</p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Cancellation Policy
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Last updated: 01/03/2026
+              </p>
             </div>
 
             <div className="prose prose-sm max-w-none max-h-[calc(100vh-300px)] overflow-y-auto">
               {/* Introduction */}
               <div className="mb-6">
                 <p className="text-gray-700 leading-relaxed text-sm mb-3">
-                  This Cancellation Policy explains when and how deliveries on the QikParcel platform may be cancelled, and how refunds (if any) are handled.
+                  This Cancellation Policy explains when and how deliveries on
+                  the QikParcel platform may be cancelled, and how refunds (if
+                  any) are handled.
                 </p>
                 <p className="text-gray-700 leading-relaxed text-sm">
-                  QikParcel is a technology platform connecting senders with independent travellers. This policy applies to all users of the platform.
+                  QikParcel is a technology platform connecting senders with
+                  independent travellers. This policy applies to all users of
+                  the platform.
                 </p>
               </div>
 
               {/* Section 1: Who Can Cancel */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">1. Who Can Cancel a Delivery</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  1. Who Can Cancel a Delivery
+                </h3>
                 <p className="text-gray-700 leading-relaxed text-sm mb-2">
                   A delivery may be cancelled by:
                 </p>
@@ -466,70 +551,113 @@ export default function HelpPage() {
                   <li>QikParcel (in limited circumstances)</li>
                 </ul>
                 <p className="text-gray-700 leading-relaxed text-sm">
-                  Cancellations are subject to the delivery stage at the time of cancellation.
+                  Cancellations are subject to the delivery stage at the time of
+                  cancellation.
                 </p>
               </div>
 
               {/* Section 2: Cancellation Stages & Refunds */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">2. Cancellation Stages & Refunds</h3>
-                
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  2. Cancellation Stages & Refunds
+                </h3>
+
                 <div className="space-y-4">
                   {/* 2.1 Pending */}
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <h4 className="text-base font-semibold text-gray-900 mb-2">2.1 Pending (Not Yet Matched)</h4>
+                    <h4 className="text-base font-semibold text-gray-900 mb-2">
+                      2.1 Pending (Not Yet Matched)
+                    </h4>
                     <div className="space-y-1 text-gray-700 text-sm">
-                      <p><strong>Status:</strong> Pending</p>
-                      <p><strong>Who can cancel:</strong> Sender</p>
-                      <p><strong>Refund:</strong> Full refund</p>
+                      <p>
+                        <strong>Status:</strong> Pending
+                      </p>
+                      <p>
+                        <strong>Who can cancel:</strong> Sender
+                      </p>
+                      <p>
+                        <strong>Refund:</strong> Full refund
+                      </p>
                       <p className="mt-2">
-                        The delivery may be cancelled at any time before a traveller is matched, with no penalty.
+                        The delivery may be cancelled at any time before a
+                        traveller is matched, with no penalty.
                       </p>
                     </div>
                   </div>
 
                   {/* 2.2 Matched */}
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <h4 className="text-base font-semibold text-gray-900 mb-2">2.2 Matched (Before Pickup)</h4>
+                    <h4 className="text-base font-semibold text-gray-900 mb-2">
+                      2.2 Matched (Before Pickup)
+                    </h4>
                     <div className="space-y-1 text-gray-700 text-sm">
-                      <p><strong>Status:</strong> Matched</p>
-                      <p><strong>Who can cancel:</strong> Sender or traveller</p>
-                      <p><strong>Refund:</strong> Full refund</p>
+                      <p>
+                        <strong>Status:</strong> Matched
+                      </p>
+                      <p>
+                        <strong>Who can cancel:</strong> Sender or traveller
+                      </p>
+                      <p>
+                        <strong>Refund:</strong> Full refund
+                      </p>
                       <p className="mt-2">
-                        If a delivery is cancelled after matching but before pickup, the sender receives a full refund. No payment is released to the traveller.
+                        If a delivery is cancelled after matching but before
+                        pickup, the sender receives a full refund. No payment is
+                        released to the traveller.
                       </p>
                     </div>
                   </div>
 
                   {/* 2.3 Picked Up */}
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <h4 className="text-base font-semibold text-gray-900 mb-2">2.3 Picked Up (After Pickup)</h4>
+                    <h4 className="text-base font-semibold text-gray-900 mb-2">
+                      2.3 Picked Up (After Pickup)
+                    </h4>
                     <div className="space-y-1 text-gray-700 text-sm">
-                      <p><strong>Status:</strong> Picked Up / In Transit</p>
-                      <p><strong>Who can cancel:</strong> Sender, traveller, or QikParcel</p>
-                      <p><strong>Refund:</strong> Partial or no refund</p>
+                      <p>
+                        <strong>Status:</strong> Picked Up / In Transit
+                      </p>
+                      <p>
+                        <strong>Who can cancel:</strong> Sender, traveller, or
+                        QikParcel
+                      </p>
+                      <p>
+                        <strong>Refund:</strong> Partial or no refund
+                      </p>
                       <p className="mt-2 mb-1">
                         Once a parcel has been picked up:
                       </p>
                       <ul className="list-disc list-inside space-y-0.5 ml-2">
-                        <li>The traveller has already committed time and travel</li>
+                        <li>
+                          The traveller has already committed time and travel
+                        </li>
                         <li>Operational costs may have been incurred</li>
                       </ul>
                       <p className="mt-2">
-                        Refunds at this stage are assessed on a case-by-case basis and may be reduced or withheld.
+                        Refunds at this stage are assessed on a case-by-case
+                        basis and may be reduced or withheld.
                       </p>
                     </div>
                   </div>
 
                   {/* 2.4 Delivered */}
                   <div className="bg-gray-50 p-3 rounded-lg">
-                    <h4 className="text-base font-semibold text-gray-900 mb-2">2.4 Delivered</h4>
+                    <h4 className="text-base font-semibold text-gray-900 mb-2">
+                      2.4 Delivered
+                    </h4>
                     <div className="space-y-1 text-gray-700 text-sm">
-                      <p><strong>Status:</strong> Delivered</p>
-                      <p><strong>Who can cancel:</strong> No one</p>
-                      <p><strong>Refund:</strong> Not applicable</p>
+                      <p>
+                        <strong>Status:</strong> Delivered
+                      </p>
+                      <p>
+                        <strong>Who can cancel:</strong> No one
+                      </p>
+                      <p>
+                        <strong>Refund:</strong> Not applicable
+                      </p>
                       <p className="mt-2">
-                        Once a parcel is marked as delivered and confirmed, the delivery is complete and cannot be cancelled.
+                        Once a parcel is marked as delivered and confirmed, the
+                        delivery is complete and cannot be cancelled.
                       </p>
                     </div>
                   </div>
@@ -538,27 +666,42 @@ export default function HelpPage() {
 
               {/* Section 3: Traveller-Initiated Cancellations */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">3. Traveller-Initiated Cancellations</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  3. Traveller-Initiated Cancellations
+                </h3>
                 <p className="text-gray-700 leading-relaxed text-sm mb-2">
                   A traveller may cancel a delivery if:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm ml-2 mb-3">
                   <li>The parcel appears unsafe or prohibited</li>
-                  <li>The sender provides inaccurate or misleading information</li>
-                  <li>Circumstances beyond the traveller's control prevent completion</li>
+                  <li>
+                    The sender provides inaccurate or misleading information
+                  </li>
+                  <li>
+                    Circumstances beyond the traveller control prevent
+                    completion
+                  </li>
                 </ul>
                 <p className="text-gray-700 leading-relaxed text-sm mb-1">
                   In such cases:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm ml-2">
-                  <li>The sender may receive a partial or full refund depending on the situation</li>
-                  <li>QikParcel may remove or restrict travellers who repeatedly cancel without valid reasons</li>
+                  <li>
+                    The sender may receive a partial or full refund depending on
+                    the situation
+                  </li>
+                  <li>
+                    QikParcel may remove or restrict travellers who repeatedly
+                    cancel without valid reasons
+                  </li>
                 </ul>
               </div>
 
               {/* Section 4: Platform-Initiated Cancellations */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">4. Platform-Initiated Cancellations</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  4. Platform-Initiated Cancellations
+                </h3>
                 <p className="text-gray-700 leading-relaxed text-sm mb-2">
                   QikParcel may cancel a delivery if:
                 </p>
@@ -568,23 +711,33 @@ export default function HelpPage() {
                   <li>Safety or compliance concerns arise</li>
                 </ul>
                 <p className="text-gray-700 leading-relaxed text-sm">
-                  Refunds, if any, will be determined based on the delivery stage and circumstances.
+                  Refunds, if any, will be determined based on the delivery
+                  stage and circumstances.
                 </p>
               </div>
 
               {/* Section 5: How Refunds Are Processed */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">5. How Refunds Are Processed</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  5. How Refunds Are Processed
+                </h3>
                 <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm ml-2">
-                  <li>Approved refunds are processed to the original payment method</li>
-                  <li>Refund timelines depend on payment providers and banks</li>
+                  <li>
+                    Approved refunds are processed to the original payment
+                    method
+                  </li>
+                  <li>
+                    Refund timelines depend on payment providers and banks
+                  </li>
                   <li>QikParcel does not control external processing delays</li>
                 </ul>
               </div>
 
               {/* Section 6: No Circumvention */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">6. No Circumvention</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  6. No Circumvention
+                </h3>
                 <p className="text-gray-700 leading-relaxed text-sm mb-2">
                   Users must not attempt to:
                 </p>
@@ -600,22 +753,30 @@ export default function HelpPage() {
 
               {/* Section 7: Disputes */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">7. Disputes</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  7. Disputes
+                </h3>
                 <p className="text-gray-700 leading-relaxed text-sm mb-2">
                   If a cancellation leads to a dispute:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm ml-2">
                   <li>Funds remain held securely</li>
-                  <li>QikParcel investigates based on platform data and records</li>
+                  <li>
+                    QikParcel investigates based on platform data and records
+                  </li>
                   <li>Decisions are final and binding under this policy</li>
                 </ul>
               </div>
 
               {/* Section 8: Policy Updates */}
               <div className="mb-6 border-t pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">8. Policy Updates</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  8. Policy Updates
+                </h3>
                 <p className="text-gray-700 leading-relaxed text-sm">
-                  QikParcel may update this Cancellation Policy from time to time. Continued use of the platform constitutes acceptance of the updated policy.
+                  QikParcel may update this Cancellation Policy from time to
+                  time. Continued use of the platform constitutes acceptance of
+                  the updated policy.
                 </p>
               </div>
             </div>
@@ -623,6 +784,5 @@ export default function HelpPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }
-
