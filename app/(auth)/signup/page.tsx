@@ -7,6 +7,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import CountryCodeSelector from "@/components/CountryCodeSelector";
+import { normalizePhoneNumber } from "@/lib/utils/phone";
 
 type SignupStep = "basic" | "details" | "otp";
 
@@ -274,10 +275,21 @@ export default function SignUpPage() {
         }
       }
 
-      // Format phone number with country code
+      // Normalize phone number - remove leading 0 if present, then combine with country code
+      let normalizedPhone = phoneNumber;
+
+      // If phone number starts with 0 (like 03224916205), remove it
+      if (normalizedPhone.startsWith("0")) {
+        normalizedPhone = normalizedPhone.substring(1);
+      }
+
+      // Combine country code with phone number
       const formatted = phoneNumber.startsWith("+")
         ? phoneNumber
-        : `${countryCode}${phoneNumber}`;
+        : `${countryCode}${normalizedPhone}`;
+
+      // Normalize the final phone number to ensure consistent format
+      const finalFormatted = normalizePhoneNumber(formatted);
 
       // Send OTP
       const response = await fetch("/api/auth/send-otp", {
@@ -285,7 +297,7 @@ export default function SignUpPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ phoneNumber: formatted, isSignup: true }),
+        body: JSON.stringify({ phoneNumber: finalFormatted, isSignup: true }),
       });
 
       const data = await response.json();
@@ -330,10 +342,21 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      // Format phone number with country code (same format as when sending OTP)
+      // Normalize phone number - remove leading 0 if present, then combine with country code
+      let normalizedPhone = phoneNumber;
+
+      // If phone number starts with 0 (like 03224916205), remove it
+      if (normalizedPhone.startsWith("0")) {
+        normalizedPhone = normalizedPhone.substring(1);
+      }
+
+      // Combine country code with phone number
       const formatted = phoneNumber.startsWith("+")
         ? phoneNumber
-        : `${countryCode}${phoneNumber}`;
+        : `${countryCode}${normalizedPhone}`;
+
+      // Normalize the final phone number to ensure consistent format
+      const finalFormatted = normalizePhoneNumber(formatted);
 
       const response = await fetch("/api/auth/verify-otp", {
         method: "POST",
@@ -341,7 +364,7 @@ export default function SignUpPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          phoneNumber: formatted,
+          phoneNumber: finalFormatted,
           otp: otp,
         }),
       });
@@ -382,7 +405,7 @@ export default function SignUpPage() {
       // Save form data to localStorage before redirect
       const formDataToSave = {
         fullName,
-        phoneNumber: formatted,
+        phoneNumber: finalFormatted,
         role,
         streetAddress,
         addressLine2,
@@ -828,15 +851,27 @@ export default function SignUpPage() {
               onClick={async () => {
                 setLoading(true);
                 try {
-                  // Format phone number with country code (same format as initial send)
+                  // Normalize phone number - remove leading 0 if present, then combine with country code
+                  let normalizedPhone = phoneNumber;
+
+                  // If phone number starts with 0 (like 03224916205), remove it
+                  if (normalizedPhone.startsWith("0")) {
+                    normalizedPhone = normalizedPhone.substring(1);
+                  }
+
+                  // Combine country code with phone number
                   const formatted = phoneNumber.startsWith("+")
                     ? phoneNumber
-                    : `${countryCode}${phoneNumber}`;
+                    : `${countryCode}${normalizedPhone}`;
+
+                  // Normalize the final phone number to ensure consistent format
+                  const finalFormatted = normalizePhoneNumber(formatted);
+
                   const response = await fetch("/api/auth/send-otp", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                      phoneNumber: formatted,
+                      phoneNumber: finalFormatted,
                       isSignup: true,
                     }),
                   });

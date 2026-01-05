@@ -7,6 +7,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import CountryCodeSelector from "@/components/CountryCodeSelector";
+import { normalizePhoneNumber } from "@/lib/utils/phone";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,17 +43,28 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Format phone number
+      // Normalize phone number - remove leading 0 if present, then combine with country code
+      let normalizedPhone = phoneNumber;
+      
+      // If phone number starts with 0 (like 03224916205), remove it
+      if (normalizedPhone.startsWith("0")) {
+        normalizedPhone = normalizedPhone.substring(1);
+      }
+      
+      // Combine country code with phone number
       const formatted = phoneNumber.startsWith("+")
         ? phoneNumber
-        : `${countryCode}${phoneNumber}`;
+        : `${countryCode}${normalizedPhone}`;
+      
+      // Normalize the final phone number to ensure consistent format
+      const finalFormatted = normalizePhoneNumber(formatted);
 
       const response = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ phoneNumber: formatted, isSignup: false }),
+        body: JSON.stringify({ phoneNumber: finalFormatted, isSignup: false }),
       });
 
       const data = await response.json();
@@ -86,9 +98,21 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Normalize phone number - remove leading 0 if present, then combine with country code
+      let normalizedPhone = phoneNumber;
+      
+      // If phone number starts with 0 (like 03224916205), remove it
+      if (normalizedPhone.startsWith("0")) {
+        normalizedPhone = normalizedPhone.substring(1);
+      }
+      
+      // Combine country code with phone number
       const formatted = phoneNumber.startsWith("+")
         ? phoneNumber
-        : `${countryCode}${phoneNumber}`;
+        : `${countryCode}${normalizedPhone}`;
+      
+      // Normalize the final phone number to ensure consistent format
+      const finalFormatted = normalizePhoneNumber(formatted);
 
       const response = await fetch("/api/auth/verify-otp", {
         method: "POST",
@@ -96,7 +120,7 @@ export default function LoginPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          phoneNumber: formatted,
+          phoneNumber: finalFormatted,
           otp: otp,
         }),
       });
