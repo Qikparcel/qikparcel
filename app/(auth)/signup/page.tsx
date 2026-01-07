@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import CountryCodeSelector from "@/components/CountryCodeSelector";
 import { normalizePhoneNumber } from "@/lib/utils/phone";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 type SignupStep = "basic" | "details" | "otp";
 
@@ -664,121 +665,25 @@ export default function SignUpPage() {
         {step === "details" && (
           <form onSubmit={handleDetailsSubmit} className="space-y-4">
             <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="streetAddress"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Street Address *
-                </label>
-                <input
-                  type="text"
-                  id="streetAddress"
-                  value={streetAddress}
-                  onChange={(e) => setStreetAddress(e.target.value)}
-                  placeholder="123 Main Street"
-                  required
-                  minLength={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="addressLine2"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Address Line 2 (Optional)
-                </label>
-                <input
-                  type="text"
-                  id="addressLine2"
-                  value={addressLine2}
-                  onChange={(e) => setAddressLine2(e.target.value)}
-                  placeholder="Apartment, suite, unit, etc."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="city"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    id="city"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="City"
-                    required
-                    minLength={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="state"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    State/Province *
-                  </label>
-                  <input
-                    type="text"
-                    id="state"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    placeholder="State"
-                    required
-                    minLength={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="postcode"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Postcode/ZIP *
-                  </label>
-                  <input
-                    type="text"
-                    id="postcode"
-                    value={postcode}
-                    onChange={(e) => setPostcode(e.target.value)}
-                    placeholder="12345"
-                    required
-                    minLength={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="country"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Country *
-                  </label>
-                  <input
-                    type="text"
-                    id="country"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    placeholder="Country"
-                    required
-                    minLength={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                  />
-                </div>
-              </div>
+              <AddressAutocomplete
+                label="Address"
+                streetAddress={streetAddress}
+                addressLine2={addressLine2}
+                city={city}
+                state={state}
+                postcode={postcode}
+                country={country}
+                onAddressChange={(fields) => {
+                  setStreetAddress(fields.streetAddress);
+                  setAddressLine2(fields.addressLine2);
+                  setCity(fields.city);
+                  setState(fields.state);
+                  setPostcode(fields.postcode);
+                  setCountry(fields.country);
+                }}
+                required
+                placeholder="Start typing your address..."
+              />
             </div>
 
             {role === "sender" && (

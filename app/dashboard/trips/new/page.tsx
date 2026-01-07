@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/components/DashboardLayout";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 export default function CreateTripPage() {
   const router = useRouter();
@@ -251,116 +252,25 @@ export default function CreateTripPage() {
               Origin Address
             </h2>
 
-            <div>
-              <label
-                htmlFor="origin_street_address"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Street Address *
-              </label>
-              <input
-                type="text"
-                id="origin_street_address"
-                value={originStreetAddress}
-                onChange={(e) => setOriginStreetAddress(e.target.value)}
-                placeholder="123 Main Street"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="origin_address_line_2"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Address Line 2 (Optional)
-              </label>
-              <input
-                type="text"
-                id="origin_address_line_2"
-                value={originAddressLine2}
-                onChange={(e) => setOriginAddressLine2(e.target.value)}
-                placeholder="Apartment, suite, unit, etc."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="origin_city"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  City *
-                </label>
-                <input
-                  type="text"
-                  id="origin_city"
-                  value={originCity}
-                  onChange={(e) => setOriginCity(e.target.value)}
-                  placeholder="City"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="origin_state"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  State/Province *
-                </label>
-                <input
-                  type="text"
-                  id="origin_state"
-                  value={originState}
-                  onChange={(e) => setOriginState(e.target.value)}
-                  placeholder="State"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="origin_postcode"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Postcode/ZIP *
-                </label>
-                <input
-                  type="text"
-                  id="origin_postcode"
-                  value={originPostcode}
-                  onChange={(e) => setOriginPostcode(e.target.value)}
-                  placeholder="12345"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="origin_country"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Country *
-                </label>
-                <input
-                  type="text"
-                  id="origin_country"
-                  value={originCountry}
-                  onChange={(e) => setOriginCountry(e.target.value)}
-                  placeholder="Country"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-            </div>
+            <AddressAutocomplete
+              label="Origin Address"
+              streetAddress={originStreetAddress}
+              addressLine2={originAddressLine2}
+              city={originCity}
+              state={originState}
+              postcode={originPostcode}
+              country={originCountry}
+              onAddressChange={(fields) => {
+                setOriginStreetAddress(fields.streetAddress);
+                setOriginAddressLine2(fields.addressLine2);
+                setOriginCity(fields.city);
+                setOriginState(fields.state);
+                setOriginPostcode(fields.postcode);
+                setOriginCountry(fields.country);
+              }}
+              required
+              placeholder="Start typing origin address..."
+            />
           </div>
 
           {/* Destination Address */}
@@ -369,116 +279,25 @@ export default function CreateTripPage() {
               Destination Address
             </h2>
 
-            <div>
-              <label
-                htmlFor="destination_street_address"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Street Address *
-              </label>
-              <input
-                type="text"
-                id="destination_street_address"
-                value={destinationStreetAddress}
-                onChange={(e) => setDestinationStreetAddress(e.target.value)}
-                placeholder="123 Main Street"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="destination_address_line_2"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Address Line 2 (Optional)
-              </label>
-              <input
-                type="text"
-                id="destination_address_line_2"
-                value={destinationAddressLine2}
-                onChange={(e) => setDestinationAddressLine2(e.target.value)}
-                placeholder="Apartment, suite, unit, etc."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="destination_city"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  City *
-                </label>
-                <input
-                  type="text"
-                  id="destination_city"
-                  value={destinationCity}
-                  onChange={(e) => setDestinationCity(e.target.value)}
-                  placeholder="City"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="destination_state"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  State/Province *
-                </label>
-                <input
-                  type="text"
-                  id="destination_state"
-                  value={destinationState}
-                  onChange={(e) => setDestinationState(e.target.value)}
-                  placeholder="State"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="destination_postcode"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Postcode/ZIP *
-                </label>
-                <input
-                  type="text"
-                  id="destination_postcode"
-                  value={destinationPostcode}
-                  onChange={(e) => setDestinationPostcode(e.target.value)}
-                  placeholder="12345"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="destination_country"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Country *
-                </label>
-                <input
-                  type="text"
-                  id="destination_country"
-                  value={destinationCountry}
-                  onChange={(e) => setDestinationCountry(e.target.value)}
-                  placeholder="Country"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-            </div>
+            <AddressAutocomplete
+              label="Destination Address"
+              streetAddress={destinationStreetAddress}
+              addressLine2={destinationAddressLine2}
+              city={destinationCity}
+              state={destinationState}
+              postcode={destinationPostcode}
+              country={destinationCountry}
+              onAddressChange={(fields) => {
+                setDestinationStreetAddress(fields.streetAddress);
+                setDestinationAddressLine2(fields.addressLine2);
+                setDestinationCity(fields.city);
+                setDestinationState(fields.state);
+                setDestinationPostcode(fields.postcode);
+                setDestinationCountry(fields.country);
+              }}
+              required
+              placeholder="Start typing destination address..."
+            />
           </div>
 
           {/* Trip Details */}

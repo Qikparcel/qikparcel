@@ -5,3 +5,4 @@ ADD COLUMN IF NOT EXISTS estimated_value_currency TEXT CHECK (estimated_value_cu
 -- Add comment
 COMMENT ON COLUMN public.parcels.estimated_value_currency IS 'Currency code for estimated_value (USD, EUR, or GBP)';
 
+

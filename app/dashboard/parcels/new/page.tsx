@@ -6,6 +6,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/DashboardLayout'
 import { createSupabaseClient } from '@/lib/supabase/client'
+import AddressAutocomplete from '@/components/AddressAutocomplete'
 
 export default function CreateParcelPage() {
   const router = useRouter()
@@ -248,196 +249,50 @@ export default function CreateParcelPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Pickup Address</h2>
             
-            <div>
-              <label htmlFor="pickup_street_address" className="block text-sm font-medium text-gray-700 mb-2">
-                Street Address *
-              </label>
-              <input
-                type="text"
-                id="pickup_street_address"
-                value={pickupStreetAddress}
-                onChange={(e) => setPickupStreetAddress(e.target.value)}
-                placeholder="123 Main Street"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="pickup_address_line_2" className="block text-sm font-medium text-gray-700 mb-2">
-                Address Line 2 (Optional)
-              </label>
-              <input
-                type="text"
-                id="pickup_address_line_2"
-                value={pickupAddressLine2}
-                onChange={(e) => setPickupAddressLine2(e.target.value)}
-                placeholder="Apartment, suite, unit, etc."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="pickup_city" className="block text-sm font-medium text-gray-700 mb-2">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  id="pickup_city"
-                  value={pickupCity}
-                  onChange={(e) => setPickupCity(e.target.value)}
-                  placeholder="City"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="pickup_state" className="block text-sm font-medium text-gray-700 mb-2">
-                  State/Province *
-                </label>
-                <input
-                  type="text"
-                  id="pickup_state"
-                  value={pickupState}
-                  onChange={(e) => setPickupState(e.target.value)}
-                  placeholder="State"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="pickup_postcode" className="block text-sm font-medium text-gray-700 mb-2">
-                  Postcode/ZIP *
-                </label>
-                <input
-                  type="text"
-                  id="pickup_postcode"
-                  value={pickupPostcode}
-                  onChange={(e) => setPickupPostcode(e.target.value)}
-                  placeholder="12345"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="pickup_country" className="block text-sm font-medium text-gray-700 mb-2">
-                  Country *
-                </label>
-                <input
-                  type="text"
-                  id="pickup_country"
-                  value={pickupCountry}
-                  onChange={(e) => setPickupCountry(e.target.value)}
-                  placeholder="Country"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-            </div>
+            <AddressAutocomplete
+              label="Pickup Address"
+              streetAddress={pickupStreetAddress}
+              addressLine2={pickupAddressLine2}
+              city={pickupCity}
+              state={pickupState}
+              postcode={pickupPostcode}
+              country={pickupCountry}
+              onAddressChange={(fields) => {
+                setPickupStreetAddress(fields.streetAddress);
+                setPickupAddressLine2(fields.addressLine2);
+                setPickupCity(fields.city);
+                setPickupState(fields.state);
+                setPickupPostcode(fields.postcode);
+                setPickupCountry(fields.country);
+              }}
+              required
+              placeholder="Start typing pickup address..."
+            />
           </div>
 
           {/* Delivery Address */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">Delivery Address</h2>
             
-            <div>
-              <label htmlFor="delivery_street_address" className="block text-sm font-medium text-gray-700 mb-2">
-                Street Address *
-              </label>
-              <input
-                type="text"
-                id="delivery_street_address"
-                value={deliveryStreetAddress}
-                onChange={(e) => setDeliveryStreetAddress(e.target.value)}
-                placeholder="123 Main Street"
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="delivery_address_line_2" className="block text-sm font-medium text-gray-700 mb-2">
-                Address Line 2 (Optional)
-              </label>
-              <input
-                type="text"
-                id="delivery_address_line_2"
-                value={deliveryAddressLine2}
-                onChange={(e) => setDeliveryAddressLine2(e.target.value)}
-                placeholder="Apartment, suite, unit, etc."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="delivery_city" className="block text-sm font-medium text-gray-700 mb-2">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  id="delivery_city"
-                  value={deliveryCity}
-                  onChange={(e) => setDeliveryCity(e.target.value)}
-                  placeholder="City"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="delivery_state" className="block text-sm font-medium text-gray-700 mb-2">
-                  State/Province *
-                </label>
-                <input
-                  type="text"
-                  id="delivery_state"
-                  value={deliveryState}
-                  onChange={(e) => setDeliveryState(e.target.value)}
-                  placeholder="State"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="delivery_postcode" className="block text-sm font-medium text-gray-700 mb-2">
-                  Postcode/ZIP *
-                </label>
-                <input
-                  type="text"
-                  id="delivery_postcode"
-                  value={deliveryPostcode}
-                  onChange={(e) => setDeliveryPostcode(e.target.value)}
-                  placeholder="12345"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="delivery_country" className="block text-sm font-medium text-gray-700 mb-2">
-                  Country *
-                </label>
-                <input
-                  type="text"
-                  id="delivery_country"
-                  value={deliveryCountry}
-                  onChange={(e) => setDeliveryCountry(e.target.value)}
-                  placeholder="Country"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                />
-              </div>
-            </div>
+            <AddressAutocomplete
+              label="Delivery Address"
+              streetAddress={deliveryStreetAddress}
+              addressLine2={deliveryAddressLine2}
+              city={deliveryCity}
+              state={deliveryState}
+              postcode={deliveryPostcode}
+              country={deliveryCountry}
+              onAddressChange={(fields) => {
+                setDeliveryStreetAddress(fields.streetAddress);
+                setDeliveryAddressLine2(fields.addressLine2);
+                setDeliveryCity(fields.city);
+                setDeliveryState(fields.state);
+                setDeliveryPostcode(fields.postcode);
+                setDeliveryCountry(fields.country);
+              }}
+              required
+              placeholder="Start typing delivery address..."
+            />
           </div>
 
           {/* Parcel Details */}
