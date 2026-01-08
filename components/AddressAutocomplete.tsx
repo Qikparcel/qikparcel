@@ -204,28 +204,34 @@ export default function AddressAutocomplete({
     }
 
     // Extract street address based on feature type
-    if (featureType === "address" && context.address) {
-      // For address features, use the address name and number
-      const addressParts = [];
-      if (context.address.address_number) {
-        addressParts.push(context.address.address_number);
-      }
-      if (context.address.name) {
-        addressParts.push(context.address.name);
-      }
-      parsedStreet = addressParts.join(" ");
-      
-      // Also check for street in context
-      if (context.street && !parsedStreet) {
+    if (featureType === "address") {
+      // For address features, properties.name already includes the full address with number
+      // (e.g., "1 Epsom Close"), so use it directly to avoid duplication
+      if (suggestion.properties.name) {
+        parsedStreet = suggestion.properties.name;
+      } else if (context.address) {
+        // Fallback: construct from context only if name is not available
+        // Check if context.address.name already includes the number
+        const addressName = context.address.name || "";
+        const addressNumber = context.address.address_number || "";
+        
+        if (addressNumber && addressName.startsWith(addressNumber.trim())) {
+          // Name already contains the number, use it as-is
+          parsedStreet = addressName;
+        } else if (addressName && addressNumber) {
+          // Name doesn't contain number, combine them
+          parsedStreet = `${addressNumber} ${addressName}`.trim();
+        } else {
+          // Use whichever is available
+          parsedStreet = addressName || addressNumber || "";
+        }
+      } else if (context.street) {
         parsedStreet = context.street.name || "";
       }
     } else if (context.street) {
       parsedStreet = context.street.name || "";
-    } else if (featureType === "address") {
-      // For address features without context, use the name
-      parsedStreet = suggestion.properties.name || "";
     } else {
-      // For place features, use the name as street (or leave empty for city-level)
+      // For place features (city, locality, etc.), leave street empty
       parsedStreet = "";
     }
 
