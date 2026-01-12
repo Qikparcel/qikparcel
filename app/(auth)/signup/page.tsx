@@ -17,7 +17,7 @@ export default function SignUpPage() {
 
   // Basic info
   const [fullName, setFullName] = useState("");
-  const [countryCode, setCountryCode] = useState("+92"); // Default to Pakistan
+  const [countryCode, setCountryCode] = useState("+372"); // Default to Pakistan
   const [phoneNumber, setPhoneNumber] = useState("");
   const [role, setRole] = useState<"sender" | "courier">("sender");
 
