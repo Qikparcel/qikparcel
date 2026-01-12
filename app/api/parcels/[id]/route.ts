@@ -4,6 +4,7 @@ import { Database } from '@/types/database'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Parcel = Database['public']['Tables']['parcels']['Row']
+type ParcelUpdate = Database['public']['Tables']['parcels']['Update']
 
 /**
  * GET /api/parcels/[id]
@@ -110,7 +111,7 @@ export async function PUT(
       .from('parcels')
       .select('sender_id, status')
       .eq('id', parcelId)
-      .single()
+      .single<Pick<Parcel, 'sender_id' | 'status'>>()
 
     if (parcelError || !existingParcel) {
       return NextResponse.json(
@@ -159,7 +160,7 @@ export async function PUT(
     }
 
     // Normalize address for comparison
-    function normalizeAddress(address: string): string {
+    const normalizeAddress = (address: string): string => {
       return address
         .toLowerCase()
         .trim()
@@ -167,7 +168,7 @@ export async function PUT(
         .replace(/[^\w\s,]/g, '')
     }
 
-    function areAddressesSame(address1: string, address2: string): boolean {
+    const areAddressesSame = (address1: string, address2: string): boolean => {
       return normalizeAddress(address1) === normalizeAddress(address2)
     }
 
@@ -180,7 +181,7 @@ export async function PUT(
     }
 
     // Prepare update data
-    const updateData: any = {
+    const updateData: ParcelUpdate & { estimated_value_currency?: string | null } = {
       pickup_address,
       pickup_latitude: pickup_latitude || null,
       pickup_longitude: pickup_longitude || null,
@@ -198,6 +199,7 @@ export async function PUT(
     // Update parcel
     const { data: updatedParcel, error: updateError } = await supabase
       .from('parcels')
+      // @ts-expect-error - Supabase update method type inference issue
       .update(updateData)
       .eq('id', parcelId)
       .select()

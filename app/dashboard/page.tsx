@@ -10,6 +10,7 @@ import { createSupabaseClient } from '@/lib/supabase/client'
 
 type Parcel = Database['public']['Tables']['parcels']['Row']
 type Trip = Database['public']['Tables']['trips']['Row']
+type Profile = Database['public']['Tables']['profiles']['Row']
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -67,7 +68,7 @@ export default function DashboardPage() {
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
-          .single()
+          .single<Profile>()
 
         if (profileData) {
           setProfile(profileData as any)

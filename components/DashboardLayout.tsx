@@ -5,6 +5,9 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { Database } from "@/types/database";
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -53,7 +56,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
-          .single();
+          .single<Profile>();
         console.log("[DashboardLayout] Profile fetch complete", {
           profile: !!profileData,
           error: profileError,

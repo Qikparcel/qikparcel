@@ -6,6 +6,9 @@
 
 import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/client'
 import { createWhatsAppClient } from '@/lib/whatsapp/client'
+import { Database } from '@/types/database'
+
+type Profile = Database['public']['Tables']['profiles']['Row']
 
 /**
  * Send OTP to phone number via WhatsApp
@@ -122,7 +125,7 @@ async function createOrUpdateProfile(userId: string, phoneNumber: string) {
       .from('profiles')
       .select('id')
       .eq('id', userId)
-      .single()
+      .single<Pick<Profile, 'id'>>()
     
     if (existingProfile) {
       // Update existing profile
