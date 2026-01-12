@@ -33,15 +33,44 @@ export default function CreateTripPage() {
   const [estimatedArrival, setEstimatedArrival] = useState("");
   const [availableCapacity, setAvailableCapacity] = useState("");
 
+  // Get minimum datetime for departure (current local time)
+  const getMinDepartureTime = (): string => {
+    const now = new Date();
+    // Format as YYYY-MM-DDTHH:mm for datetime-local input (local timezone)
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   // Get minimum datetime for estimated arrival (either departure time or now)
   const getMinArrivalTime = (): string => {
     if (departureTime) {
-      // Add 1 minute to departure time to ensure arrival is after departure
+      // Parse departure time as local time and add 1 minute
       const departureDate = new Date(departureTime);
       departureDate.setMinutes(departureDate.getMinutes() + 1);
-      return departureDate.toISOString().slice(0, 16);
+      // Format as YYYY-MM-DDTHH:mm for datetime-local input (local timezone)
+      const year = departureDate.getFullYear();
+      const month = String(departureDate.getMonth() + 1).padStart(2, '0');
+      const day = String(departureDate.getDate()).padStart(2, '0');
+      const hours = String(departureDate.getHours()).padStart(2, '0');
+      const minutes = String(departureDate.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
-    return new Date().toISOString().slice(0, 16);
+    return getMinDepartureTime();
+  };
+
+  // Convert local datetime string to UTC ISO string
+  const convertLocalToUTC = (localDateTime: string): string | null => {
+    if (!localDateTime) return null;
+    // datetime-local input gives us a string like "2024-01-15T14:30"
+    // We need to treat this as local time and convert to UTC
+    const localDate = new Date(localDateTime);
+    // Check if date is valid
+    if (isNaN(localDate.getTime())) return null;
+    return localDate.toISOString();
   };
 
   // Reset estimated arrival if it becomes invalid when departure time changes
@@ -195,12 +224,18 @@ export default function CreateTripPage() {
         return;
       }
 
-      // Validate dates are not in the past
+      // Validate dates are not in the past (using local timezone)
       const now = new Date();
       now.setSeconds(0, 0); // Reset seconds and milliseconds for comparison
 
       if (departureTime) {
+        // Parse as local time (datetime-local input is in local timezone)
         const departureDate = new Date(departureTime);
+        if (isNaN(departureDate.getTime())) {
+          toast.error("Invalid departure time");
+          setLoading(false);
+          return;
+        }
         if (departureDate < now) {
           toast.error("Departure time cannot be in the past");
           setLoading(false);
@@ -209,7 +244,13 @@ export default function CreateTripPage() {
       }
 
       if (estimatedArrival) {
+        // Parse as local time (datetime-local input is in local timezone)
         const arrivalDate = new Date(estimatedArrival);
+        if (isNaN(arrivalDate.getTime())) {
+          toast.error("Invalid estimated arrival time");
+          setLoading(false);
+          return;
+        }
         if (arrivalDate < now) {
           toast.error("Estimated arrival cannot be in the past");
           setLoading(false);
@@ -254,8 +295,9 @@ export default function CreateTripPage() {
         body: JSON.stringify({
           origin_address: originAddress,
           destination_address: destinationAddress,
-          departure_time: departureTime || null,
-          estimated_arrival: estimatedArrival || null,
+          // Convert local datetime to UTC before sending
+          departure_time: convertLocalToUTC(departureTime),
+          estimated_arrival: convertLocalToUTC(estimatedArrival),
           available_capacity: availableCapacity || null,
         }),
       });
@@ -373,7 +415,7 @@ export default function CreateTripPage() {
                   id="departure_time"
                   value={departureTime}
                   onChange={(e) => setDepartureTime(e.target.value)}
-                  min={new Date().toISOString().slice(0, 16)}
+                  min={getMinDepartureTime()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
               </div>

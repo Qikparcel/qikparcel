@@ -93,12 +93,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate dates are not in the past
+    // Dates should already be in UTC ISO strings from the client
     const now = new Date()
-    now.setSeconds(0, 0) // Reset seconds and milliseconds for comparison
+    // Reset seconds and milliseconds for comparison
+    now.setSeconds(0, 0)
 
     if (departure_time) {
       const departureDate = new Date(departure_time)
-      if (departureDate < now) {
+      if (isNaN(departureDate.getTime())) {
+        return NextResponse.json(
+          { error: 'Invalid departure time format' },
+          { status: 400 }
+        )
+      }
+      // Compare UTC timestamps
+      if (departureDate.getTime() < now.getTime()) {
         return NextResponse.json(
           { error: 'Departure time cannot be in the past' },
           { status: 400 }
@@ -108,7 +117,14 @@ export async function POST(request: NextRequest) {
 
     if (estimated_arrival) {
       const arrivalDate = new Date(estimated_arrival)
-      if (arrivalDate < now) {
+      if (isNaN(arrivalDate.getTime())) {
+        return NextResponse.json(
+          { error: 'Invalid estimated arrival time format' },
+          { status: 400 }
+        )
+      }
+      // Compare UTC timestamps
+      if (arrivalDate.getTime() < now.getTime()) {
         return NextResponse.json(
           { error: 'Estimated arrival cannot be in the past' },
           { status: 400 }
@@ -118,7 +134,7 @@ export async function POST(request: NextRequest) {
       // If both dates are provided, ensure arrival is after departure
       if (departure_time) {
         const departureDate = new Date(departure_time)
-        if (arrivalDate <= departureDate) {
+        if (arrivalDate.getTime() <= departureDate.getTime()) {
           return NextResponse.json(
             { error: 'Estimated arrival must be after departure time' },
             { status: 400 }
