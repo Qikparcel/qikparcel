@@ -116,10 +116,10 @@ export async function PUT(
       )
     }
 
-    // Don't allow editing if trip is completed
-    if (existingTrip.status === 'completed') {
+    // Only allow editing if trip is in scheduled state (initial/pending state)
+    if (existingTrip.status !== 'scheduled') {
       return NextResponse.json(
-        { error: 'Cannot edit completed trip' },
+        { error: 'Can only edit trips in scheduled state' },
         { status: 400 }
       )
     }

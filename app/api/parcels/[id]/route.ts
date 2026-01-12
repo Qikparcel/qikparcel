@@ -128,10 +128,10 @@ export async function PUT(
       )
     }
 
-    // Don't allow editing if parcel is already picked up or delivered
-    if (existingParcel.status === 'picked_up' || existingParcel.status === 'delivered' || existingParcel.status === 'in_transit') {
+    // Only allow editing if parcel is in pending state
+    if (existingParcel.status !== 'pending') {
       return NextResponse.json(
-        { error: 'Cannot edit parcel that has been picked up or is in transit' },
+        { error: 'Can only edit parcels in pending state' },
         { status: 400 }
       )
     }
