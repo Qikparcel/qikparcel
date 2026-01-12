@@ -460,7 +460,7 @@ export default function ParcelDetailPage() {
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusConfig[parcel.status].color}`}>
                 {statusConfig[parcel.status].label}
               </span>
-              {!isEditing && (parcel.status === 'pending' || parcel.status === 'matched') && (
+              {!isEditing && parcel.status === 'pending' && (
                 <button
                   onClick={handleEdit}
                   className="px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition"

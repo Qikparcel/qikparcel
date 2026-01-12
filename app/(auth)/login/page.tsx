@@ -11,7 +11,7 @@ import { normalizePhoneNumber } from "@/lib/utils/phone";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [countryCode, setCountryCode] = useState("+92"); // Default to Pakistan
+  const [countryCode, setCountryCode] = useState("+372"); // Default to Pakistan
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -45,17 +45,17 @@ export default function LoginPage() {
     try {
       // Normalize phone number - remove leading 0 if present, then combine with country code
       let normalizedPhone = phoneNumber;
-      
+
       // If phone number starts with 0 (like 03224916205), remove it
       if (normalizedPhone.startsWith("0")) {
         normalizedPhone = normalizedPhone.substring(1);
       }
-      
+
       // Combine country code with phone number
       const formatted = phoneNumber.startsWith("+")
         ? phoneNumber
         : `${countryCode}${normalizedPhone}`;
-      
+
       // Normalize the final phone number to ensure consistent format
       const finalFormatted = normalizePhoneNumber(formatted);
 
@@ -100,17 +100,17 @@ export default function LoginPage() {
     try {
       // Normalize phone number - remove leading 0 if present, then combine with country code
       let normalizedPhone = phoneNumber;
-      
+
       // If phone number starts with 0 (like 03224916205), remove it
       if (normalizedPhone.startsWith("0")) {
         normalizedPhone = normalizedPhone.substring(1);
       }
-      
+
       // Combine country code with phone number
       const formatted = phoneNumber.startsWith("+")
         ? phoneNumber
         : `${countryCode}${normalizedPhone}`;
-      
+
       // Normalize the final phone number to ensure consistent format
       const finalFormatted = normalizePhoneNumber(formatted);
 
@@ -292,11 +292,11 @@ export default function LoginPage() {
         )}
 
         <p className="mt-6 text-center text-xs text-gray-500">
-          By continuing, you agree to{' '}
+          By continuing, you agree to{" "}
           <Link
             href="/terms/general"
             className="text-primary-600 hover:text-primary-700 underline"
-            style={{ color: '#29772F' }}
+            style={{ color: "#29772F" }}
           >
             QikParcel&apos;s Terms of Service
           </Link>
