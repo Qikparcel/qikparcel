@@ -4,6 +4,7 @@ import { Database } from '@/types/database'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Trip = Database['public']['Tables']['trips']['Row']
+type TripUpdate = Database['public']['Tables']['trips']['Update']
 
 /**
  * GET /api/trips/[id]
@@ -98,7 +99,7 @@ export async function PUT(
       .from('trips')
       .select('courier_id, status')
       .eq('id', tripId)
-      .single()
+      .single<Pick<Trip, 'courier_id' | 'status'>>()
 
     if (tripError || !existingTrip) {
       return NextResponse.json(
@@ -160,7 +161,7 @@ export async function PUT(
     }
 
     // Normalize address for comparison
-    function normalizeAddress(address: string): string {
+    const normalizeAddress = (address: string): string => {
       return address
         .toLowerCase()
         .trim()
@@ -168,7 +169,7 @@ export async function PUT(
         .replace(/[^\w\s,]/g, '')
     }
 
-    function areAddressesSame(address1: string, address2: string): boolean {
+    const areAddressesSame = (address1: string, address2: string): boolean => {
       return normalizeAddress(address1) === normalizeAddress(address2)
     }
 
@@ -221,7 +222,7 @@ export async function PUT(
     }
 
     // Prepare update data
-    const updateData: any = {
+    const updateData: TripUpdate = {
       origin_address,
       origin_latitude: origin_latitude || null,
       origin_longitude: origin_longitude || null,
@@ -237,6 +238,7 @@ export async function PUT(
     // Update trip
     const { data: updatedTrip, error: updateError } = await supabase
       .from('trips')
+      // @ts-expect-error - Supabase update method type inference issue
       .update(updateData)
       .eq('id', tripId)
       .select()

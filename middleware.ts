@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { Database } from '@/types/database'
+
+type Profile = Database['public']['Tables']['profiles']['Row']
 
 export async function middleware(req: NextRequest) {
   let response = NextResponse.next({
@@ -95,7 +98,7 @@ export async function middleware(req: NextRequest) {
         .from('profiles')
         .select('role')
         .eq('id', session.user.id)
-        .single()
+        .single<Pick<Profile, 'role'>>()
 
       if (profileError || !profile) {
         console.error('[MIDDLEWARE] Error fetching profile:', profileError)

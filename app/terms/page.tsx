@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import DashboardLayout from '@/components/DashboardLayout'
 import { createSupabaseClient } from '@/lib/supabase/client'
+import { Database } from '@/types/database'
+
+type Profile = Database['public']['Tables']['profiles']['Row']
 
 export default function TermsPage() {
   const router = useRouter()
@@ -26,7 +29,7 @@ export default function TermsPage() {
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
-          .single()
+          .single<Profile>()
 
         setProfile(profileData)
       } catch (error) {
