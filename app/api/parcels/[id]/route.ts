@@ -82,4 +82,146 @@ export async function GET(
   }
 }
 
+/**
+ * PUT /api/parcels/[id]
+ * Update a parcel
+ */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = createClient()
+    
+    // Get authenticated user
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const parcelId = params.id
+
+    // Get existing parcel to verify ownership
+    const { data: existingParcel, error: parcelError } = await supabase
+      .from('parcels')
+      .select('sender_id, status')
+      .eq('id', parcelId)
+      .single()
+
+    if (parcelError || !existingParcel) {
+      return NextResponse.json(
+        { error: 'Parcel not found' },
+        { status: 404 }
+      )
+    }
+
+    // Only sender can update their own parcel
+    if (existingParcel.sender_id !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized to update this parcel' },
+        { status: 403 }
+      )
+    }
+
+    // Don't allow editing if parcel is already picked up or delivered
+    if (existingParcel.status === 'picked_up' || existingParcel.status === 'delivered' || existingParcel.status === 'in_transit') {
+      return NextResponse.json(
+        { error: 'Cannot edit parcel that has been picked up or is in transit' },
+        { status: 400 }
+      )
+    }
+
+    const body = await request.json()
+    const {
+      pickup_address,
+      pickup_latitude,
+      pickup_longitude,
+      delivery_address,
+      delivery_latitude,
+      delivery_longitude,
+      description,
+      weight_kg,
+      dimensions,
+      estimated_value,
+      estimated_value_currency,
+    } = body
+
+    // Validate required fields
+    if (!pickup_address || !delivery_address) {
+      return NextResponse.json(
+        { error: 'Pickup and delivery addresses are required' },
+        { status: 400 }
+      )
+    }
+
+    // Normalize address for comparison
+    function normalizeAddress(address: string): string {
+      return address
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[^\w\s,]/g, '')
+    }
+
+    function areAddressesSame(address1: string, address2: string): boolean {
+      return normalizeAddress(address1) === normalizeAddress(address2)
+    }
+
+    // Validate that pickup and delivery addresses are different
+    if (areAddressesSame(pickup_address, delivery_address)) {
+      return NextResponse.json(
+        { error: 'Pickup and delivery addresses cannot be the same' },
+        { status: 400 }
+      )
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      pickup_address,
+      pickup_latitude: pickup_latitude || null,
+      pickup_longitude: pickup_longitude || null,
+      delivery_address,
+      delivery_latitude: delivery_latitude || null,
+      delivery_longitude: delivery_longitude || null,
+      description: description || null,
+      weight_kg: weight_kg || null,
+      dimensions: dimensions || null,
+      estimated_value: estimated_value || null,
+      estimated_value_currency: estimated_value_currency || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    // Update parcel
+    const { data: updatedParcel, error: updateError } = await supabase
+      .from('parcels')
+      .update(updateData)
+      .eq('id', parcelId)
+      .select()
+      .single<Parcel>()
+
+    if (updateError) {
+      console.error('Error updating parcel:', updateError)
+      return NextResponse.json(
+        { error: 'Failed to update parcel', details: updateError.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      parcel: updatedParcel,
+    })
+  } catch (error: any) {
+    console.error('Error in PUT /api/parcels/[id]:', error)
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
 
