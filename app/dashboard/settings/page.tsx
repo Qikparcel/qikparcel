@@ -7,10 +7,13 @@ import toast from "react-hot-toast";
 import DashboardLayout from "@/components/DashboardLayout";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import { Database } from "@/types/database";
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -36,11 +39,16 @@ export default function SettingsPage() {
           return;
         }
 
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
-          .single();
+          .single<Profile>();
+
+        if (profileError) {
+          console.error("Error loading profile:", profileError);
+          throw profileError;
+        }
 
         setProfile(profileData);
 
@@ -136,9 +144,11 @@ export default function SettingsPage() {
         .from("profiles")
         .select("*")
         .eq("id", session.user.id)
-        .single();
+        .single<Profile>();
 
-      setProfile(updatedProfile);
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
       setIsEditingAddress(false);
       toast.success("Address updated successfully!");
     } catch (error: any) {
