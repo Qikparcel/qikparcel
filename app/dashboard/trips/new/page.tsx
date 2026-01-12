@@ -38,10 +38,10 @@ export default function CreateTripPage() {
     const now = new Date();
     // Format as YYYY-MM-DDTHH:mm for datetime-local input (local timezone)
     const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
@@ -53,10 +53,10 @@ export default function CreateTripPage() {
       departureDate.setMinutes(departureDate.getMinutes() + 1);
       // Format as YYYY-MM-DDTHH:mm for datetime-local input (local timezone)
       const year = departureDate.getFullYear();
-      const month = String(departureDate.getMonth() + 1).padStart(2, '0');
-      const day = String(departureDate.getDate()).padStart(2, '0');
-      const hours = String(departureDate.getHours()).padStart(2, '0');
-      const minutes = String(departureDate.getMinutes()).padStart(2, '0');
+      const month = String(departureDate.getMonth() + 1).padStart(2, "0");
+      const day = String(departureDate.getDate()).padStart(2, "0");
+      const hours = String(departureDate.getHours()).padStart(2, "0");
+      const minutes = String(departureDate.getMinutes()).padStart(2, "0");
       return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
     return getMinDepartureTime();
@@ -101,7 +101,7 @@ export default function CreateTripPage() {
         .from("profiles")
         .select("role")
         .eq("id", session.user.id)
-        .single<{ role: 'sender' | 'courier' | 'admin' }>();
+        .single<{ role: "sender" | "courier" | "admin" }>();
 
       if (!profile || profile?.role !== "courier") {
         toast.error("Only couriers can create trips");
@@ -149,7 +149,7 @@ export default function CreateTripPage() {
       state.trim().toLowerCase(),
       postcode.trim().toLowerCase(),
       country.trim().toLowerCase(),
-    ].filter(part => part.length > 0);
+    ].filter((part) => part.length > 0);
     return parts.join(" ").replace(/\s+/g, " ");
   };
 
@@ -167,8 +167,22 @@ export default function CreateTripPage() {
     postcode2: string,
     country2: string
   ): boolean => {
-    const normalized1 = normalizeAddress(street1, line2_1, city1, state1, postcode1, country1);
-    const normalized2 = normalizeAddress(street2, line2_2, city2, state2, postcode2, country2);
+    const normalized1 = normalizeAddress(
+      street1,
+      line2_1,
+      city1,
+      state1,
+      postcode1,
+      country1
+    );
+    const normalized2 = normalizeAddress(
+      street2,
+      line2_2,
+      city2,
+      state2,
+      postcode2,
+      country2
+    );
     return normalized1 === normalized2;
   };
 
@@ -224,48 +238,54 @@ export default function CreateTripPage() {
         return;
       }
 
+      // Validate that both dates are provided (mandatory fields)
+      if (!departureTime || !departureTime.trim()) {
+        toast.error("Departure time is required");
+        setLoading(false);
+        return;
+      }
+
+      if (!estimatedArrival || !estimatedArrival.trim()) {
+        toast.error("Estimated arrival is required");
+        setLoading(false);
+        return;
+      }
+
       // Validate dates are not in the past (using local timezone)
       const now = new Date();
       now.setSeconds(0, 0); // Reset seconds and milliseconds for comparison
 
-      if (departureTime) {
-        // Parse as local time (datetime-local input is in local timezone)
-        const departureDate = new Date(departureTime);
-        if (isNaN(departureDate.getTime())) {
-          toast.error("Invalid departure time");
-          setLoading(false);
-          return;
-        }
-        if (departureDate < now) {
-          toast.error("Departure time cannot be in the past");
-          setLoading(false);
-          return;
-        }
+      // Parse as local time (datetime-local input is in local timezone)
+      const departureDate = new Date(departureTime);
+      if (isNaN(departureDate.getTime())) {
+        toast.error("Invalid departure time");
+        setLoading(false);
+        return;
+      }
+      if (departureDate < now) {
+        toast.error("Departure time cannot be in the past");
+        setLoading(false);
+        return;
       }
 
-      if (estimatedArrival) {
-        // Parse as local time (datetime-local input is in local timezone)
-        const arrivalDate = new Date(estimatedArrival);
-        if (isNaN(arrivalDate.getTime())) {
-          toast.error("Invalid estimated arrival time");
-          setLoading(false);
-          return;
-        }
-        if (arrivalDate < now) {
-          toast.error("Estimated arrival cannot be in the past");
-          setLoading(false);
-          return;
-        }
+      // Parse as local time (datetime-local input is in local timezone)
+      const arrivalDate = new Date(estimatedArrival);
+      if (isNaN(arrivalDate.getTime())) {
+        toast.error("Invalid estimated arrival time");
+        setLoading(false);
+        return;
+      }
+      if (arrivalDate < now) {
+        toast.error("Estimated arrival cannot be in the past");
+        setLoading(false);
+        return;
+      }
 
-        // If both dates are provided, ensure arrival is after departure
-        if (departureTime) {
-          const departureDate = new Date(departureTime);
-          if (arrivalDate <= departureDate) {
-            toast.error("Estimated arrival must be after departure time");
-            setLoading(false);
-            return;
-          }
-        }
+      // Ensure arrival is after departure
+      if (arrivalDate <= departureDate) {
+        toast.error("Estimated arrival must be after departure time");
+        setLoading(false);
+        return;
       }
 
       // Build address strings
@@ -295,9 +315,9 @@ export default function CreateTripPage() {
         body: JSON.stringify({
           origin_address: originAddress,
           destination_address: destinationAddress,
-          // Convert local datetime to UTC before sending
-          departure_time: convertLocalToUTC(departureTime),
-          estimated_arrival: convertLocalToUTC(estimatedArrival),
+          // Convert local datetime to UTC before sending (both are required)
+          departure_time: convertLocalToUTC(departureTime)!,
+          estimated_arrival: convertLocalToUTC(estimatedArrival)!,
           available_capacity: availableCapacity || null,
         }),
       });
@@ -408,7 +428,7 @@ export default function CreateTripPage() {
                   htmlFor="departure_time"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Departure Time
+                  Departure Time <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="datetime-local"
@@ -416,6 +436,7 @@ export default function CreateTripPage() {
                   value={departureTime}
                   onChange={(e) => setDepartureTime(e.target.value)}
                   min={getMinDepartureTime()}
+                  required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
               </div>
@@ -425,7 +446,7 @@ export default function CreateTripPage() {
                   htmlFor="estimated_arrival"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Estimated Arrival
+                  Estimated Arrival <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="datetime-local"
@@ -433,6 +454,7 @@ export default function CreateTripPage() {
                   value={estimatedArrival}
                   onChange={(e) => setEstimatedArrival(e.target.value)}
                   min={getMinArrivalTime()}
+                  required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
               </div>

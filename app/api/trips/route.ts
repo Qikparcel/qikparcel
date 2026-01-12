@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { Database } from '@/types/database'
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { Database } from "@/types/database";
 
-type Profile = Database['public']['Tables']['profiles']['Row']
-type Trip = Database['public']['Tables']['trips']['Row']
-type TripInsert = Database['public']['Tables']['trips']['Insert']
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type Trip = Database["public"]["Tables"]["trips"]["Row"];
+type TripInsert = Database["public"]["Tables"]["trips"]["Insert"];
 
 /**
  * Normalize address string for comparison
@@ -13,15 +13,15 @@ function normalizeAddress(address: string): string {
   return address
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, ' ')
-    .replace(/[^\w\s,]/g, '') // Remove special characters except commas
+    .replace(/\s+/g, " ")
+    .replace(/[^\w\s,]/g, ""); // Remove special characters except commas
 }
 
 /**
  * Check if two addresses are the same (normalized comparison)
  */
 function areAddressesSame(address1: string, address2: string): boolean {
-  return normalizeAddress(address1) === normalizeAddress(address2)
+  return normalizeAddress(address1) === normalizeAddress(address2);
 }
 
 /**
@@ -30,40 +30,37 @@ function areAddressesSame(address1: string, address2: string): boolean {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
-    
+    const supabase = createClient();
+
     // Get authenticated user
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
     if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get user profile to verify role
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single<Pick<Profile, 'role'>>()
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single<Pick<Profile, "role">>();
 
     if (profileError || !profile) {
-      return NextResponse.json(
-        { error: 'Profile not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    if (profile.role !== 'courier') {
+    if (profile.role !== "courier") {
       return NextResponse.json(
-        { error: 'Only couriers can create trips' },
+        { error: "Only couriers can create trips" },
         { status: 403 }
-      )
+      );
     }
 
-    const body = await request.json()
+    const body = await request.json();
     const {
       origin_address,
       origin_latitude,
@@ -74,73 +71,81 @@ export async function POST(request: NextRequest) {
       departure_time,
       estimated_arrival,
       available_capacity,
-    } = body
+    } = body;
 
     // Validate required fields
     if (!origin_address || !destination_address) {
       return NextResponse.json(
-        { error: 'Origin and destination addresses are required' },
+        { error: "Origin and destination addresses are required" },
         { status: 400 }
-      )
+      );
     }
 
     // Validate that origin and destination addresses are different
     if (areAddressesSame(origin_address, destination_address)) {
       return NextResponse.json(
-        { error: 'Origin and destination addresses cannot be the same' },
+        { error: "Origin and destination addresses cannot be the same" },
         { status: 400 }
-      )
+      );
+    }
+
+    // Validate that both dates are provided (mandatory fields)
+    if (!departure_time || !departure_time.trim()) {
+      return NextResponse.json(
+        { error: "Departure time is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!estimated_arrival || !estimated_arrival.trim()) {
+      return NextResponse.json(
+        { error: "Estimated arrival is required" },
+        { status: 400 }
+      );
     }
 
     // Validate dates are not in the past
     // Dates should already be in UTC ISO strings from the client
-    const now = new Date()
+    const now = new Date();
     // Reset seconds and milliseconds for comparison
-    now.setSeconds(0, 0)
+    now.setSeconds(0, 0);
 
-    if (departure_time) {
-      const departureDate = new Date(departure_time)
-      if (isNaN(departureDate.getTime())) {
-        return NextResponse.json(
-          { error: 'Invalid departure time format' },
-          { status: 400 }
-        )
-      }
-      // Compare UTC timestamps
-      if (departureDate.getTime() < now.getTime()) {
-        return NextResponse.json(
-          { error: 'Departure time cannot be in the past' },
-          { status: 400 }
-        )
-      }
+    const departureDate = new Date(departure_time);
+    if (isNaN(departureDate.getTime())) {
+      return NextResponse.json(
+        { error: "Invalid departure time format" },
+        { status: 400 }
+      );
+    }
+    // Compare UTC timestamps
+    if (departureDate.getTime() < now.getTime()) {
+      return NextResponse.json(
+        { error: "Departure time cannot be in the past" },
+        { status: 400 }
+      );
     }
 
-    if (estimated_arrival) {
-      const arrivalDate = new Date(estimated_arrival)
-      if (isNaN(arrivalDate.getTime())) {
-        return NextResponse.json(
-          { error: 'Invalid estimated arrival time format' },
-          { status: 400 }
-        )
-      }
-      // Compare UTC timestamps
-      if (arrivalDate.getTime() < now.getTime()) {
-        return NextResponse.json(
-          { error: 'Estimated arrival cannot be in the past' },
-          { status: 400 }
-        )
-      }
+    const arrivalDate = new Date(estimated_arrival);
+    if (isNaN(arrivalDate.getTime())) {
+      return NextResponse.json(
+        { error: "Invalid estimated arrival time format" },
+        { status: 400 }
+      );
+    }
+    // Compare UTC timestamps
+    if (arrivalDate.getTime() < now.getTime()) {
+      return NextResponse.json(
+        { error: "Estimated arrival cannot be in the past" },
+        { status: 400 }
+      );
+    }
 
-      // If both dates are provided, ensure arrival is after departure
-      if (departure_time) {
-        const departureDate = new Date(departure_time)
-        if (arrivalDate.getTime() <= departureDate.getTime()) {
-          return NextResponse.json(
-            { error: 'Estimated arrival must be after departure time' },
-            { status: 400 }
-          )
-        }
-      }
+    // Ensure arrival is after departure
+    if (arrivalDate.getTime() <= departureDate.getTime()) {
+      return NextResponse.json(
+        { error: "Estimated arrival must be after departure time" },
+        { status: 400 }
+      );
     }
 
     // Create trip
@@ -152,36 +157,39 @@ export async function POST(request: NextRequest) {
       destination_address,
       destination_latitude: destination_latitude || null,
       destination_longitude: destination_longitude || null,
-      departure_time: departure_time || null,
-      estimated_arrival: estimated_arrival || null,
+      departure_time: departure_time, // Required field
+      estimated_arrival: estimated_arrival, // Required field
       available_capacity: available_capacity || null,
-      status: 'scheduled',
-    }
+      status: "scheduled",
+    };
 
     const { data: trip, error: insertError } = await supabase
-      .from('trips')
+      .from("trips")
       .insert(tripData as any)
       .select()
-      .single<Trip>()
+      .single<Trip>();
 
     if (insertError) {
-      console.error('Error creating trip:', insertError)
+      console.error("Error creating trip:", insertError);
       return NextResponse.json(
-        { error: 'Failed to create trip', details: insertError.message },
+        { error: "Failed to create trip", details: insertError.message },
         { status: 500 }
-      )
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      trip,
-    }, { status: 201 })
-  } catch (error: any) {
-    console.error('Error in POST /api/trips:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      {
+        success: true,
+        trip,
+      },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    console.error("Error in POST /api/trips:", error);
+    return NextResponse.json(
+      { error: "Internal server error", details: error.message },
       { status: 500 }
-    )
+    );
   }
 }
 
@@ -191,65 +199,60 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
-    
+    const supabase = createClient();
+
     // Get authenticated user
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
     if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Get user profile to verify role
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single<Pick<Profile, 'role'>>()
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single<Pick<Profile, "role">>();
 
     if (profileError || !profile) {
-      return NextResponse.json(
-        { error: 'Profile not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    if (profile.role !== 'courier') {
+    if (profile.role !== "courier") {
       return NextResponse.json(
-        { error: 'Only couriers can view their trips' },
+        { error: "Only couriers can view their trips" },
         { status: 403 }
-      )
+      );
     }
 
     // Get trips for this courier
     const { data: trips, error: tripsError } = await supabase
-      .from('trips')
-      .select('*')
-      .eq('courier_id', session.user.id)
-      .order('created_at', { ascending: false })
+      .from("trips")
+      .select("*")
+      .eq("courier_id", session.user.id)
+      .order("created_at", { ascending: false });
 
     if (tripsError) {
-      console.error('Error fetching trips:', tripsError)
+      console.error("Error fetching trips:", tripsError);
       return NextResponse.json(
-        { error: 'Failed to fetch trips', details: tripsError.message },
+        { error: "Failed to fetch trips", details: tripsError.message },
         { status: 500 }
-      )
+      );
     }
 
     return NextResponse.json({
       success: true,
       trips: trips || [],
-    })
+    });
   } catch (error: any) {
-    console.error('Error in GET /api/trips:', error)
+    console.error("Error in GET /api/trips:", error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: "Internal server error", details: error.message },
       { status: 500 }
-    )
+    );
   }
 }
-
-
