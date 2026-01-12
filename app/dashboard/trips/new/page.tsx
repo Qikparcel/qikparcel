@@ -33,6 +33,28 @@ export default function CreateTripPage() {
   const [estimatedArrival, setEstimatedArrival] = useState("");
   const [availableCapacity, setAvailableCapacity] = useState("");
 
+  // Get minimum datetime for estimated arrival (either departure time or now)
+  const getMinArrivalTime = (): string => {
+    if (departureTime) {
+      // Add 1 minute to departure time to ensure arrival is after departure
+      const departureDate = new Date(departureTime);
+      departureDate.setMinutes(departureDate.getMinutes() + 1);
+      return departureDate.toISOString().slice(0, 16);
+    }
+    return new Date().toISOString().slice(0, 16);
+  };
+
+  // Reset estimated arrival if it becomes invalid when departure time changes
+  useEffect(() => {
+    if (departureTime && estimatedArrival) {
+      const departureDate = new Date(departureTime);
+      const arrivalDate = new Date(estimatedArrival);
+      if (arrivalDate <= departureDate) {
+        setEstimatedArrival("");
+      }
+    }
+  }, [departureTime]);
+
   // Verify user role on mount
   useEffect(() => {
     async function checkRole() {
@@ -171,6 +193,38 @@ export default function CreateTripPage() {
         toast.error("Origin and destination addresses cannot be the same");
         setLoading(false);
         return;
+      }
+
+      // Validate dates are not in the past
+      const now = new Date();
+      now.setSeconds(0, 0); // Reset seconds and milliseconds for comparison
+
+      if (departureTime) {
+        const departureDate = new Date(departureTime);
+        if (departureDate < now) {
+          toast.error("Departure time cannot be in the past");
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (estimatedArrival) {
+        const arrivalDate = new Date(estimatedArrival);
+        if (arrivalDate < now) {
+          toast.error("Estimated arrival cannot be in the past");
+          setLoading(false);
+          return;
+        }
+
+        // If both dates are provided, ensure arrival is after departure
+        if (departureTime) {
+          const departureDate = new Date(departureTime);
+          if (arrivalDate <= departureDate) {
+            toast.error("Estimated arrival must be after departure time");
+            setLoading(false);
+            return;
+          }
+        }
       }
 
       // Build address strings
@@ -319,6 +373,7 @@ export default function CreateTripPage() {
                   id="departure_time"
                   value={departureTime}
                   onChange={(e) => setDepartureTime(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
               </div>
@@ -335,6 +390,7 @@ export default function CreateTripPage() {
                   id="estimated_arrival"
                   value={estimatedArrival}
                   onChange={(e) => setEstimatedArrival(e.target.value)}
+                  min={getMinArrivalTime()}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
               </div>

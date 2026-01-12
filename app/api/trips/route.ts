@@ -92,6 +92,41 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate dates are not in the past
+    const now = new Date()
+    now.setSeconds(0, 0) // Reset seconds and milliseconds for comparison
+
+    if (departure_time) {
+      const departureDate = new Date(departure_time)
+      if (departureDate < now) {
+        return NextResponse.json(
+          { error: 'Departure time cannot be in the past' },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (estimated_arrival) {
+      const arrivalDate = new Date(estimated_arrival)
+      if (arrivalDate < now) {
+        return NextResponse.json(
+          { error: 'Estimated arrival cannot be in the past' },
+          { status: 400 }
+        )
+      }
+
+      // If both dates are provided, ensure arrival is after departure
+      if (departure_time) {
+        const departureDate = new Date(departure_time)
+        if (arrivalDate <= departureDate) {
+          return NextResponse.json(
+            { error: 'Estimated arrival must be after departure time' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     // Create trip
     const tripData: TripInsert = {
       courier_id: session.user.id,
