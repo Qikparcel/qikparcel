@@ -6,6 +6,7 @@
 import { createWhatsAppClient } from '@/lib/whatsapp/client'
 import { Database } from '@/types/database'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { createSupabaseAdminClient } from '@/lib/supabase/client'
 
 type Match = Database['public']['Tables']['parcel_trip_matches']['Row']
 type Parcel = Database['public']['Tables']['parcels']['Row']
@@ -27,8 +28,11 @@ export async function notifyCourierOfMatch(
   supabase: SupabaseClient<Database>,
   matchId: string
 ): Promise<void> {
+  console.log(`[NOTIFICATIONS] Starting notification for match ${matchId}`)
+  
   try {
     // Get match with all details
+    console.log(`[NOTIFICATIONS] Fetching match data for ${matchId}`)
     const { data: matchData, error: matchError } = await supabase
       .from('parcel_trip_matches')
       .select(
@@ -48,10 +52,18 @@ export async function notifyCourierOfMatch(
       .eq('id', matchId)
       .single()
 
-    if (matchError || !matchData) {
+    if (matchError) {
       console.error(`[NOTIFICATIONS] Error fetching match ${matchId}:`, matchError)
+      console.error(`[NOTIFICATIONS] Match error details:`, JSON.stringify(matchError, null, 2))
       return
     }
+
+    if (!matchData) {
+      console.error(`[NOTIFICATIONS] No match data found for ${matchId}`)
+      return
+    }
+
+    console.log(`[NOTIFICATIONS] Match data fetched successfully`)
 
     // Supabase returns the structure differently with joins
     const match = matchData as any
@@ -60,12 +72,65 @@ export async function notifyCourierOfMatch(
       courier: Pick<Profile, 'whatsapp_number' | 'full_name' | 'phone_number'>
     }
 
-    const courierWhatsApp = trip.courier?.whatsapp_number || trip.courier?.phone_number
+    console.log(`[NOTIFICATIONS] Match details:`, {
+      matchId,
+      parcelId: parcel?.id,
+      tripId: trip?.id,
+      courierId: trip?.courier_id,
+      courierData: trip?.courier
+    })
+
+    if (!parcel) {
+      console.error(`[NOTIFICATIONS] Parcel not found in match data`)
+      return
+    }
+
+    if (!trip) {
+      console.error(`[NOTIFICATIONS] Trip not found in match data`)
+      return
+    }
+
+    // Fetch courier profile separately using admin client to bypass RLS
+    let courierWhatsApp = trip.courier?.whatsapp_number || trip.courier?.phone_number
+    
+    if (!courierWhatsApp && trip.courier_id) {
+      console.log(`[NOTIFICATIONS] Courier profile not in join, fetching separately...`)
+      try {
+        const adminClient = createSupabaseAdminClient()
+        const { data: courierProfile, error: profileError } = await adminClient
+          .from('profiles')
+          .select('whatsapp_number, phone_number, full_name')
+          .eq('id', trip.courier_id)
+          .single()
+
+        if (profileError) {
+          console.error(`[NOTIFICATIONS] Error fetching courier profile:`, profileError)
+        } else if (courierProfile) {
+          const profile = courierProfile as Pick<Profile, 'whatsapp_number' | 'phone_number' | 'full_name'>
+          courierWhatsApp = profile.whatsapp_number || profile.phone_number
+          console.log(`[NOTIFICATIONS] Fetched courier profile separately:`, {
+            whatsappNumber: profile.whatsapp_number,
+            phoneNumber: profile.phone_number,
+            resolvedWhatsApp: courierWhatsApp
+          })
+        }
+      } catch (error) {
+        console.error(`[NOTIFICATIONS] Exception fetching courier profile:`, error)
+      }
+    }
+
+    console.log(`[NOTIFICATIONS] Courier contact info:`, {
+      courierId: trip.courier_id,
+      whatsappNumber: trip.courier?.whatsapp_number,
+      phoneNumber: trip.courier?.phone_number,
+      resolvedWhatsApp: courierWhatsApp
+    })
 
     if (!courierWhatsApp) {
-      console.log(
-        `[NOTIFICATIONS] Courier ${trip.courier_id} has no WhatsApp number, skipping notification`
+      console.warn(
+        `[NOTIFICATIONS] Courier ${trip.courier_id} has no WhatsApp number or phone number, skipping notification`
       )
+      console.warn(`[NOTIFICATIONS] Courier profile data from join:`, trip.courier)
       return
     }
 
@@ -119,6 +184,7 @@ View and accept this match in your dashboard to get started!`
     //   await whatsappClient.sendTextMessage(courierWhatsApp, message)
     // }
     
+    console.log(`[NOTIFICATIONS] Creating WhatsApp client...`)
     const whatsappClient = createWhatsAppClient()
     
     // Use the pre-created template content ID
@@ -126,18 +192,43 @@ View and accept this match in your dashboard to get started!`
     // Message: "New Parcel Match\nA parcel has been matched to your trip and is awaiting your acceptance.\nPlease review the details and accept or decline them in the app."
     const templateContentId = process.env.TWILIO_PARCEL_MATCH_TEMPLATE_SID || 'HX3479df42d9ecc2f9bc0b94e2a8514391'
     
+    console.log(`[NOTIFICATIONS] Attempting to send WhatsApp message:`, {
+      to: courierWhatsApp,
+      templateId: templateContentId,
+      hasEnvVar: !!process.env.TWILIO_PARCEL_MATCH_TEMPLATE_SID
+    })
+    
     try {
       // Send using the template (no variables needed based on the template content)
-      await whatsappClient.sendContentTemplate(courierWhatsApp, templateContentId)
-      console.log(`[NOTIFICATIONS] Sent match notification to courier ${courierWhatsApp} using template ${templateContentId}`)
+      console.log(`[NOTIFICATIONS] Sending template message to ${courierWhatsApp}...`)
+      const result = await whatsappClient.sendContentTemplate(courierWhatsApp, templateContentId)
+      console.log(`[NOTIFICATIONS] ✅ Successfully sent match notification to courier ${courierWhatsApp} using template ${templateContentId}`)
+      console.log(`[NOTIFICATIONS] Twilio response:`, {
+        messageSid: result.sid,
+        status: result.status
+      })
     } catch (error: any) {
-      console.error(`[NOTIFICATIONS] Error sending template message, falling back to text message:`, error)
+      console.error(`[NOTIFICATIONS] ❌ Error sending template message:`, error)
+      console.error(`[NOTIFICATIONS] Error details:`, {
+        message: error.message,
+        code: error.code,
+        userMessage: error.userMessage,
+        stack: error.stack
+      })
+      
       // Fallback to text message if template fails
+      console.log(`[NOTIFICATIONS] Attempting fallback text message...`)
       try {
         await whatsappClient.sendTextMessage(courierWhatsApp, message)
-        console.log(`[NOTIFICATIONS] Sent fallback text message to courier ${courierWhatsApp}`)
-      } catch (fallbackError) {
-        console.error(`[NOTIFICATIONS] Failed to send both template and text message:`, fallbackError)
+        console.log(`[NOTIFICATIONS] ✅ Sent fallback text message to courier ${courierWhatsApp}`)
+      } catch (fallbackError: any) {
+        console.error(`[NOTIFICATIONS] ❌ Failed to send both template and text message:`, fallbackError)
+        console.error(`[NOTIFICATIONS] Fallback error details:`, {
+          message: fallbackError.message,
+          code: fallbackError.code,
+          userMessage: fallbackError.userMessage,
+          stack: fallbackError.stack
+        })
         throw fallbackError
       }
     }

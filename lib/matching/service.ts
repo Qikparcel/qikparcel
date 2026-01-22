@@ -91,12 +91,18 @@ export async function findAndCreateMatchesForParcel(
         createdMatches.push(createdMatch as Match)
 
         // Notify courier of the new match (async, don't block)
-        notifyCourierOfMatch(supabase, createdMatch.id).catch((error) => {
-          console.error(
-            `[MATCHING] Error notifying courier of match ${createdMatch.id}:`,
-            error
-          )
-        })
+        console.log(`[MATCHING] Triggering notification for match ${createdMatch.id}`)
+        notifyCourierOfMatch(supabase, createdMatch.id)
+          .then(() => {
+            console.log(`[MATCHING] ✅ Notification completed for match ${createdMatch.id}`)
+          })
+          .catch((error) => {
+            console.error(
+              `[MATCHING] ❌ Error notifying courier of match ${createdMatch.id}:`,
+              error
+            )
+            console.error(`[MATCHING] Notification error stack:`, error.stack)
+          })
       }
     }
   }
@@ -181,12 +187,18 @@ export async function findAndCreateMatchesForTrip(
         createdMatches.push(createdMatch as Match)
 
         // Notify courier of the new match (async, don't block)
-        notifyCourierOfMatch(supabase, createdMatch.id).catch((error) => {
-          console.error(
-            `[MATCHING] Error notifying courier of match ${createdMatch.id}:`,
-            error
-          )
-        })
+        console.log(`[MATCHING] Triggering notification for match ${createdMatch.id}`)
+        notifyCourierOfMatch(supabase, createdMatch.id)
+          .then(() => {
+            console.log(`[MATCHING] ✅ Notification completed for match ${createdMatch.id}`)
+          })
+          .catch((error) => {
+            console.error(
+              `[MATCHING] ❌ Error notifying courier of match ${createdMatch.id}:`,
+              error
+            )
+            console.error(`[MATCHING] Notification error stack:`, error.stack)
+          })
       }
     }
   }
