@@ -16,7 +16,7 @@ type Trip = Database['public']['Tables']['trips']['Row']
 type Match = Database['public']['Tables']['parcel_trip_matches']['Insert']
 
 const MIN_SCORE_THRESHOLD =
-  parseInt(process.env.MATCHING_MIN_SCORE_THRESHOLD || '60', 10)
+  parseInt(process.env.MATCHING_MIN_SCORE_THRESHOLD || '50', 10) // Lowered from 60 to 50 for better matching
 
 /**
  * Find and create matches for a parcel

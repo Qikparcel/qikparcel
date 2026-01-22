@@ -190,18 +190,30 @@ View and accept this match in your dashboard to get started!`
     // Use the pre-created template content ID
     // Template Content ID: HX3479df42d9ecc2f9bc0b94e2a8514391
     // Message: "New Parcel Match\nA parcel has been matched to your trip and is awaiting your acceptance.\nPlease review the details and accept or decline them in the app."
-    const templateContentId = process.env.TWILIO_PARCEL_MATCH_TEMPLATE_SID || 'HX3479df42d9ecc2f9bc0b94e2a8514391'
+    const templateContentId = process.env.TWILIO_PARCEL_MATCH_TEMPLATE_SID
+    
+    if (!templateContentId) {
+      console.error(`[NOTIFICATIONS] TWILIO_PARCEL_MATCH_TEMPLATE_SID not configured`)
+      throw new Error('WhatsApp template not configured. Please set TWILIO_PARCEL_MATCH_TEMPLATE_SID environment variable.')
+    }
     
     console.log(`[NOTIFICATIONS] Attempting to send WhatsApp message:`, {
       to: courierWhatsApp,
       templateId: templateContentId,
-      hasEnvVar: !!process.env.TWILIO_PARCEL_MATCH_TEMPLATE_SID
     })
     
     try {
-      // Send using the template (no variables needed based on the template content)
+      // Send using the template - NO VARIABLES NEEDED
+      // These templates are static messages with no placeholders
+      // Do NOT pass a third parameter (contentVariables) - it will cause errors
       console.log(`[NOTIFICATIONS] Sending template message to ${courierWhatsApp}...`)
-      const result = await whatsappClient.sendContentTemplate(courierWhatsApp, templateContentId)
+      console.log(`[NOTIFICATIONS] Using template Content SID: ${templateContentId}`)
+      console.log(`[NOTIFICATIONS] NOT sending any template variables (template is static)`)
+      const result = await whatsappClient.sendContentTemplate(
+        courierWhatsApp,
+        templateContentId
+        // Intentionally NOT passing third parameter - no variables needed
+      )
       console.log(`[NOTIFICATIONS] ✅ Successfully sent match notification to courier ${courierWhatsApp} using template ${templateContentId}`)
       console.log(`[NOTIFICATIONS] Twilio response:`, {
         messageSid: result.sid,
@@ -213,24 +225,19 @@ View and accept this match in your dashboard to get started!`
         message: error.message,
         code: error.code,
         userMessage: error.userMessage,
+        templateContentId,
         stack: error.stack
       })
       
-      // Fallback to text message if template fails
-      console.log(`[NOTIFICATIONS] Attempting fallback text message...`)
-      try {
-        await whatsappClient.sendTextMessage(courierWhatsApp, message)
-        console.log(`[NOTIFICATIONS] ✅ Sent fallback text message to courier ${courierWhatsApp}`)
-      } catch (fallbackError: any) {
-        console.error(`[NOTIFICATIONS] ❌ Failed to send both template and text message:`, fallbackError)
-        console.error(`[NOTIFICATIONS] Fallback error details:`, {
-          message: fallbackError.message,
-          code: fallbackError.code,
-          userMessage: fallbackError.userMessage,
-          stack: fallbackError.stack
-        })
-        throw fallbackError
-      }
+      // DO NOT fallback to free-form text - Twilio blocks it in production
+      // Template must be approved and configured correctly
+      console.error(`[NOTIFICATIONS] ⚠️ Template send failed. Cannot use free-form messages. Please ensure:`)
+      console.error(`[NOTIFICATIONS] 1. Template Content SID ${templateContentId} is correct and approved in Twilio`)
+      console.error(`[NOTIFICATIONS] 2. TWILIO_PARCEL_MATCH_TEMPLATE_SID is set in environment variables`)
+      console.error(`[NOTIFICATIONS] 3. Template is approved and active in Twilio Console`)
+      
+      // Re-throw so caller knows notification failed
+      throw error
     }
   } catch (error) {
     console.error(`[NOTIFICATIONS] Error notifying courier of match ${matchId}:`, error)
@@ -324,24 +331,47 @@ You can track your parcel status in your dashboard. Thank you for using QikParce
     const whatsappClient = createWhatsAppClient()
     
     // Use the pre-created template content ID
-    // Template Content ID: HX6092c1e14a50ab625e62df98279493
+    // Template Content ID: HX6092c1e14a50ab625e62df982bd79493
     // Message: "Parcel Update\nGood news! Your parcel has been successfully matched with a courier for the trip, and the courier has accepted it.\nYou can track the progress in our app."
-    const templateContentId = process.env.TWILIO_PARCEL_ACCEPTED_TEMPLATE_SID || 'HX6092c1e14a50ab625e62df98279493'
+    const templateContentId = process.env.TWILIO_PARCEL_ACCEPTED_TEMPLATE_SID
+    
+    if (!templateContentId) {
+      console.error(`[NOTIFICATIONS] TWILIO_PARCEL_ACCEPTED_TEMPLATE_SID not configured`)
+      throw new Error('WhatsApp template not configured. Please set TWILIO_PARCEL_ACCEPTED_TEMPLATE_SID environment variable.')
+    }
     
     try {
-      // Send using the template (no variables needed based on the template content)
-      await whatsappClient.sendContentTemplate(senderWhatsApp, templateContentId)
-      console.log(`[NOTIFICATIONS] Sent acceptance notification to sender ${senderWhatsApp} using template ${templateContentId}`)
+      // Send using the template - NO VARIABLES NEEDED
+      // These templates are static messages with no placeholders
+      // Do NOT pass a third parameter (contentVariables) - it will cause errors
+      console.log(`[NOTIFICATIONS] Sending template message to sender ${senderWhatsApp}...`)
+      console.log(`[NOTIFICATIONS] Using template Content SID: ${templateContentId}`)
+      console.log(`[NOTIFICATIONS] NOT sending any template variables (template is static)`)
+      await whatsappClient.sendContentTemplate(
+        senderWhatsApp,
+        templateContentId
+        // Intentionally NOT passing third parameter - no variables needed
+      )
+      console.log(`[NOTIFICATIONS] ✅ Sent acceptance notification to sender ${senderWhatsApp} using template ${templateContentId}`)
     } catch (error: any) {
-      console.error(`[NOTIFICATIONS] Error sending template message, falling back to text message:`, error)
-      // Fallback to text message if template fails
-      try {
-        await whatsappClient.sendTextMessage(senderWhatsApp, message)
-        console.log(`[NOTIFICATIONS] Sent fallback text message to sender ${senderWhatsApp}`)
-      } catch (fallbackError) {
-        console.error(`[NOTIFICATIONS] Failed to send both template and text message:`, fallbackError)
-        throw fallbackError
-      }
+      console.error(`[NOTIFICATIONS] ❌ Error sending template message:`, error)
+      console.error(`[NOTIFICATIONS] Error details:`, {
+        message: error.message,
+        code: error.code,
+        userMessage: error.userMessage,
+        templateContentId,
+        stack: error.stack
+      })
+      
+      // DO NOT fallback to free-form text - Twilio blocks it in production
+      // Template must be approved and configured correctly
+      console.error(`[NOTIFICATIONS] ⚠️ Template send failed. Cannot use free-form messages. Please ensure:`)
+      console.error(`[NOTIFICATIONS] 1. Template Content SID ${templateContentId} is correct and approved in Twilio`)
+      console.error(`[NOTIFICATIONS] 2. TWILIO_PARCEL_ACCEPTED_TEMPLATE_SID is set in environment variables`)
+      console.error(`[NOTIFICATIONS] 3. Template is approved and active in Twilio Console`)
+      
+      // Re-throw so caller knows notification failed
+      throw error
     }
   } catch (error) {
     console.error(

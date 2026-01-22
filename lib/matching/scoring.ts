@@ -28,8 +28,8 @@ const DEFAULT_CONFIG: MatchingConfig = {
   proximityWeight: 0.3,
   timeCompatibilityWeight: 0.2,
   capacityWeight: 0.1,
-  maxPickupDistanceKm: 10, // 10km from trip origin
-  maxDeliveryDistanceKm: 10, // 10km from trip destination
+  maxPickupDistanceKm: 30, // Increased: 20km from trip origin (was 10km)
+  maxDeliveryDistanceKm: 30, // Increased: 20km from trip destination (was 10km)
   maxProximityDistanceKm: 50, // 50km for general proximity scoring
 }
 
@@ -225,13 +225,13 @@ function calculateGeographicProximityScore(
     
     // If cities match, give higher score
     if (pickupCity === originCity && deliveryCity === destCity) {
-      return 60 // Good match based on city
+      return 70 // Improved: Good match based on city (was 60)
     } else if (pickupCity === originCity || deliveryCity === destCity) {
-      return 50 // Partial match
+      return 60 // Improved: Partial match (was 50)
     }
     
-    // Otherwise, give a moderate score (better than 40)
-    return 45
+    // Otherwise, give a moderate score
+    return 50 // Improved: Moderate score (was 45)
   }
 
   // Calculate distances
@@ -301,15 +301,15 @@ function calculateRouteAlignment(
     
     // Perfect route alignment: same origin and destination cities
     if (pickupCity === originCity && deliveryCity === destCity) {
-      return 70 // Good route alignment based on cities
+      return 75 // Improved: Good route alignment based on cities (was 70)
     } else if (pickupCity === originCity || deliveryCity === destCity) {
-      return 55 // Partial alignment
+      return 60 // Improved: Partial alignment (was 55)
     }
     
-    return 50 // Moderate score for address-based matching
+    return 55 // Improved: Moderate score for address-based matching (was 50)
   }
 
-  return calculateRouteAlignmentScore(
+  const score = calculateRouteAlignmentScore(
     parcel.pickup_latitude,
     parcel.pickup_longitude,
     parcel.delivery_latitude,
@@ -321,6 +321,27 @@ function calculateRouteAlignment(
     config.maxPickupDistanceKm,
     config.maxDeliveryDistanceKm
   )
+
+  // Log distances for debugging
+  const pickupDist = calculateDistance(
+    parcel.pickup_latitude!,
+    parcel.pickup_longitude!,
+    trip.origin_latitude!,
+    trip.origin_longitude!
+  )
+  const deliveryDist = calculateDistance(
+    parcel.delivery_latitude!,
+    parcel.delivery_longitude!,
+    trip.destination_latitude!,
+    trip.destination_longitude!
+  )
+  console.log(`[ROUTE ALIGNMENT] Parcel ${parcel.id} <-> Trip ${trip.id}:`, {
+    pickupDistance: `${pickupDist.toFixed(2)}km`,
+    deliveryDistance: `${deliveryDist.toFixed(2)}km`,
+    score: score.toFixed(2)
+  })
+
+  return score
 }
 
 /**
@@ -349,6 +370,16 @@ export function calculateMatchScore(
     proximity * finalConfig.proximityWeight +
     timeCompatibility * finalConfig.timeCompatibilityWeight +
     capacity * finalConfig.capacityWeight
+
+  // Log detailed score breakdown for debugging
+  console.log(`[SCORING] Score breakdown for Parcel ${parcel.id} <-> Trip ${trip.id}:`, {
+    routeAlignment: `${routeAlignment.toFixed(2)} (weight: ${finalConfig.routeAlignmentWeight})`,
+    proximity: `${proximity.toFixed(2)} (weight: ${finalConfig.proximityWeight})`,
+    timeCompatibility: `${timeCompatibility.toFixed(2)} (weight: ${finalConfig.timeCompatibilityWeight})`,
+    capacity: `${capacity.toFixed(2)} (weight: ${finalConfig.capacityWeight})`,
+    totalScore: totalScore.toFixed(2),
+    hasCoordinates: !!(parcel.pickup_latitude && parcel.pickup_longitude && trip.origin_latitude && trip.origin_longitude)
+  })
 
   // Round to 2 decimal places
   return Math.round(totalScore * 100) / 100
