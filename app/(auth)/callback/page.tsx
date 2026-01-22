@@ -280,13 +280,37 @@ export default function AuthCallbackPage() {
         setStatus('success')
         toast.success('Logged in successfully!')
 
-        // Use full page reload to ensure cookies are read by middleware
-        console.log('[CALLBACK] All checks passed, redirecting to /dashboard...')
+        // Check user role and redirect accordingly
+        console.log('[CALLBACK] Checking user role for redirect...')
         
-        // Delay redirect slightly to ensure error messages are logged
-        setTimeout(() => {
-          window.location.href = '/dashboard'
-        }, 1000)
+        // Get user profile to check role
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+          
+          const userRole = profileData?.role
+          console.log('[CALLBACK] User role:', userRole)
+          
+          // Use full page reload to ensure cookies are read by middleware
+          // All users (including admins) go to dashboard page
+          const redirectPath = '/dashboard'
+          console.log('[CALLBACK] All checks passed, redirecting to', redirectPath)
+          
+          // Delay redirect slightly to ensure error messages are logged
+          setTimeout(() => {
+            window.location.href = redirectPath
+          }, 1000)
+        } else {
+          // Fallback if user not found
+          console.log('[CALLBACK] User not found, redirecting to /dashboard...')
+          setTimeout(() => {
+            window.location.href = '/dashboard'
+          }, 1000)
+        }
       } catch (error: any) {
         const errorMsg = error.message || 'Unknown error'
         const fullError = `Authentication failed: ${errorMsg}`

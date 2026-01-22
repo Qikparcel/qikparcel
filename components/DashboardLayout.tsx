@@ -101,13 +101,37 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleLogout = async () => {
     try {
-      const supabase = createSupabaseClient();
-      await supabase.auth.signOut();
-      router.push("/login");
-      router.refresh();
+      // Call logout API route to properly clear server-side cookies
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+
+      // Also clear client-side session
+      const supabase = createSupabaseClient()
+      try {
+        await supabase.auth.signOut()
+      } catch (clientError) {
+        // Ignore client-side errors, server-side logout is more important
+        console.log('Client-side logout error (ignored):', clientError)
+      }
+
+      // Clear any local storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear()
+        sessionStorage.clear()
+      }
+
+      // Force full page reload to ensure all state is cleared
+      window.location.href = '/login'
     } catch (error) {
       console.error("Logout error:", error);
-      router.push("/login");
+      // Even on error, redirect to login and clear storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear()
+        sessionStorage.clear()
+        window.location.href = '/login'
+      }
     }
   };
 
@@ -317,7 +341,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   href="/dashboard/admin"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block py-2 px-3 rounded-lg text-sm font-medium ${
-                    isActive("/dashboard/admin")
+                    isActive("/dashboard/admin") && pathname === "/dashboard/admin"
                       ? "bg-primary-50 text-primary-600"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
@@ -334,6 +358,39 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   }`}
                 >
                   User Management
+                </Link>
+                <Link
+                  href="/dashboard/admin/parcels"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/admin/parcels")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  All Parcels
+                </Link>
+                <Link
+                  href="/dashboard/admin/trips"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/admin/trips")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  All Trips
+                </Link>
+                <Link
+                  href="/dashboard/admin/matches"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/admin/matches")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Matches Overview
                 </Link>
                 <Link
                   href="/dashboard/settings"
@@ -504,6 +561,36 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 User Management
+              </Link>
+              <Link
+                href="/dashboard/admin/parcels"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/admin/parcels")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                All Parcels
+              </Link>
+              <Link
+                href="/dashboard/admin/trips"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/admin/trips")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                All Trips
+              </Link>
+              <Link
+                href="/dashboard/admin/matches"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/admin/matches")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Matches Overview
               </Link>
               <Link
                 href="/dashboard/settings"
