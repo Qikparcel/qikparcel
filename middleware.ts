@@ -112,8 +112,23 @@ export async function middleware(req: NextRequest) {
 
       const userRole = profile.role;
 
-      // Sender-only routes
-      if (pathname.startsWith("/dashboard/parcels")) {
+      // Admin-only routes (check first to avoid conflicts with other routes)
+      if (pathname.startsWith("/dashboard/admin")) {
+        if (userRole !== "admin") {
+          console.log(
+            "[MIDDLEWARE] Blocking access to /dashboard/admin - user is not an admin",
+            { userRole }
+          );
+          const dashboardUrl = new URL("/dashboard", req.url);
+          return NextResponse.redirect(dashboardUrl);
+        }
+        // Admin has access to all admin routes, allow to proceed
+        console.log("[MIDDLEWARE] Admin access granted to", pathname);
+        return response;
+      }
+
+      // Sender-only routes (exclude admin routes)
+      if (pathname.startsWith("/dashboard/parcels") && !pathname.startsWith("/dashboard/admin")) {
         if (userRole !== "sender") {
           console.log(
             "[MIDDLEWARE] Blocking access to /dashboard/parcels - user is not a sender",
@@ -136,23 +151,11 @@ export async function middleware(req: NextRequest) {
         }
       }
 
-      // Courier-only routes
-      if (pathname.startsWith("/dashboard/trips")) {
+      // Courier-only routes (exclude admin routes)
+      if (pathname.startsWith("/dashboard/trips") && !pathname.startsWith("/dashboard/admin")) {
         if (userRole !== "courier") {
           console.log(
             "[MIDDLEWARE] Blocking access to /dashboard/trips - user is not a courier",
-            { userRole }
-          );
-          const dashboardUrl = new URL("/dashboard", req.url);
-          return NextResponse.redirect(dashboardUrl);
-        }
-      }
-
-      // Admin-only routes
-      if (pathname.startsWith("/dashboard/admin")) {
-        if (userRole !== "admin") {
-          console.log(
-            "[MIDDLEWARE] Blocking access to /dashboard/admin - user is not an admin",
             { userRole }
           );
           const dashboardUrl = new URL("/dashboard", req.url);
