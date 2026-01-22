@@ -72,7 +72,7 @@ export async function DELETE(
     // This function handles cascading deletes properly
     const { error: functionError } = await adminClient.rpc('delete_user_cascade', {
       user_id: userId,
-    })
+    } as any)
 
     if (functionError) {
       console.error('Error calling delete_user_cascade function:', functionError)

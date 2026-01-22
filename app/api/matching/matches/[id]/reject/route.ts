@@ -45,7 +45,8 @@ export async function POST(
       return NextResponse.json({ error: 'Match not found' }, { status: 404 })
     }
 
-    const trip = match.trip as Trip
+    const matchData = match as any
+    const trip = matchData.trip as Trip
 
     // Verify user is the courier of this trip
     if (trip.courier_id !== session.user.id) {
@@ -64,8 +65,8 @@ export async function POST(
     }
 
     // Update match status to rejected
-    const { error: updateError } = await supabase
-      .from('parcel_trip_matches')
+    const { error: updateError } = await (supabase
+      .from('parcel_trip_matches') as any)
       .update({
         status: 'rejected',
       })

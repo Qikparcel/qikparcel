@@ -42,8 +42,9 @@ function calculateTimeCompatibilityScore(
   trip: Trip
 ): number {
   // If parcel has preferred pickup time, use it for scoring
-  if (parcel.preferred_pickup_time) {
-    const preferredPickup = new Date(parcel.preferred_pickup_time)
+  const parcelData = parcel as Parcel & { preferred_pickup_time?: string | null }
+  if (parcelData.preferred_pickup_time) {
+    const preferredPickup = new Date(parcelData.preferred_pickup_time)
     const now = new Date()
 
     // If preferred pickup time is in the past, score is 0

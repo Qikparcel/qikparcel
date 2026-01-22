@@ -105,6 +105,7 @@ export default function AddressAutocomplete({
     } else {
       console.log("✅ Mapbox token loaded:", MAPBOX_TOKEN.substring(0, 20) + "...");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Close suggestions when clicking outside
@@ -444,6 +445,7 @@ export default function AddressAutocomplete({
     if (!selectedSuggestion && currentAddressString && !searchQuery) {
       setSearchQuery(currentAddressString);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

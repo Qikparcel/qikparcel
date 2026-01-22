@@ -58,9 +58,9 @@ export async function findCandidateTripsForParcel(
     .eq('parcel_id', parcelId)
     .in('status', ['pending', 'accepted'])
 
-  const excludedTripIds = new Set(existingMatches?.map((m) => m.trip_id) || [])
+  const excludedTripIds = new Set((existingMatches as Array<{ trip_id: string }> | null)?.map((m) => m.trip_id) || [])
 
-  const candidateTrips = (trips || []).filter((trip) => !excludedTripIds.has(trip.id))
+  const candidateTrips = ((trips || []) as Trip[]).filter((trip) => !excludedTripIds.has(trip.id))
 
   return candidateTrips
 }
@@ -88,7 +88,8 @@ export async function findCandidateParcelsForTrip(
   }
 
   // Only match with scheduled or in_progress trips that are not locked
-  if (!['scheduled', 'in_progress'].includes(trip.status) || trip.locked_parcel_id) {
+  const tripData = trip as Trip & { locked_parcel_id?: string | null }
+  if (!['scheduled', 'in_progress'].includes(trip.status) || tripData.locked_parcel_id) {
     return []
   }
 
@@ -112,9 +113,9 @@ export async function findCandidateParcelsForTrip(
     .eq('trip_id', tripId)
     .in('status', ['pending', 'accepted'])
 
-  const excludedParcelIds = new Set(existingMatches?.map((m) => m.parcel_id) || [])
+  const excludedParcelIds = new Set((existingMatches as Array<{ parcel_id: string }> | null)?.map((m) => m.parcel_id) || [])
 
-  const candidateParcels = (parcels || []).filter(
+  const candidateParcels = ((parcels || []) as Parcel[]).filter(
     (parcel) => !excludedParcelIds.has(parcel.id)
   )
 

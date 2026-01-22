@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -67,6 +67,34 @@ export default function TripDetailPage() {
   const [estimatedArrival, setEstimatedArrival] = useState("")
   const [availableCapacity, setAvailableCapacity] = useState("")
 
+  const loadMatches = useCallback(async () => {
+    if (!tripId) return
+    
+    setLoadingMatches(true)
+    try {
+      const response = await fetch(`/api/matching/trips/${tripId}/matches`)
+      const data = await response.json()
+      if (response.ok && data.success) {
+        // Filter out matches with null parcels and handle array responses
+        const validMatches = (data.matches || []).map((match: any) => {
+          // Handle case where parcel might be an array (Supabase foreign key quirk)
+          if (Array.isArray(match.parcel)) {
+            match.parcel = match.parcel[0] || null
+          }
+          return match
+        }).filter((match: MatchWithParcel) => match.parcel !== null)
+        console.log(`[TRIP DETAIL] Loaded ${validMatches.length} matches for trip ${tripId}`)
+        setMatches(validMatches)
+      } else {
+        console.error('[TRIP DETAIL] Failed to load matches:', data.error || 'Unknown error')
+      }
+    } catch (error) {
+      console.error('[TRIP DETAIL] Error loading matches:', error)
+    } finally {
+      setLoadingMatches(false)
+    }
+  }, [tripId])
+
   useEffect(() => {
     async function loadTrip() {
       try {
@@ -118,33 +146,7 @@ export default function TripDetailPage() {
     if (tripId) {
       loadTrip()
     }
-  }, [tripId, router])
-
-  async function loadMatches() {
-    setLoadingMatches(true)
-    try {
-      const response = await fetch(`/api/matching/trips/${tripId}/matches`)
-      const data = await response.json()
-      if (response.ok && data.success) {
-        // Filter out matches with null parcels and handle array responses
-        const validMatches = (data.matches || []).map((match: any) => {
-          // Handle case where parcel might be an array (Supabase foreign key quirk)
-          if (Array.isArray(match.parcel)) {
-            match.parcel = match.parcel[0] || null
-          }
-          return match
-        }).filter((match: MatchWithParcel) => match.parcel !== null)
-        console.log(`[TRIP DETAIL] Loaded ${validMatches.length} matches for trip ${tripId}`)
-        setMatches(validMatches)
-      } else {
-        console.error('[TRIP DETAIL] Failed to load matches:', data.error || 'Unknown error')
-      }
-    } catch (error) {
-      console.error('[TRIP DETAIL] Error loading matches:', error)
-    } finally {
-      setLoadingMatches(false)
-    }
-  }
+  }, [tripId, router, loadMatches])
 
   async function handleAcceptMatch(matchId: string) {
     setProcessingMatch(matchId)
@@ -259,7 +261,7 @@ export default function TripDetailPage() {
         setEstimatedArrival("")
       }
     }
-  }, [departureTime])
+  }, [departureTime, estimatedArrival])
 
   // Helper function to parse address string into components
   const parseAddressString = (addressString: string) => {

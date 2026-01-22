@@ -66,8 +66,8 @@ export async function findAndCreateMatchesForParcel(
       }
 
       // Try to create match record (handle unique constraint if exists)
-      const { data: createdMatch, error: matchError } = await supabase
-        .from('parcel_trip_matches')
+      const { data: createdMatch, error: matchError } = await (supabase
+        .from('parcel_trip_matches') as any)
         .insert(match)
         .select()
         .single()
@@ -156,8 +156,8 @@ export async function findAndCreateMatchesForTrip(
       }
 
       // Try to create match record (handle unique constraint if exists)
-      const { data: createdMatch, error: matchError } = await supabase
-        .from('parcel_trip_matches')
+      const { data: createdMatch, error: matchError } = await (supabase
+        .from('parcel_trip_matches') as any)
         .insert(match)
         .select()
         .single()

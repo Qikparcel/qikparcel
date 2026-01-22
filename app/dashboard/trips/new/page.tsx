@@ -86,7 +86,7 @@ export default function CreateTripPage() {
         setEstimatedArrival("");
       }
     }
-  }, [departureTime]);
+  }, [departureTime, estimatedArrival]);
 
   // Verify user role on mount
   useEffect(() => {

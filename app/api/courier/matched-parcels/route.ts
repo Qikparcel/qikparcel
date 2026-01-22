@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const tripIds = trips.map((t) => t.id)
+    const tripIds = (trips as Array<{ id: string }>).map((t) => t.id)
 
     // Get all parcels matched to these trips
     // Fetch parcels first, then fetch related data separately to avoid foreign key issues
@@ -109,8 +109,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch trip and sender data separately
-    const tripIdsForParcels = [...new Set(parcels.map((p: Parcel) => p.matched_trip_id).filter(Boolean))]
-    const senderIds = [...new Set(parcels.map((p: Parcel) => p.sender_id))]
+    const tripIdsForParcels = Array.from(new Set(parcels.map((p: Parcel) => p.matched_trip_id).filter(Boolean) as string[]))
+    const senderIds = Array.from(new Set(parcels.map((p: Parcel) => p.sender_id)))
 
     // Fetch trips
     const { data: tripsData, error: tripsDataError } = await adminClient

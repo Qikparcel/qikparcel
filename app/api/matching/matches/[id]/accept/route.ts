@@ -43,7 +43,8 @@ export async function POST(
       return NextResponse.json({ error: 'Match not found' }, { status: 404 })
     }
 
-    const trip = (match as any).trip as Trip
+    const matchData = match as any
+    const trip = matchData.trip as Trip
     if (!trip) {
       return NextResponse.json({ error: 'Trip not found for this match' }, { status: 404 })
     }
@@ -119,7 +120,8 @@ export async function POST(
     }
 
     // If trip is already locked to a different parcel, reject
-    if (tripCheck.locked_parcel_id && tripCheck.locked_parcel_id !== parcel.id) {
+    const tripCheckTyped = tripCheck as { id: string; locked_parcel_id: string | null }
+    if (tripCheckTyped.locked_parcel_id && tripCheckTyped.locked_parcel_id !== parcel.id) {
       return NextResponse.json(
         { error: 'This trip is already locked to another parcel' },
         { status: 400 }
@@ -127,8 +129,8 @@ export async function POST(
     }
 
     // 1. Reject all other pending matches for this parcel (first come first served)
-    const { error: rejectOtherMatchesError } = await adminClient
-      .from('parcel_trip_matches')
+    const { error: rejectOtherMatchesError } = await (adminClient
+      .from('parcel_trip_matches') as any)
       .update({
         status: 'rejected',
       })
@@ -144,8 +146,8 @@ export async function POST(
     }
 
     // 2. Reject all other pending matches for this trip (one parcel per trip)
-    const { error: rejectTripMatchesError } = await adminClient
-      .from('parcel_trip_matches')
+    const { error: rejectTripMatchesError } = await (adminClient
+      .from('parcel_trip_matches') as any)
       .update({
         status: 'rejected',
       })
@@ -161,8 +163,8 @@ export async function POST(
     }
 
     // 3. Update match status to accepted
-    const { error: updateMatchError } = await adminClient
-      .from('parcel_trip_matches')
+    const { error: updateMatchError } = await (adminClient
+      .from('parcel_trip_matches') as any)
       .update({
         status: 'accepted',
         accepted_at: new Date().toISOString(),
@@ -178,8 +180,8 @@ export async function POST(
     }
 
     // 4. Update parcel status to matched and set matched_trip_id
-    const { error: updateParcelError } = await adminClient
-      .from('parcels')
+    const { error: updateParcelError } = await (adminClient
+      .from('parcels') as any)
       .update({
         status: 'matched',
         matched_trip_id: trip.id,
@@ -196,8 +198,8 @@ export async function POST(
     }
 
     // 5. Lock the trip to this parcel (one parcel per trip)
-    const { error: lockTripError } = await adminClient
-      .from('trips')
+    const { error: lockTripError } = await (adminClient
+      .from('trips') as any)
       .update({
         locked_parcel_id: parcel.id,
         updated_at: new Date().toISOString(),

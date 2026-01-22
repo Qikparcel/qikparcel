@@ -137,8 +137,8 @@ export async function POST(
     }
 
     // Update parcel status
-    const { error: updateError } = await adminClient
-      .from('parcels')
+    const { error: updateError } = await (adminClient
+      .from('parcels') as any)
       .update({
         status,
         updated_at: new Date().toISOString(),
