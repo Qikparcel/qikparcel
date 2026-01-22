@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 
@@ -13,8 +13,15 @@ export default function AuthCallbackPage() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [profileUpdateError, setProfileUpdateError] = useState<string | null>(null)
+  const hasProcessed = useRef(false) // Prevent duplicate execution
 
   useEffect(() => {
+    // Prevent duplicate execution (React StrictMode in dev causes double mount)
+    if (hasProcessed.current) {
+      return
+    }
+    hasProcessed.current = true
+
     const handleCallback = async () => {
       if (typeof window === 'undefined') return
 

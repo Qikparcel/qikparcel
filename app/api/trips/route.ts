@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { Database } from "@/types/database";
+import { findAndCreateMatchesForTrip } from "@/lib/matching/service";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Trip = Database["public"]["Tables"]["trips"]["Row"];
@@ -176,6 +178,24 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Trigger automatic matching for this trip
+    // Use admin client to bypass RLS and see all parcels
+    // Do this asynchronously to not block the response
+    const adminClient = createSupabaseAdminClient();
+    findAndCreateMatchesForTrip(adminClient, trip.id)
+      .then((result) => {
+        console.log(
+          `[MATCHING] Automatic matching completed for trip ${trip.id}: ${result.created} matches created`
+        );
+      })
+      .catch((error) => {
+        console.error(
+          `[MATCHING] Error during automatic matching for trip ${trip.id}:`,
+          error
+        );
+        // Don't fail the request if matching fails - matching can be retried
+      });
 
     return NextResponse.json(
       {

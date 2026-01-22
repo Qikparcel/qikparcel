@@ -10,15 +10,43 @@ import { Database } from '@/types/database'
 
 type Trip = Database['public']['Tables']['trips']['Row']
 
+interface MatchWithParcel {
+  id: string
+  match_score: number | null
+  status: string
+  matched_at: string
+  parcel: {
+    id: string
+    sender_id: string
+    pickup_address: string
+    delivery_address: string
+    description: string | null
+    weight_kg: number | null
+    dimensions: string | null
+    status: string
+    sender: {
+      id: string
+      full_name: string | null
+      phone_number: string
+      whatsapp_number: string | null
+    } | null
+  } | null
+}
+
 export default function TripDetailPage() {
   const router = useRouter()
   const params = useParams()
   const tripId = params.id as string
 
   const [trip, setTrip] = useState<Trip | null>(null)
+  const [matches, setMatches] = useState<MatchWithParcel[]>([])
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [loadingMatches, setLoadingMatches] = useState(false)
+  const [processingMatch, setProcessingMatch] = useState<string | null>(null)
+  const [selectedMatch, setSelectedMatch] = useState<MatchWithParcel | null>(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
   // Edit form fields
   const [originStreetAddress, setOriginStreetAddress] = useState("")
@@ -75,6 +103,9 @@ export default function TripDetailPage() {
             const minutes = String(arrDate.getMinutes()).padStart(2, "0")
             setEstimatedArrival(`${year}-${month}-${day}T${hours}:${minutes}`)
           }
+
+          // Load matches for all trip statuses (to show accepted matches even after trip completion)
+          loadMatches()
         }
       } catch (error: any) {
         console.error('Error loading trip:', error)
@@ -88,6 +119,103 @@ export default function TripDetailPage() {
       loadTrip()
     }
   }, [tripId, router])
+
+  async function loadMatches() {
+    setLoadingMatches(true)
+    try {
+      const response = await fetch(`/api/matching/trips/${tripId}/matches`)
+      const data = await response.json()
+      if (response.ok && data.success) {
+        // Filter out matches with null parcels and handle array responses
+        const validMatches = (data.matches || []).map((match: any) => {
+          // Handle case where parcel might be an array (Supabase foreign key quirk)
+          if (Array.isArray(match.parcel)) {
+            match.parcel = match.parcel[0] || null
+          }
+          return match
+        }).filter((match: MatchWithParcel) => match.parcel !== null)
+        console.log(`[TRIP DETAIL] Loaded ${validMatches.length} matches for trip ${tripId}`)
+        setMatches(validMatches)
+      } else {
+        console.error('[TRIP DETAIL] Failed to load matches:', data.error || 'Unknown error')
+      }
+    } catch (error) {
+      console.error('[TRIP DETAIL] Error loading matches:', error)
+    } finally {
+      setLoadingMatches(false)
+    }
+  }
+
+  async function handleAcceptMatch(matchId: string) {
+    setProcessingMatch(matchId)
+    try {
+      const response = await fetch(`/api/matching/matches/${matchId}/accept`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to accept match')
+      }
+
+      toast.success('Match accepted! The sender has been notified.')
+      // Reload matches and trip
+      await loadMatches()
+      const reloadResponse = await fetch(`/api/trips/${tripId}`)
+      const reloadData = await reloadResponse.json()
+      if (reloadResponse.ok) {
+        setTrip(reloadData.trip)
+      }
+      // Close drawer if the accepted match was selected
+      if (selectedMatch?.id === matchId) {
+        setIsDrawerOpen(false)
+        setSelectedMatch(null)
+      }
+    } catch (error: any) {
+      console.error('Error accepting match:', error)
+      toast.error(error.message || 'Failed to accept match')
+    } finally {
+      setProcessingMatch(null)
+    }
+  }
+
+  async function handleRejectMatch(matchId: string) {
+    setProcessingMatch(matchId)
+    try {
+      const response = await fetch(`/api/matching/matches/${matchId}/reject`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reject match')
+      }
+
+      toast.success('Match rejected')
+      // Reload matches
+      await loadMatches()
+      // Close drawer if the rejected match was selected
+      if (selectedMatch?.id === matchId) {
+        setIsDrawerOpen(false)
+        setSelectedMatch(null)
+      }
+    } catch (error: any) {
+      console.error('Error rejecting match:', error)
+      toast.error(error.message || 'Failed to reject match')
+    } finally {
+      setProcessingMatch(null)
+    }
+  }
+
+  const handleViewMatchDetails = (match: MatchWithParcel) => {
+    setSelectedMatch(match)
+    setIsDrawerOpen(true)
+  }
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false)
+    setSelectedMatch(null)
+  }
 
   // Get minimum datetime for departure (current local time)
   const getMinDepartureTime = (): string => {
@@ -741,6 +869,127 @@ export default function TripDetailPage() {
                 </dl>
               </div>
             )}
+
+            {/* Matched Parcels - Show for all statuses (to display accepted matches) */}
+            {!isEditing && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Matched Parcels</h2>
+                {loadingMatches ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-500">Loading matches...</p>
+                  </div>
+                ) : matches.length > 0 ? (
+                  <div className="space-y-4">
+                    {matches.map((match) => (
+                      <div
+                        key={match.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition cursor-pointer"
+                        onClick={() => handleViewMatchDetails(match)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="text-sm font-medium text-gray-500">Match Score:</span>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-semibold">
+                                {match.match_score?.toFixed(1) || 'N/A'}/100
+                              </span>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                match.status === 'accepted' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : match.status === 'rejected'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {match.status}
+                              </span>
+                            </div>
+                            {match.parcel?.sender && (
+                              <p className="text-sm text-gray-600 mb-2">
+                                <span className="font-medium">Sender:</span>{' '}
+                                {match.parcel.sender.full_name || match.parcel.sender.phone_number}
+                              </p>
+                            )}
+                            {match.parcel && (
+                              <div className="text-sm text-gray-700 space-y-1 mb-3">
+                                <p className="font-medium text-gray-900">
+                                  📍 {match.parcel.pickup_address.split(',')[0]}
+                                </p>
+                                <p className="text-gray-500 text-xs">→</p>
+                                <p className="font-medium text-gray-900">
+                                  🏁 {match.parcel.delivery_address.split(',')[0]}
+                                </p>
+                                <div className="flex gap-4 mt-2 pt-2 border-t border-gray-100">
+                                  {match.parcel.weight_kg && (
+                                    <span className="text-xs text-gray-500">
+                                      ⚖️ {match.parcel.weight_kg} kg
+                                    </span>
+                                  )}
+                                  {match.parcel.dimensions && (
+                                    <span className="text-xs text-gray-500">
+                                      📦 {match.parcel.dimensions}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                              {match.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={() => handleAcceptMatch(match.id)}
+                                    disabled={processingMatch === match.id}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                                  >
+                                    {processingMatch === match.id ? 'Processing...' : 'Accept'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectMatch(match.id)}
+                                    disabled={processingMatch === match.id}
+                                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              {match.status === 'accepted' && (
+                                <Link
+                                  href={`/dashboard/matched-parcels`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+                                  style={{ backgroundColor: '#29772F' }}
+                                >
+                                  Manage Parcel
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                          <div className="ml-4">
+                            <svg
+                              className="w-5 h-5 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No matching parcels found yet. The system is actively searching for parcels that match your route.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -766,6 +1015,192 @@ export default function TripDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Side Drawer for Match Details */}
+      {isDrawerOpen && selectedMatch && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+            onClick={handleCloseDrawer}
+          />
+          
+          {/* Drawer */}
+          <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b">
+                <h2 className="text-2xl font-bold text-gray-900">Parcel Details</h2>
+                <button
+                  onClick={handleCloseDrawer}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <svg
+                    className="w-6 h-6 text-gray-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {selectedMatch.parcel ? (
+                <div className="space-y-6">
+                  {/* Match Info */}
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-600">Match Score</span>
+                      <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-sm font-semibold">
+                        {selectedMatch.match_score?.toFixed(1) || 'N/A'}/100
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-sm font-medium text-gray-600">Status:</span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        selectedMatch.status === 'accepted' 
+                          ? 'bg-green-100 text-green-800' 
+                          : selectedMatch.status === 'rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {selectedMatch.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Matched at: {new Date(selectedMatch.matched_at).toLocaleString()}
+                    </p>
+                  </div>
+
+                  {/* Sender Info */}
+                  {selectedMatch.parcel.sender && (
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Sender Information</h3>
+                      <dl className="space-y-2">
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Name</dt>
+                          <dd className="text-sm text-gray-900">
+                            {selectedMatch.parcel.sender.full_name || 'Not provided'}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Phone</dt>
+                          <dd className="text-sm text-gray-900">
+                            {selectedMatch.parcel.sender.phone_number}
+                          </dd>
+                        </div>
+                        {selectedMatch.parcel.sender.whatsapp_number && (
+                          <div>
+                            <dt className="text-sm font-medium text-gray-500">WhatsApp</dt>
+                            <dd className="text-sm text-gray-900">
+                              {selectedMatch.parcel.sender.whatsapp_number}
+                            </dd>
+                          </div>
+                        )}
+                      </dl>
+                    </div>
+                  )}
+
+                  {/* Pickup Address */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">📍</span>
+                      Pickup Address
+                    </h3>
+                    <p className="text-sm text-gray-700">{selectedMatch.parcel.pickup_address}</p>
+                  </div>
+
+                  {/* Delivery Address */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">🏁</span>
+                      Delivery Address
+                    </h3>
+                    <p className="text-sm text-gray-700">{selectedMatch.parcel.delivery_address}</p>
+                  </div>
+
+                  {/* Parcel Details */}
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Parcel Details</h3>
+                    <dl className="space-y-3">
+                      {selectedMatch.parcel.description && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Description</dt>
+                          <dd className="text-sm text-gray-900 mt-1">{selectedMatch.parcel.description}</dd>
+                        </div>
+                      )}
+                      {selectedMatch.parcel.weight_kg && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Weight</dt>
+                          <dd className="text-sm text-gray-900 mt-1">{selectedMatch.parcel.weight_kg} kg</dd>
+                        </div>
+                      )}
+                      {selectedMatch.parcel.dimensions && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">Dimensions</dt>
+                          <dd className="text-sm text-gray-900 mt-1">{selectedMatch.parcel.dimensions}</dd>
+                        </div>
+                      )}
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Status</dt>
+                        <dd className="text-sm text-gray-900 mt-1 capitalize">{selectedMatch.parcel.status}</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  {/* Actions */}
+                  {selectedMatch.status === 'pending' && (
+                    <div className="flex gap-3 pt-4 border-t">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAcceptMatch(selectedMatch.id)
+                        }}
+                        disabled={processingMatch === selectedMatch.id}
+                        className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      >
+                        {processingMatch === selectedMatch.id ? 'Processing...' : 'Accept Match'}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRejectMatch(selectedMatch.id)
+                        }}
+                        disabled={processingMatch === selectedMatch.id}
+                        className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+
+                  {selectedMatch.status === 'accepted' && (
+                    <div className="pt-4 border-t">
+                      <Link
+                        href={`/dashboard/matched-parcels`}
+                        className="block w-full px-4 py-3 bg-primary-600 text-white text-center rounded-lg hover:bg-primary-700 transition font-medium"
+                        style={{ backgroundColor: '#29772F' }}
+                      >
+                        Manage Parcel
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>Parcel details not available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </DashboardLayout>
   )
 }

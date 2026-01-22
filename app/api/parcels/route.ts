@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { Database } from "@/types/database";
+import { findAndCreateMatchesForParcel } from "@/lib/matching/service";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Parcel = Database["public"]["Tables"]["parcels"]["Row"];
@@ -75,6 +77,7 @@ export async function POST(request: NextRequest) {
       dimensions,
       estimated_value,
       estimated_value_currency,
+      preferred_pickup_time,
     } = body;
 
     // Validate required fields
@@ -107,6 +110,7 @@ export async function POST(request: NextRequest) {
       dimensions: dimensions || null,
       estimated_value: estimated_value || null,
       estimated_value_currency: estimated_value_currency || null,
+      preferred_pickup_time: preferred_pickup_time || null,
       status: "pending",
     } as any;
 
@@ -134,6 +138,24 @@ export async function POST(request: NextRequest) {
     await supabase
       .from("parcel_status_history")
       .insert(statusHistoryData as any);
+
+    // Trigger automatic matching for this parcel
+    // Use admin client to bypass RLS and see all trips
+    // Do this asynchronously to not block the response
+    const adminClient = createSupabaseAdminClient();
+    findAndCreateMatchesForParcel(adminClient, parcel.id)
+      .then((result) => {
+        console.log(
+          `[MATCHING] Automatic matching completed for parcel ${parcel.id}: ${result.created} matches created`
+        );
+      })
+      .catch((error) => {
+        console.error(
+          `[MATCHING] Error during automatic matching for parcel ${parcel.id}:`,
+          error
+        );
+        // Don't fail the request if matching fails - matching can be retried
+      });
 
     return NextResponse.json(
       {
