@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import DashboardLayout from '@/components/DashboardLayout'
@@ -40,48 +40,7 @@ export default function AdminParcelsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const supabase = createSupabaseClient()
-        const { data: { session } } = await supabase.auth.getSession()
-
-        if (!session) {
-          router.push('/login')
-          return
-        }
-
-        // Get user profile
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single<Profile>()
-
-        if (!profileData || profileData.role !== 'admin') {
-          router.push('/dashboard')
-          return
-        }
-
-        setProfile(profileData)
-        await loadParcels()
-      } catch (error) {
-        console.error('Error loading admin parcels page:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [router])
-
-  useEffect(() => {
-    if (profile) {
-      loadParcels()
-    }
-  }, [statusFilter, searchQuery, currentPage, profile])
-
-  const loadParcels = async () => {
+  const loadParcels = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -106,7 +65,47 @@ export default function AdminParcelsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, searchQuery, currentPage])
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = createSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (!session) {
+          router.push('/login')
+          return
+        }
+
+        // Get user profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single<Profile>()
+
+        if (!profileData || profileData.role !== 'admin') {
+          router.push('/dashboard')
+          return
+        }
+
+        setProfile(profileData)
+      } catch (error) {
+        console.error('Error loading admin parcels page:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [router])
+
+  useEffect(() => {
+    if (profile) {
+      loadParcels()
+    }
+  }, [profile, loadParcels])
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import DashboardLayout from '@/components/DashboardLayout'
@@ -41,48 +41,7 @@ export default function AdminTripsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const supabase = createSupabaseClient()
-        const { data: { session } } = await supabase.auth.getSession()
-
-        if (!session) {
-          router.push('/login')
-          return
-        }
-
-        // Get user profile
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single<Profile>()
-
-        if (!profileData || profileData.role !== 'admin') {
-          router.push('/dashboard')
-          return
-        }
-
-        setProfile(profileData)
-        await loadTrips()
-      } catch (error) {
-        console.error('Error loading admin trips page:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [router])
-
-  useEffect(() => {
-    if (profile) {
-      loadTrips()
-    }
-  }, [statusFilter, searchQuery, currentPage, profile])
-
-  const loadTrips = async () => {
+  const loadTrips = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -107,7 +66,47 @@ export default function AdminTripsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, searchQuery, currentPage])
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = createSupabaseClient()
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (!session) {
+          router.push('/login')
+          return
+        }
+
+        // Get user profile
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single<Profile>()
+
+        if (!profileData || profileData.role !== 'admin') {
+          router.push('/dashboard')
+          return
+        }
+
+        setProfile(profileData)
+      } catch (error) {
+        console.error('Error loading admin trips page:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [router])
+
+  useEffect(() => {
+    if (profile) {
+      loadTrips()
+    }
+  }, [profile, loadTrips])
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     scheduled: { label: 'Scheduled', color: 'bg-blue-100 text-blue-800' },
