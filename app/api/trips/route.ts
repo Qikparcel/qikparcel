@@ -75,6 +75,12 @@ export async function POST(request: NextRequest) {
       available_capacity,
     } = body;
 
+    // Log coordinates for debugging
+    console.log('[TRIP API] Received coordinates:', {
+      origin: { lat: origin_latitude, lon: origin_longitude },
+      destination: { lat: destination_latitude, lon: destination_longitude },
+    });
+
     // Validate required fields
     if (!origin_address || !destination_address) {
       return NextResponse.json(
@@ -182,18 +188,21 @@ export async function POST(request: NextRequest) {
     // Trigger automatic matching for this trip
     // Use admin client to bypass RLS and see all parcels
     // Do this asynchronously to not block the response
+    console.log(`[TRIP API] Trip created successfully: ${trip.id}, triggering matching...`)
     const adminClient = createSupabaseAdminClient();
+    console.log(`[TRIP API] Admin client created, calling findAndCreateMatchesForTrip...`)
     findAndCreateMatchesForTrip(adminClient, trip.id)
       .then((result) => {
         console.log(
-          `[MATCHING] Automatic matching completed for trip ${trip.id}: ${result.created} matches created`
+          `[TRIP API] ✅ Automatic matching completed for trip ${trip.id}: ${result.created} matches created`
         );
       })
       .catch((error) => {
         console.error(
-          `[MATCHING] Error during automatic matching for trip ${trip.id}:`,
+          `[TRIP API] ❌ Error during automatic matching for trip ${trip.id}:`,
           error
         );
+        console.error(`[TRIP API] Error stack:`, error.stack);
         // Don't fail the request if matching fails - matching can be retried
       });
 

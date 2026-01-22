@@ -80,6 +80,12 @@ export async function POST(request: NextRequest) {
       preferred_pickup_time,
     } = body;
 
+    // Log coordinates for debugging
+    console.log('[PARCEL API] Received coordinates:', {
+      pickup: { lat: pickup_latitude, lon: pickup_longitude },
+      delivery: { lat: delivery_latitude, lon: delivery_longitude },
+    });
+
     // Validate required fields
     if (!pickup_address || !delivery_address) {
       return NextResponse.json(

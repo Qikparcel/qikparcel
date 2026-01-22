@@ -126,26 +126,25 @@ export function calculateRouteAlignmentScore(
     tripDestLon
   );
 
-  // If either distance exceeds threshold, return 0
-  if (
-    pickupDistance > maxPickupDistanceKm ||
-    deliveryDistance > maxDeliveryDistanceKm
-  ) {
-    return 0;
-  }
-
   // Calculate proximity scores for pickup and delivery
+  // Use larger thresholds for scoring (2x) to give partial credit even if slightly over
   const pickupScore = calculateProximityScore(
     pickupDistance,
-    maxPickupDistanceKm
+    maxPickupDistanceKm * 2 // More lenient: 20km instead of 10km
   );
   const deliveryScore = calculateProximityScore(
     deliveryDistance,
-    maxDeliveryDistanceKm
+    maxDeliveryDistanceKm * 2 // More lenient: 20km instead of 10km
   );
 
-  // Average of pickup and delivery alignment (equal weight)
-  const alignmentScore = (pickupScore + deliveryScore) / 2;
+  // Weight delivery more heavily (60%) since destination match is more important
+  // If delivery matches perfectly, give good score even if pickup is far
+  const alignmentScore = pickupScore * 0.4 + deliveryScore * 0.6;
+
+  // If delivery is very close (within 5km), give bonus even if pickup is far
+  if (deliveryDistance <= 5 && pickupDistance <= maxPickupDistanceKm * 3) {
+    return Math.max(alignmentScore, 70); // Minimum 70 if delivery is very close
+  }
 
   return alignmentScore;
 }

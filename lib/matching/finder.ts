@@ -36,22 +36,23 @@ export async function findCandidateTripsForParcel(
   }
 
   // Find trips that are available for matching
-  // Status must be 'scheduled' or 'in_progress'
-  // AND not locked to another parcel
+  // Status: scheduled or in_progress, not locked to another parcel (migration 011)
+  console.log(`[FINDER] Searching for trips to match with parcel ${parcelId}...`)
   const { data: trips, error: tripsError } = await supabase
     .from('trips')
     .select('*')
     .in('status', ['scheduled', 'in_progress'])
-    .is('locked_parcel_id', null) // Only trips that are not locked
+    .is('locked_parcel_id', null)
     .order('created_at', { ascending: false })
 
   if (tripsError) {
-    console.error('Error fetching candidate trips:', tripsError)
+    console.error('[FINDER] Error fetching candidate trips:', tripsError)
     return []
   }
 
-  // Filter out trips that already have this parcel matched
-  // (prevent duplicates)
+  console.log(`[FINDER] Found ${trips?.length || 0} total eligible trips (scheduled/in_progress, unlocked)`)
+
+  // Filter out trips that already have this parcel matched (prevent duplicates)
   const { data: existingMatches } = await supabase
     .from('parcel_trip_matches')
     .select('trip_id')
@@ -59,9 +60,10 @@ export async function findCandidateTripsForParcel(
     .in('status', ['pending', 'accepted'])
 
   const excludedTripIds = new Set((existingMatches as Array<{ trip_id: string }> | null)?.map((m) => m.trip_id) || [])
+  console.log(`[FINDER] Excluding ${excludedTripIds.size} trips that already have matches with this parcel`)
 
   const candidateTrips = ((trips || []) as Trip[]).filter((trip) => !excludedTripIds.has(trip.id))
-
+  console.log(`[FINDER] Returning ${candidateTrips.length} candidate trips for parcel ${parcelId}`)
   return candidateTrips
 }
 
@@ -88,12 +90,17 @@ export async function findCandidateParcelsForTrip(
   }
 
   // Only match with scheduled or in_progress trips that are not locked
+  // (locked_parcel_id may not exist if migration 011 hasn't run - treat as undefined/falsy)
   const tripData = trip as Trip & { locked_parcel_id?: string | null }
-  if (!['scheduled', 'in_progress'].includes(trip.status) || tripData.locked_parcel_id) {
+  if (!['scheduled', 'in_progress'].includes(trip.status)) {
+    return []
+  }
+  if (tripData.locked_parcel_id) {
     return []
   }
 
   // Find parcels that are pending and could be matched
+  console.log(`[FINDER] Searching for pending parcels to match with trip ${tripId}...`)
   const { data: parcels, error: parcelsError } = await supabase
     .from('parcels')
     .select('*')
@@ -101,9 +108,11 @@ export async function findCandidateParcelsForTrip(
     .order('created_at', { ascending: false })
 
   if (parcelsError) {
-    console.error('Error fetching candidate parcels:', parcelsError)
+    console.error('[FINDER] Error fetching candidate parcels:', parcelsError)
     return []
   }
+
+  console.log(`[FINDER] Found ${parcels?.length || 0} total pending parcels`)
 
   // Filter out parcels that already have this trip matched
   // (prevent duplicates)
@@ -114,10 +123,12 @@ export async function findCandidateParcelsForTrip(
     .in('status', ['pending', 'accepted'])
 
   const excludedParcelIds = new Set((existingMatches as Array<{ parcel_id: string }> | null)?.map((m) => m.parcel_id) || [])
+  console.log(`[FINDER] Excluding ${excludedParcelIds.size} parcels that already have matches with this trip`)
 
   const candidateParcels = ((parcels || []) as Parcel[]).filter(
     (parcel) => !excludedParcelIds.has(parcel.id)
   )
 
+  console.log(`[FINDER] Returning ${candidateParcels.length} candidate parcels for trip ${tripId}`)
   return candidateParcels
 }
