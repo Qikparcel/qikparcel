@@ -30,6 +30,10 @@ export default function CreateParcelPage() {
   const [deliveryPostcode, setDeliveryPostcode] = useState("");
   const [deliveryCountry, setDeliveryCountry] = useState("");
 
+  // Coordinate state
+  const [pickupCoordinates, setPickupCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
+  const [deliveryCoordinates, setDeliveryCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
+
   // Other fields
   const [formData, setFormData] = useState({
     description: "",
@@ -37,6 +41,7 @@ export default function CreateParcelPage() {
     dimensions: "",
     estimated_value: "",
     estimated_value_currency: "USD",
+    preferred_pickup_time: "",
   });
 
   // Verify user role on mount
@@ -224,7 +229,11 @@ export default function CreateParcelPage() {
         },
         body: JSON.stringify({
           pickup_address: pickupAddress,
+          pickup_latitude: pickupCoordinates?.latitude || null,
+          pickup_longitude: pickupCoordinates?.longitude || null,
           delivery_address: deliveryAddress,
+          delivery_latitude: deliveryCoordinates?.latitude || null,
+          delivery_longitude: deliveryCoordinates?.longitude || null,
           description: formData.description.trim() || null,
           weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
           dimensions: formData.dimensions.trim() || null,
@@ -234,6 +243,7 @@ export default function CreateParcelPage() {
           estimated_value_currency: formData.estimated_value
             ? formData.estimated_value_currency
             : null,
+          preferred_pickup_time: formData.preferred_pickup_time || null,
         }),
       });
 
@@ -311,6 +321,12 @@ export default function CreateParcelPage() {
                 setPickupState(fields.state);
                 setPickupPostcode(fields.postcode);
                 setPickupCountry(fields.country);
+                // Capture coordinates
+                if (fields.coordinates) {
+                  setPickupCoordinates(fields.coordinates);
+                } else {
+                  setPickupCoordinates(null);
+                }
               }}
               required
               placeholder="Start typing pickup address..."
@@ -338,6 +354,12 @@ export default function CreateParcelPage() {
                 setDeliveryState(fields.state);
                 setDeliveryPostcode(fields.postcode);
                 setDeliveryCountry(fields.country);
+                // Capture coordinates
+                if (fields.coordinates) {
+                  setDeliveryCoordinates(fields.coordinates);
+                } else {
+                  setDeliveryCoordinates(null);
+                }
               }}
               required
               placeholder="Start typing delivery address..."
@@ -406,6 +428,26 @@ export default function CreateParcelPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
               </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="preferred_pickup_time"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Preferred Pickup Time (Optional)
+              </label>
+              <input
+                type="datetime-local"
+                id="preferred_pickup_time"
+                name="preferred_pickup_time"
+                value={formData.preferred_pickup_time}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                When would you like the courier to pick up your parcel?
+              </p>
             </div>
 
             <div>

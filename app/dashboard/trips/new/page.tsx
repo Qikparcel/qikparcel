@@ -28,6 +28,10 @@ export default function CreateTripPage() {
   const [destinationPostcode, setDestinationPostcode] = useState("");
   const [destinationCountry, setDestinationCountry] = useState("");
 
+  // Coordinate state
+  const [originCoordinates, setOriginCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
+  const [destinationCoordinates, setDestinationCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
+
   // Other fields
   const [departureTime, setDepartureTime] = useState("");
   const [estimatedArrival, setEstimatedArrival] = useState("");
@@ -82,7 +86,7 @@ export default function CreateTripPage() {
         setEstimatedArrival("");
       }
     }
-  }, [departureTime]);
+  }, [departureTime, estimatedArrival]);
 
   // Verify user role on mount
   useEffect(() => {
@@ -314,7 +318,11 @@ export default function CreateTripPage() {
         },
         body: JSON.stringify({
           origin_address: originAddress,
+          origin_latitude: originCoordinates?.latitude || null,
+          origin_longitude: originCoordinates?.longitude || null,
           destination_address: destinationAddress,
+          destination_latitude: destinationCoordinates?.latitude || null,
+          destination_longitude: destinationCoordinates?.longitude || null,
           // Convert local datetime to UTC before sending (both are required)
           departure_time: convertLocalToUTC(departureTime)!,
           estimated_arrival: convertLocalToUTC(estimatedArrival)!,
@@ -383,6 +391,12 @@ export default function CreateTripPage() {
                 setOriginState(fields.state);
                 setOriginPostcode(fields.postcode);
                 setOriginCountry(fields.country);
+                // Capture coordinates
+                if (fields.coordinates) {
+                  setOriginCoordinates(fields.coordinates);
+                } else {
+                  setOriginCoordinates(null);
+                }
               }}
               required
               placeholder="Start typing origin address..."
@@ -410,6 +424,12 @@ export default function CreateTripPage() {
                 setDestinationState(fields.state);
                 setDestinationPostcode(fields.postcode);
                 setDestinationCountry(fields.country);
+                // Capture coordinates
+                if (fields.coordinates) {
+                  setDestinationCoordinates(fields.coordinates);
+                } else {
+                  setDestinationCoordinates(null);
+                }
               }}
               required
               placeholder="Start typing destination address..."

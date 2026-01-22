@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+// Mark route as dynamic since it uses cookies
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/auth/get-session
  * Get current user session (for client-side use after callback)
@@ -39,6 +42,8 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+
 
 
 

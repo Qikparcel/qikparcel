@@ -69,6 +69,8 @@ export default function ParcelDetailPage() {
             estimated_value_currency: (data.parcel as any).estimated_value_currency || "USD",
           })
         }
+
+        // Matches are only shown on courier side (trip detail page), not on sender side
       } catch (error: any) {
         console.error('Error loading parcel:', error)
         router.push('/dashboard')
@@ -81,6 +83,7 @@ export default function ParcelDetailPage() {
       loadParcel()
     }
   }, [parcelId, router])
+
 
   // Helper function to parse address string into components
   const parseAddressString = (addressString: string) => {
@@ -692,6 +695,7 @@ export default function ParcelDetailPage() {
                 </dl>
               </div>
             )}
+
 
             {/* Timeline - Only show when not editing */}
             {!isEditing && <ParcelTimeline statusHistory={statusHistory} currentStatus={parcel.status} />}

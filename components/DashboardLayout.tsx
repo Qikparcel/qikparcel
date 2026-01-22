@@ -255,6 +255,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   My Trips
                 </Link>
                 <Link
+                  href="/dashboard/matched-parcels"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/matched-parcels")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Matched Parcels
+                </Link>
+                <Link
                   href="/dashboard/trips/new"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block py-2 px-3 rounded-lg text-sm font-medium ${
@@ -297,6 +308,43 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   }`}
                 >
                   Terms
+                </Link>
+              </>
+            )}
+            {profile?.role === "admin" && (
+              <>
+                <Link
+                  href="/dashboard/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/admin")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Admin Dashboard
+                </Link>
+                <Link
+                  href="/dashboard/admin/users"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/admin/users")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  User Management
+                </Link>
+                <Link
+                  href="/dashboard/settings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/settings")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Settings
                 </Link>
               </>
             )}
@@ -379,6 +427,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 My Trips
               </Link>
               <Link
+                href="/dashboard/matched-parcels"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/matched-parcels")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Matched Parcels
+              </Link>
+              <Link
                 href="/dashboard/trips/new"
                 className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                   isActive("/dashboard/trips/new")
@@ -417,6 +475,45 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 Terms
+              </Link>
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {profile?.role === "admin" && (
+        <div className="hidden sm:block bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav className="flex space-x-8 overflow-x-auto">
+              <Link
+                href="/dashboard/admin"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/admin") && pathname === "/dashboard/admin"
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Admin Dashboard
+              </Link>
+              <Link
+                href="/dashboard/admin/users"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/admin/users")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                User Management
+              </Link>
+              <Link
+                href="/dashboard/settings"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/settings")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Settings
               </Link>
             </nav>
           </div>

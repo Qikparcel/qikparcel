@@ -5,6 +5,7 @@ import { Database } from '@/types/database'
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Parcel = Database['public']['Tables']['parcels']['Row']
 type ParcelUpdate = Database['public']['Tables']['parcels']['Update']
+type Trip = Database['public']['Tables']['trips']['Row']
 
 /**
  * GET /api/parcels/[id]
@@ -50,8 +51,29 @@ export async function GET(
       .eq('id', session.user.id)
       .single<Pick<Profile, 'role'>>()
 
-    // Only sender can view their own parcel
+    // Sender can view their own parcel, courier can view parcels matched to their trips
     if (profile?.role === 'sender' && parcel.sender_id !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized to view this parcel' },
+        { status: 403 }
+      )
+    }
+
+    // If courier, verify parcel is matched to one of their trips
+    if (profile?.role === 'courier' && parcel.matched_trip_id) {
+      const { data: trip } = await supabase
+        .from('trips')
+        .select('courier_id')
+        .eq('id', parcel.matched_trip_id)
+        .single<Pick<Trip, 'courier_id'>>()
+      
+      if (trip && trip.courier_id !== session.user.id) {
+        return NextResponse.json(
+          { error: 'Unauthorized to view this parcel' },
+          { status: 403 }
+        )
+      }
+    } else if (profile?.role === 'courier' && !parcel.matched_trip_id) {
       return NextResponse.json(
         { error: 'Unauthorized to view this parcel' },
         { status: 403 }

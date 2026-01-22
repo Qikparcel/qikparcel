@@ -90,12 +90,23 @@ export default function AddressAutocomplete({
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isGeocodingManual, setIsGeocodingManual] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Mapbox token - should be in environment variable
   const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoicWlrcGFyY2VsMjAyNSIsImEiOiJjbWs0Ym5kMDkwNW1xM2VxbTM2ZGZlYjZxIn0.5eSh6X3vFx_I2Y5rSM7nkQ";
+  
+  // Validate token format
+  useEffect(() => {
+    if (!MAPBOX_TOKEN || MAPBOX_TOKEN.length < 20) {
+      console.error("⚠️ Invalid Mapbox token detected. Please check NEXT_PUBLIC_MAPBOX_TOKEN environment variable.");
+    } else {
+      console.log("✅ Mapbox token loaded:", MAPBOX_TOKEN.substring(0, 20) + "...");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -126,51 +137,111 @@ export default function AddressAutocomplete({
       setLoading(true);
       try {
         const encodedQuery = encodeURIComponent(query);
-        const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=5&types=address,place,postcode&autocomplete=true`;
+        
+        // Mapbox Geocoding API v6 parameters:
+        // - q: required, search query (URL-encoded, ≤256 chars, ≤20 tokens)
+        // - access_token: required
+        // - autocomplete: boolean (default true) - allows partial matches
+        // - proximity: "ip" or "longitude,latitude" - biases results to location
+        // - types: comma-separated feature types (address, street, place, postcode, etc.)
+        // - limit: number of results (default 5, max 10)
+        // - language: IETF language tag (optional)
+        
+        // Include "street" in types to get street name results like "Oxford Street"
+        // Build URL with proximity bias (use IP-based proximity)
+        let url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=5&autocomplete=true&proximity=ip&types=address,street,place,postcode,locality`;
+
+        console.log("Fetching suggestions for:", query);
+        console.log("Mapbox URL:", url.replace(MAPBOX_TOKEN, "TOKEN_HIDDEN"));
 
         const response = await fetch(url);
+        
+        // Log response status for debugging
         if (!response.ok) {
-          throw new Error("Failed to fetch address suggestions");
+          const errorText = await response.text();
+          console.error("Mapbox API Error:", response.status, response.statusText, errorText);
+          throw new Error(`Failed to fetch address suggestions: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
         console.log("Mapbox API Response:", data);
-        if (data.features && Array.isArray(data.features)) {
-          console.log("Found", data.features.length, "suggestions");
+        
+        // Check for API errors in response
+        if (data.error) {
+          console.error("Mapbox API Error:", data.error);
+          setSuggestions([]);
+          setShowSuggestions(false);
+          return;
+        }
+        
+        // Mapbox v6 returns results in 'features' array
+        if (data.features && Array.isArray(data.features) && data.features.length > 0) {
+          console.log("✅ Found", data.features.length, "suggestions");
           setSuggestions(data.features);
           setShowSuggestions(true);
         } else {
-          console.log("No features found in response");
-          setSuggestions([]);
+          console.warn("⚠️ No features found in response. Query:", query);
+          console.warn("Full response:", JSON.stringify(data, null, 2));
+          
+          // Try again with different parameters if first attempt failed
+          if (data.features && data.features.length === 0 && query.length >= 3) {
+            console.log("Retrying with different parameters...");
+            
+            // Try with explicit London proximity (for "Oxford Street" which is in London)
+            // Format: proximity=longitude,latitude (no spaces)
+            const londonProximity = "-0.1276,51.5074"; // London coordinates (longitude,latitude)
+            const retryUrl = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=true&proximity=${londonProximity}&types=address,street,place,postcode,locality`;
+            
+            const retryResponse = await fetch(retryUrl);
+            if (retryResponse.ok) {
+              const retryData = await retryResponse.json();
+              console.log("Retry response (with London proximity):", retryData);
+              if (retryData.features && retryData.features.length > 0) {
+                console.log("✅ Found", retryData.features.length, "suggestions on retry");
+                setSuggestions(retryData.features);
+                setShowSuggestions(true);
+              } else {
+                // Last attempt: try without autocomplete (exact match) and without type restrictions
+                console.log("Trying exact match (no autocomplete, all types)...");
+                const exactUrl = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=false`;
+                const exactResponse = await fetch(exactUrl);
+                if (exactResponse.ok) {
+                  const exactData = await exactResponse.json();
+                  if (exactData.features && exactData.features.length > 0) {
+                    console.log("✅ Found", exactData.features.length, "exact matches");
+                    setSuggestions(exactData.features);
+                    setShowSuggestions(true);
+                  } else {
+                    console.warn("Still no results after all retries");
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                  }
+                } else {
+                  setSuggestions([]);
+                  setShowSuggestions(false);
+                }
+              }
+            } else {
+              const retryErrorText = await retryResponse.text();
+              console.error("Retry failed:", retryResponse.status, retryErrorText);
+              setSuggestions([]);
+              setShowSuggestions(false);
+            }
+          } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+          }
         }
       } catch (error) {
         console.error("Error fetching address suggestions:", error);
         setSuggestions([]);
+        setShowSuggestions(false);
       } finally {
         setLoading(false);
       }
     },
     [MAPBOX_TOKEN]
   );
-
-  // Debounce search query
-  useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
-      if (searchQuery && !selectedSuggestion) {
-        fetchSuggestions(searchQuery);
-      }
-    }, 300);
-
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [searchQuery, fetchSuggestions, selectedSuggestion]);
 
   // Parse Mapbox response to extract address components
   const parseAddress = (suggestion: AddressSuggestion): AddressFields => {
@@ -254,7 +325,7 @@ export default function AddressAutocomplete({
   };
 
   // Handle suggestion selection
-  const handleSelectSuggestion = (suggestion: AddressSuggestion) => {
+  const handleSelectSuggestion = useCallback((suggestion: AddressSuggestion) => {
     const parsed = parseAddress(suggestion);
     // Use full_address if available, otherwise use name
     const displayName = suggestion.properties?.full_address || 
@@ -265,7 +336,66 @@ export default function AddressAutocomplete({
     setSelectedSuggestion(suggestion.id);
     setShowSuggestions(false);
     onAddressChange(parsed);
-  };
+  }, [onAddressChange]);
+
+  // Geocode manual address input when user finishes typing
+  const geocodeManualAddress = useCallback(async (address: string) => {
+    if (!address.trim() || address.length < 3) {
+      return;
+    }
+
+    // Don't geocode if user just selected a suggestion
+    if (selectedSuggestion) {
+      return;
+    }
+
+    setIsGeocodingManual(true);
+    try {
+      const encodedQuery = encodeURIComponent(address);
+      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&types=address,place,postcode&autocomplete=false`;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Failed to geocode address");
+      }
+
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        // Use the first result - automatically select it
+        const suggestion = data.features[0];
+        handleSelectSuggestion(suggestion);
+        console.log("✅ Geocoded manual address:", address);
+      } else {
+        console.warn("⚠️ No geocoding results for:", address);
+        // Still allow submission but without coordinates
+        // User will get lower match scores (40-50 instead of 80+)
+      }
+    } catch (error) {
+      console.error("Error geocoding manual address:", error);
+    } finally {
+      setIsGeocodingManual(false);
+    }
+  }, [MAPBOX_TOKEN, selectedSuggestion, handleSelectSuggestion]);
+
+  // Debounce search query
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      if (searchQuery && !selectedSuggestion) {
+        fetchSuggestions(searchQuery);
+      }
+    }, 300);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [searchQuery, fetchSuggestions, selectedSuggestion]);
 
   // Handle manual input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,6 +416,18 @@ export default function AddressAutocomplete({
     }
   };
 
+  // Handle blur - geocode if user typed manually without selecting
+  const handleBlur = useCallback(() => {
+    // Wait a bit to allow suggestion click to register first
+    setTimeout(() => {
+      if (searchQuery && !selectedSuggestion && searchQuery.trim().length >= 3) {
+        // User typed manually without selecting - try to geocode
+        geocodeManualAddress(searchQuery);
+      }
+      setShowSuggestions(false);
+    }, 200);
+  }, [searchQuery, selectedSuggestion, geocodeManualAddress]);
+
   // Build current address string for display
   const currentAddressString = [
     streetAddress,
@@ -303,6 +445,7 @@ export default function AddressAutocomplete({
     if (!selectedSuggestion && currentAddressString && !searchQuery) {
       setSearchQuery(currentAddressString);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -316,6 +459,7 @@ export default function AddressAutocomplete({
             type="text"
             value={searchQuery || currentAddressString}
             onChange={handleSearchChange}
+            onBlur={handleBlur}
             onFocus={() => {
               if (suggestions.length > 0) {
                 setShowSuggestions(true);
@@ -325,7 +469,7 @@ export default function AddressAutocomplete({
             required={required}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
           />
-          {loading && (
+          {(loading || isGeocodingManual) && (
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
             </div>
