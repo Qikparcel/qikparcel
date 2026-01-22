@@ -121,27 +121,26 @@ View and accept this match in your dashboard to get started!`
     
     const whatsappClient = createWhatsAppClient()
     
-    // Try to use template if available
-    const templateSid = process.env.TWILIO_PARCEL_MATCH_TEMPLATE_SID
-    if (templateSid) {
-      // Use template with variables
-      await whatsappClient.sendContentTemplate(courierWhatsApp, templateSid, {
-        '1': parcel.pickup_address,
-        '2': parcel.delivery_address,
-        '3': trip.origin_address,
-        '4': trip.destination_address,
-        '5': trip.departure_time ? new Date(trip.departure_time).toLocaleString() : 'TBD',
-        '6': match.match_score ? `${match.match_score}/100` : 'N/A',
-        '7': parcel.description || 'No description',
-        '8': parcel.weight_kg ? `${parcel.weight_kg} kg` : 'Not specified'
-      })
-    } else {
-      // Fallback to text message (works in sandbox, but requires template in production)
-      console.warn('[NOTIFICATIONS] No template SID found. Using text message (sandbox mode only). Create a template in Twilio for production.')
-      await whatsappClient.sendTextMessage(courierWhatsApp, message)
+    // Use the pre-created template content ID
+    // Template Content ID: HX3479df42d9ecc2f9bc0b94e2a8514391
+    // Message: "New Parcel Match\nA parcel has been matched to your trip and is awaiting your acceptance.\nPlease review the details and accept or decline them in the app."
+    const templateContentId = process.env.TWILIO_PARCEL_MATCH_TEMPLATE_SID || 'HX3479df42d9ecc2f9bc0b94e2a8514391'
+    
+    try {
+      // Send using the template (no variables needed based on the template content)
+      await whatsappClient.sendContentTemplate(courierWhatsApp, templateContentId)
+      console.log(`[NOTIFICATIONS] Sent match notification to courier ${courierWhatsApp} using template ${templateContentId}`)
+    } catch (error: any) {
+      console.error(`[NOTIFICATIONS] Error sending template message, falling back to text message:`, error)
+      // Fallback to text message if template fails
+      try {
+        await whatsappClient.sendTextMessage(courierWhatsApp, message)
+        console.log(`[NOTIFICATIONS] Sent fallback text message to courier ${courierWhatsApp}`)
+      } catch (fallbackError) {
+        console.error(`[NOTIFICATIONS] Failed to send both template and text message:`, fallbackError)
+        throw fallbackError
+      }
     }
-
-    console.log(`[NOTIFICATIONS] Sent match notification to courier ${courierWhatsApp}`)
   } catch (error) {
     console.error(`[NOTIFICATIONS] Error notifying courier of match ${matchId}:`, error)
     // Don't throw - notification failures shouldn't break the matching process
@@ -230,29 +229,29 @@ ${trip.courier?.whatsapp_number ? `Contact: ${trip.courier.whatsapp_number}\n` :
 
 You can track your parcel status in your dashboard. Thank you for using QikParcel!`
 
-    // Send WhatsApp message
-    // TODO: Switch to sendContentTemplate() when template is created in Twilio
+    // Send WhatsApp message using Twilio Content Template
     const whatsappClient = createWhatsAppClient()
     
-    // Try to use template if available
-    const templateSid = process.env.TWILIO_PARCEL_ACCEPTED_TEMPLATE_SID
-    if (templateSid) {
-      await whatsappClient.sendContentTemplate(senderWhatsApp, templateSid, {
-        '1': courierName,
-        '2': parcel.pickup_address,
-        '3': parcel.delivery_address,
-        '4': trip.origin_address,
-        '5': trip.destination_address,
-        '6': trip.departure_time ? new Date(trip.departure_time).toLocaleString() : 'TBD',
-        '7': trip.courier?.whatsapp_number || trip.courier?.phone_number || 'N/A'
-      })
-    } else {
-      // Fallback to text message (works in sandbox, but requires template in production)
-      console.warn('[NOTIFICATIONS] No template SID found. Using text message (sandbox mode only). Create a template in Twilio for production.')
-      await whatsappClient.sendTextMessage(senderWhatsApp, message)
+    // Use the pre-created template content ID
+    // Template Content ID: HX6092c1e14a50ab625e62df98279493
+    // Message: "Parcel Update\nGood news! Your parcel has been successfully matched with a courier for the trip, and the courier has accepted it.\nYou can track the progress in our app."
+    const templateContentId = process.env.TWILIO_PARCEL_ACCEPTED_TEMPLATE_SID || 'HX6092c1e14a50ab625e62df98279493'
+    
+    try {
+      // Send using the template (no variables needed based on the template content)
+      await whatsappClient.sendContentTemplate(senderWhatsApp, templateContentId)
+      console.log(`[NOTIFICATIONS] Sent acceptance notification to sender ${senderWhatsApp} using template ${templateContentId}`)
+    } catch (error: any) {
+      console.error(`[NOTIFICATIONS] Error sending template message, falling back to text message:`, error)
+      // Fallback to text message if template fails
+      try {
+        await whatsappClient.sendTextMessage(senderWhatsApp, message)
+        console.log(`[NOTIFICATIONS] Sent fallback text message to sender ${senderWhatsApp}`)
+      } catch (fallbackError) {
+        console.error(`[NOTIFICATIONS] Failed to send both template and text message:`, fallbackError)
+        throw fallbackError
+      }
     }
-
-    console.log(`[NOTIFICATIONS] Sent acceptance notification to sender ${senderWhatsApp}`)
   } catch (error) {
     console.error(
       `[NOTIFICATIONS] Error notifying sender of accepted match ${matchId}:`,

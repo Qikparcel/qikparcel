@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createWhatsAppClient } from '@/lib/whatsapp/client'
 
+// Mark route as dynamic since it uses searchParams
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/whatsapp/check-status?messageSid=SMxxxxx
  * Check the status of a WhatsApp message

@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 
+// Mark route as dynamic since it uses cookies
+export const dynamic = 'force-dynamic'
+
 type Profile = Database['public']['Tables']['profiles']['Row']
 
 export async function GET(request: NextRequest) {
