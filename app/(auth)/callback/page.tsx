@@ -290,7 +290,7 @@ export default function AuthCallbackPage() {
             .from('profiles')
             .select('role')
             .eq('id', user.id)
-            .single()
+            .single<{ role: string }>()
           
           const userRole = profileData?.role
           console.log('[CALLBACK] User role:', userRole)
