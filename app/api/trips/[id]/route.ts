@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient } from '@/lib/supabase/client'
+import { findAndCreateMatchesForTrip } from '@/lib/matching/service'
 import { Database } from '@/types/database'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -251,6 +253,22 @@ export async function PUT(
         { status: 500 }
       )
     }
+
+    // Trigger matching after trip update (async, don't block response)
+    console.log(`[TRIP UPDATE] Triggering matching for updated trip: ${tripId}`)
+    const adminClient = createSupabaseAdminClient()
+    findAndCreateMatchesForTrip(adminClient, tripId)
+      .then((result) => {
+        console.log(
+          `[TRIP UPDATE] ✅ Matching completed for trip ${tripId}: ${result.created} matches created`
+        )
+      })
+      .catch((error) => {
+        console.error(
+          `[TRIP UPDATE] ❌ Error triggering matching for trip ${tripId}:`,
+          error
+        )
+      })
 
     return NextResponse.json({
       success: true,
