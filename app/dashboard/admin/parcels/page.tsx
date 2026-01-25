@@ -38,6 +38,8 @@ export default function AdminParcelsPage() {
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [total, setTotal] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const itemsPerPage = 20
 
   const loadParcels = useCallback(async () => {
@@ -106,6 +108,16 @@ export default function AdminParcelsPage() {
       loadParcels()
     }
   }, [profile, loadParcels])
+
+  const handleViewParcelDetails = (parcel: Parcel) => {
+    setSelectedParcel(parcel)
+    setIsDrawerOpen(true)
+  }
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false)
+    setSelectedParcel(null)
+  }
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },

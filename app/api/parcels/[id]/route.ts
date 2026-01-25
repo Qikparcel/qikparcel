@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient } from '@/lib/supabase/client'
+import { findAndCreateMatchesForParcel } from '@/lib/matching/service'
 import { Database } from '@/types/database'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -234,6 +236,22 @@ export async function PUT(
         { status: 500 }
       )
     }
+
+    // Trigger matching after parcel update (async, don't block response)
+    console.log(`[PARCEL UPDATE] Triggering matching for updated parcel: ${parcelId}`)
+    const adminClient = createSupabaseAdminClient()
+    findAndCreateMatchesForParcel(adminClient, parcelId)
+      .then((result) => {
+        console.log(
+          `[PARCEL UPDATE] ✅ Matching completed for parcel ${parcelId}: ${result.created} matches created`
+        )
+      })
+      .catch((error) => {
+        console.error(
+          `[PARCEL UPDATE] ❌ Error triggering matching for parcel ${parcelId}:`,
+          error
+        )
+      })
 
     return NextResponse.json({
       success: true,
