@@ -321,12 +321,11 @@ export default function CreateParcelPage() {
                 setPickupState(fields.state);
                 setPickupPostcode(fields.postcode);
                 setPickupCountry(fields.country);
-                // Capture coordinates
+                // Capture coordinates - only update if provided, preserve existing if not
                 if (fields.coordinates) {
                   setPickupCoordinates(fields.coordinates);
-                } else {
-                  setPickupCoordinates(null);
                 }
+                // Don't set to null if not provided - preserve existing coordinates
               }}
               required
               placeholder="Start typing pickup address..."
@@ -354,12 +353,11 @@ export default function CreateParcelPage() {
                 setDeliveryState(fields.state);
                 setDeliveryPostcode(fields.postcode);
                 setDeliveryCountry(fields.country);
-                // Capture coordinates
+                // Capture coordinates - only update if provided, preserve existing if not
                 if (fields.coordinates) {
                   setDeliveryCoordinates(fields.coordinates);
-                } else {
-                  setDeliveryCoordinates(null);
                 }
+                // Don't set to null if not provided - preserve existing coordinates
               }}
               required
               placeholder="Start typing delivery address..."
