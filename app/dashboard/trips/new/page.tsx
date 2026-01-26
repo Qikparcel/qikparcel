@@ -391,12 +391,11 @@ export default function CreateTripPage() {
                 setOriginState(fields.state);
                 setOriginPostcode(fields.postcode);
                 setOriginCountry(fields.country);
-                // Capture coordinates
+                // Capture coordinates - only update if provided, preserve existing if not
                 if (fields.coordinates) {
                   setOriginCoordinates(fields.coordinates);
-                } else {
-                  setOriginCoordinates(null);
                 }
+                // Don't set to null if not provided - preserve existing coordinates
               }}
               required
               placeholder="Start typing origin address..."
@@ -424,12 +423,11 @@ export default function CreateTripPage() {
                 setDestinationState(fields.state);
                 setDestinationPostcode(fields.postcode);
                 setDestinationCountry(fields.country);
-                // Capture coordinates
+                // Capture coordinates - only update if provided, preserve existing if not
                 if (fields.coordinates) {
                   setDestinationCoordinates(fields.coordinates);
-                } else {
-                  setDestinationCoordinates(null);
                 }
+                // Don't set to null if not provided - preserve existing coordinates
               }}
               required
               placeholder="Start typing destination address..."

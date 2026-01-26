@@ -148,8 +148,9 @@ export default function AddressAutocomplete({
         // - language: IETF language tag (optional)
         
         // Include "street" in types to get street name results like "Oxford Street"
-        // Build URL with proximity bias (use IP-based proximity)
-        let url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=5&autocomplete=true&proximity=ip&types=address,street,place,postcode,locality`;
+        // Build URL without proximity bias to allow global searches (including Zimbabwe, etc.)
+        // Remove proximity=ip to avoid biasing results to user's location
+        let url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=true&types=address,street,place,postcode,locality,country,region`;
 
         console.log("Fetching suggestions for:", query);
         console.log("Mapbox URL:", url.replace(MAPBOX_TOKEN, "TOKEN_HIDDEN"));
@@ -185,24 +186,22 @@ export default function AddressAutocomplete({
           
           // Try again with different parameters if first attempt failed
           if (data.features && data.features.length === 0 && query.length >= 3) {
-            console.log("Retrying with different parameters...");
+            console.log("Retrying with broader search (no type restrictions)...");
             
-            // Try with explicit London proximity (for "Oxford Street" which is in London)
-            // Format: proximity=longitude,latitude (no spaces)
-            const londonProximity = "-0.1276,51.5074"; // London coordinates (longitude,latitude)
-            const retryUrl = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=true&proximity=${londonProximity}&types=address,street,place,postcode,locality`;
+            // Try without type restrictions to get more results (including countries, regions)
+            const retryUrl = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=true`;
             
             const retryResponse = await fetch(retryUrl);
             if (retryResponse.ok) {
               const retryData = await retryResponse.json();
-              console.log("Retry response (with London proximity):", retryData);
+              console.log("Retry response (no type restrictions):", retryData);
               if (retryData.features && retryData.features.length > 0) {
                 console.log("✅ Found", retryData.features.length, "suggestions on retry");
                 setSuggestions(retryData.features);
                 setShowSuggestions(true);
               } else {
-                // Last attempt: try without autocomplete (exact match) and without type restrictions
-                console.log("Trying exact match (no autocomplete, all types)...");
+                // Last attempt: try without autocomplete (exact match) for better global coverage
+                console.log("Trying exact match (no autocomplete)...");
                 const exactUrl = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=false`;
                 const exactResponse = await fetch(exactUrl);
                 if (exactResponse.ok) {
@@ -352,7 +351,8 @@ export default function AddressAutocomplete({
     setIsGeocodingManual(true);
     try {
       const encodedQuery = encodeURIComponent(address);
-      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&types=address,place,postcode&autocomplete=false`;
+      // Remove type restrictions and proximity bias for global coverage (including Zimbabwe)
+      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&autocomplete=false`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -377,6 +377,74 @@ export default function AddressAutocomplete({
       setIsGeocodingManual(false);
     }
   }, [MAPBOX_TOKEN, selectedSuggestion, handleSelectSuggestion]);
+
+  // Geocode when structured fields change (debounced)
+  const geocodeStructuredFields = useCallback(async () => {
+    // Build full address string from structured fields
+    const fullAddress = [
+      streetAddress,
+      addressLine2,
+      city,
+      state,
+      postcode,
+      country,
+    ]
+      .filter((part) => part && part.trim())
+      .join(", ");
+
+    // Only geocode if we have at least city and country (minimum for geocoding)
+    if (fullAddress.length < 3 || (!city.trim() && !country.trim())) {
+      return;
+    }
+
+    // Don't geocode if user just selected a suggestion
+    if (selectedSuggestion) {
+      return;
+    }
+
+    setIsGeocodingManual(true);
+    try {
+      const encodedQuery = encodeURIComponent(fullAddress);
+      // Remove type restrictions for global coverage (including Zimbabwe)
+      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&autocomplete=false`;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Failed to geocode address");
+      }
+
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        const suggestion = data.features[0];
+        const coords = suggestion.properties?.coordinates || 
+                       (suggestion.geometry?.coordinates ? {
+                         longitude: suggestion.geometry.coordinates[0],
+                         latitude: suggestion.geometry.coordinates[1]
+                       } : undefined);
+        
+        if (coords) {
+          // Update coordinates without changing the address fields
+          onAddressChange({
+            streetAddress,
+            addressLine2,
+            city,
+            state,
+            postcode,
+            country,
+            coordinates: coords,
+          });
+          console.log("✅ Geocoded structured fields. Coordinates:", coords);
+        }
+      } else {
+        console.warn("⚠️ No geocoding results for structured fields:", fullAddress);
+      }
+    } catch (error) {
+      console.error("Error geocoding structured fields:", error);
+    } finally {
+      setIsGeocodingManual(false);
+    }
+  }, [streetAddress, addressLine2, city, state, postcode, country, selectedSuggestion, onAddressChange, MAPBOX_TOKEN]);
 
   // Debounce search query
   useEffect(() => {
@@ -447,6 +515,19 @@ export default function AddressAutocomplete({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Debounce geocoding of structured fields when they change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only geocode if we have meaningful address data
+      // Skip if we just selected a suggestion (to avoid double geocoding)
+      if (!selectedSuggestion && (streetAddress || city || postcode || country)) {
+        geocodeStructuredFields();
+      }
+    }, 1000); // 1 second debounce
+
+    return () => clearTimeout(timer);
+  }, [streetAddress, addressLine2, city, state, postcode, country, selectedSuggestion, geocodeStructuredFields]);
 
   return (
     <div className="space-y-4" ref={wrapperRef}>
