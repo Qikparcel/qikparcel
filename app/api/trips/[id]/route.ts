@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/client'
 import { findAndCreateMatchesForTrip } from '@/lib/matching/service'
+import { calculateMatchScore } from '@/lib/matching/scoring'
 import { Database } from '@/types/database'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Trip = Database['public']['Tables']['trips']['Row']
 type TripUpdate = Database['public']['Tables']['trips']['Update']
+type Parcel = Database['public']['Tables']['parcels']['Row']
+
+const MIN_SCORE_THRESHOLD = parseInt(process.env.MATCHING_MIN_SCORE_THRESHOLD || '50', 10)
 
 /**
  * GET /api/trips/[id]
@@ -252,6 +256,72 @@ export async function PUT(
         { error: 'Failed to update trip', details: updateError.message },
         { status: 500 }
       )
+    }
+
+    // If trip was updated, invalidate existing matches
+    // Only if trip is still in 'scheduled' status
+    if (existingTrip.status === 'scheduled') {
+      const adminClient = createSupabaseAdminClient()
+      
+      // Invalidate existing pending matches (delete them so they can be re-created with new scores)
+      const { error: deleteMatchesError } = await adminClient
+        .from('parcel_trip_matches')
+        .delete()
+        .eq('trip_id', tripId)
+        .eq('status', 'pending')
+
+      if (deleteMatchesError) {
+        console.error(`[TRIP UPDATE] Error deleting pending matches:`, deleteMatchesError)
+      } else {
+        console.log(`[TRIP UPDATE] Invalidated pending matches for trip ${tripId}`)
+      }
+
+      // For accepted matches, re-score them to see if they're still valid
+      // If score drops below threshold, mark as expired and clear matched_trip_id from parcels
+      const { data: acceptedMatches, error: acceptedMatchesError } = await adminClient
+        .from('parcel_trip_matches')
+        .select('id, parcel_id, parcels(*)')
+        .eq('trip_id', tripId)
+        .eq('status', 'accepted') as { data: Array<{ id: string; parcel_id: string; parcels: Parcel }> | null; error: any }
+
+      if (acceptedMatchesError) {
+        console.error(`[TRIP UPDATE] Error fetching accepted matches:`, acceptedMatchesError)
+      } else if (acceptedMatches && acceptedMatches.length > 0) {
+        console.log(`[TRIP UPDATE] Re-scoring ${acceptedMatches.length} accepted matches`)
+        
+        for (const match of acceptedMatches) {
+          const parcel = match.parcels
+          if (!parcel) {
+            console.warn(`[TRIP UPDATE] Match ${match.id} has no associated parcel, skipping`)
+            continue
+          }
+          
+          const newScore = calculateMatchScore(parcel, updatedTrip)
+          console.log(`[TRIP UPDATE] Match ${match.id} new score: ${newScore} (threshold: ${MIN_SCORE_THRESHOLD})`)
+          
+          // If score drops below threshold, expire the match
+          if (newScore < MIN_SCORE_THRESHOLD) {
+            console.log(`[TRIP UPDATE] Expiring accepted match ${match.id} - score dropped to ${newScore}`)
+            await (adminClient.from('parcel_trip_matches') as any)
+              .update({ status: 'expired' })
+              .eq('id', match.id)
+            
+            // Clear matched_trip_id from the parcel if this trip was matched
+            if (parcel.matched_trip_id === tripId) {
+              await (adminClient.from('parcels') as any)
+                .update({ matched_trip_id: null })
+                .eq('id', parcel.id)
+              console.log(`[TRIP UPDATE] Cleared matched_trip_id from parcel ${parcel.id}`)
+            }
+          } else {
+            // Update the match score even if still valid
+            await (adminClient.from('parcel_trip_matches') as any)
+              .update({ match_score: newScore })
+              .eq('id', match.id)
+            console.log(`[TRIP UPDATE] Updated match ${match.id} score to ${newScore}`)
+          }
+        }
+      }
     }
 
     // Trigger matching after trip update (async, don't block response)

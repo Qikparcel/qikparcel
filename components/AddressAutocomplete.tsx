@@ -148,9 +148,8 @@ export default function AddressAutocomplete({
         // - language: IETF language tag (optional)
         
         // Include "street" in types to get street name results like "Oxford Street"
-        // Build URL without proximity bias to allow global searches (including Zimbabwe, etc.)
-        // Remove proximity=ip to avoid biasing results to user's location
-        let url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=true&types=address,street,place,postcode,locality,country,region`;
+        // Use proximity=ip to bias results to user's location for better relevance
+        let url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=true&proximity=ip&types=address,street,place,postcode,locality,country,region`;
 
         console.log("Fetching suggestions for:", query);
         console.log("Mapbox URL:", url.replace(MAPBOX_TOKEN, "TOKEN_HIDDEN"));
@@ -351,8 +350,8 @@ export default function AddressAutocomplete({
     setIsGeocodingManual(true);
     try {
       const encodedQuery = encodeURIComponent(address);
-      // Remove type restrictions and proximity bias for global coverage (including Zimbabwe)
-      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&autocomplete=false`;
+      // Use proximity=ip to bias results to user's location
+      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&autocomplete=false&proximity=ip`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -405,8 +404,8 @@ export default function AddressAutocomplete({
     setIsGeocodingManual(true);
     try {
       const encodedQuery = encodeURIComponent(fullAddress);
-      // Remove type restrictions for global coverage (including Zimbabwe)
-      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&autocomplete=false`;
+      // Use proximity=ip to bias results to user's location
+      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&autocomplete=false&proximity=ip`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -569,7 +568,15 @@ export default function AddressAutocomplete({
                   <button
                     key={suggestion.id}
                     type="button"
-                    onClick={() => handleSelectSuggestion(suggestion)}
+                    onMouseDown={(e) => {
+                      // Prevent input blur when clicking suggestion
+                      e.preventDefault();
+                      handleSelectSuggestion(suggestion);
+                    }}
+                    onClick={(e) => {
+                      // Prevent any default behavior
+                      e.preventDefault();
+                    }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
                   >
                     <div className="text-sm font-medium text-gray-900">
