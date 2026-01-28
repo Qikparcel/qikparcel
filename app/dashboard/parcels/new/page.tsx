@@ -200,6 +200,17 @@ export default function CreateParcelPage() {
       return;
     }
 
+    // Verify coordinates are present (required for matching algorithm)
+    if (!pickupCoordinates || !pickupCoordinates.latitude || !pickupCoordinates.longitude) {
+      toast.error("Please select a pickup address from the suggestions to get coordinates. This is required for matching.");
+      return;
+    }
+
+    if (!deliveryCoordinates || !deliveryCoordinates.latitude || !deliveryCoordinates.longitude) {
+      toast.error("Please select a delivery address from the suggestions to get coordinates. This is required for matching.");
+      return;
+    }
+
     // Build address strings
     const pickupAddress = buildAddressString(
       pickupStreetAddress,
@@ -302,9 +313,20 @@ export default function CreateParcelPage() {
         >
           {/* Pickup Address */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Pickup Address
-            </h2>
+            <div className="flex items-center justify-between border-b pb-2">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Pickup Address
+              </h2>
+              {pickupCoordinates?.latitude && pickupCoordinates?.longitude ? (
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  ✅ Coordinates: {pickupCoordinates.latitude.toFixed(6)}, {pickupCoordinates.longitude.toFixed(6)}
+                </span>
+              ) : (
+                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                  ⚠️ Select address from suggestions for coordinates
+                </span>
+              )}
+            </div>
 
             <AddressAutocomplete
               label="Pickup Address"
@@ -334,9 +356,20 @@ export default function CreateParcelPage() {
 
           {/* Delivery Address */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Delivery Address
-            </h2>
+            <div className="flex items-center justify-between border-b pb-2">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Delivery Address
+              </h2>
+              {deliveryCoordinates?.latitude && deliveryCoordinates?.longitude ? (
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  ✅ Coordinates: {deliveryCoordinates.latitude.toFixed(6)}, {deliveryCoordinates.longitude.toFixed(6)}
+                </span>
+              ) : (
+                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                  ⚠️ Select address from suggestions for coordinates
+                </span>
+              )}
+            </div>
 
             <AddressAutocomplete
               label="Delivery Address"
