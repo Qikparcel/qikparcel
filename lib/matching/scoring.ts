@@ -188,6 +188,38 @@ function calculateCapacityScore(parcel: Parcel, trip: Trip): number {
 }
 
 /**
+ * Extract country from address string
+ * Countries are usually the last part of a comma-separated address
+ */
+function extractCountry(address: string): string {
+  const parts = address.split(',').map(p => p.trim().toLowerCase())
+  if (parts.length > 0) {
+    return parts[parts.length - 1] // Country is usually last
+  }
+  return address.toLowerCase()
+}
+
+/**
+ * Check if countries match between parcel and trip
+ * Returns true if both pickup/origin and delivery/destination countries match
+ */
+function checkCountryMatch(
+  parcel: Parcel,
+  trip: Trip
+): { pickupMatch: boolean; deliveryMatch: boolean; allMatch: boolean } {
+  const pickupCountry = extractCountry(parcel.pickup_address)
+  const deliveryCountry = extractCountry(parcel.delivery_address)
+  const originCountry = extractCountry(trip.origin_address)
+  const destCountry = extractCountry(trip.destination_address)
+  
+  const pickupMatch = pickupCountry === originCountry
+  const deliveryMatch = deliveryCountry === destCountry
+  const allMatch = pickupMatch && deliveryMatch
+  
+  return { pickupMatch, deliveryMatch, allMatch }
+}
+
+/**
  * Calculate geographic proximity score (0-100)
  * Combines proximity of pickup to origin and delivery to destination
  */
@@ -196,6 +228,24 @@ function calculateGeographicProximityScore(
   trip: Trip,
   config: MatchingConfig
 ): number {
+  // CRITICAL: Check country match first - reject cross-country matches
+  const countryMatch = checkCountryMatch(parcel, trip)
+  
+  // If countries don't match, heavily penalize or reject
+  if (!countryMatch.allMatch) {
+    // If pickup country doesn't match, this is a major issue
+    if (!countryMatch.pickupMatch) {
+      console.log(`[PROXIMITY] ❌ Country mismatch: Parcel pickup (${extractCountry(parcel.pickup_address)}) vs Trip origin (${extractCountry(trip.origin_address)})`)
+      return 0 // Reject completely different pickup countries
+    }
+    
+    // If only delivery country doesn't match, still heavily penalize
+    if (!countryMatch.deliveryMatch) {
+      console.log(`[PROXIMITY] ❌ Country mismatch: Parcel delivery (${extractCountry(parcel.delivery_address)}) vs Trip destination (${extractCountry(trip.destination_address)})`)
+      return 0 // Reject completely different delivery countries
+    }
+  }
+  
   // Both need coordinates to calculate proximity
   if (
     !parcel.pickup_latitude ||
@@ -207,8 +257,7 @@ function calculateGeographicProximityScore(
     !trip.destination_latitude ||
     !trip.destination_longitude
   ) {
-    // If coordinates are missing, try to match based on address similarity
-    // Check if cities match (common case: both going to same city)
+    // If coordinates are missing but countries match, use city matching
     const normalizeCity = (address: string): string => {
       // Extract city from address (usually second-to-last part)
       const parts = address.split(',').map(p => p.trim().toLowerCase())
@@ -223,15 +272,15 @@ function calculateGeographicProximityScore(
     const originCity = normalizeCity(trip.origin_address)
     const destCity = normalizeCity(trip.destination_address)
     
-    // If cities match, give higher score
+    // Countries match, so check cities
     if (pickupCity === originCity && deliveryCity === destCity) {
-      return 70 // Improved: Good match based on city (was 60)
+      return 70 // Good match based on city
     } else if (pickupCity === originCity || deliveryCity === destCity) {
-      return 60 // Improved: Partial match (was 50)
+      return 60 // Partial match
     }
     
-    // Otherwise, give a moderate score
-    return 50 // Improved: Moderate score (was 45)
+    // Countries match but cities don't - give moderate score
+    return 50
   }
 
   // Calculate distances
@@ -248,6 +297,20 @@ function calculateGeographicProximityScore(
     trip.destination_latitude,
     trip.destination_longitude
   )
+
+  // CRITICAL: Reject if distances are too large (likely cross-country)
+  // Typical country size is < 5000km, so 3000km+ suggests different countries
+  const MAX_REASONABLE_DISTANCE_KM = 3000
+  
+  if (pickupDistance > MAX_REASONABLE_DISTANCE_KM) {
+    console.log(`[PROXIMITY] ❌ REJECTED: Pickup distance too large: ${pickupDistance.toFixed(2)}km (likely different countries)`)
+    return 0
+  }
+  
+  if (deliveryDistance > MAX_REASONABLE_DISTANCE_KM) {
+    console.log(`[PROXIMITY] ❌ REJECTED: Delivery distance too large: ${deliveryDistance.toFixed(2)}km (likely different countries)`)
+    return 0
+  }
 
   // Calculate proximity scores
   const pickupProximity = calculateProximityScore(
@@ -273,6 +336,22 @@ function calculateRouteAlignment(
   trip: Trip,
   config: MatchingConfig
 ): number {
+  // CRITICAL: Check country match first - reject cross-country matches
+  const countryMatch = checkCountryMatch(parcel, trip)
+  
+  // If countries don't match, reject completely
+  if (!countryMatch.allMatch) {
+    if (!countryMatch.pickupMatch) {
+      console.log(`[ROUTE ALIGNMENT] ❌ Country mismatch: Parcel pickup (${extractCountry(parcel.pickup_address)}) vs Trip origin (${extractCountry(trip.origin_address)})`)
+      return 0 // Reject completely different pickup countries
+    }
+    
+    if (!countryMatch.deliveryMatch) {
+      console.log(`[ROUTE ALIGNMENT] ❌ Country mismatch: Parcel delivery (${extractCountry(parcel.delivery_address)}) vs Trip destination (${extractCountry(trip.destination_address)})`)
+      return 0 // Reject completely different delivery countries
+    }
+  }
+  
   // Both need coordinates to calculate route alignment
   if (
     !parcel.pickup_latitude ||
@@ -284,8 +363,7 @@ function calculateRouteAlignment(
     !trip.destination_latitude ||
     !trip.destination_longitude
   ) {
-    // If coordinates are missing, try to match based on addresses
-    // Check if origin/destination cities match
+    // If coordinates are missing but countries match, use city matching
     const normalizeCity = (address: string): string => {
       const parts = address.split(',').map(p => p.trim().toLowerCase())
       if (parts.length >= 2) {
@@ -299,14 +377,42 @@ function calculateRouteAlignment(
     const originCity = normalizeCity(trip.origin_address)
     const destCity = normalizeCity(trip.destination_address)
     
-    // Perfect route alignment: same origin and destination cities
+    // Countries match, so check cities
     if (pickupCity === originCity && deliveryCity === destCity) {
-      return 75 // Improved: Good route alignment based on cities (was 70)
+      return 75 // Good route alignment based on cities
     } else if (pickupCity === originCity || deliveryCity === destCity) {
-      return 60 // Improved: Partial alignment (was 55)
+      return 60 // Partial alignment
     }
     
-    return 55 // Improved: Moderate score for address-based matching (was 50)
+    // Countries match but cities don't - give moderate score
+    return 55
+  }
+
+  // Log distances for debugging
+  const pickupDist = calculateDistance(
+    parcel.pickup_latitude!,
+    parcel.pickup_longitude!,
+    trip.origin_latitude!,
+    trip.origin_longitude!
+  )
+  const deliveryDist = calculateDistance(
+    parcel.delivery_latitude!,
+    parcel.delivery_longitude!,
+    trip.destination_latitude!,
+    trip.destination_longitude!
+  )
+  
+  // CRITICAL: Reject if distances are too large (likely cross-country)
+  const MAX_REASONABLE_DISTANCE_KM = 3000
+  
+  if (pickupDist > MAX_REASONABLE_DISTANCE_KM) {
+    console.log(`[ROUTE ALIGNMENT] ❌ REJECTED: Pickup distance too large: ${pickupDist.toFixed(2)}km (likely different countries)`)
+    return 0
+  }
+  
+  if (deliveryDist > MAX_REASONABLE_DISTANCE_KM) {
+    console.log(`[ROUTE ALIGNMENT] ❌ REJECTED: Delivery distance too large: ${deliveryDist.toFixed(2)}km (likely different countries)`)
+    return 0
   }
 
   const score = calculateRouteAlignmentScore(
@@ -322,19 +428,6 @@ function calculateRouteAlignment(
     config.maxDeliveryDistanceKm
   )
 
-  // Log distances for debugging
-  const pickupDist = calculateDistance(
-    parcel.pickup_latitude!,
-    parcel.pickup_longitude!,
-    trip.origin_latitude!,
-    trip.origin_longitude!
-  )
-  const deliveryDist = calculateDistance(
-    parcel.delivery_latitude!,
-    parcel.delivery_longitude!,
-    trip.destination_latitude!,
-    trip.destination_longitude!
-  )
   console.log(`[ROUTE ALIGNMENT] Parcel ${parcel.id} <-> Trip ${trip.id}:`, {
     pickupDistance: `${pickupDist.toFixed(2)}km`,
     deliveryDistance: `${deliveryDist.toFixed(2)}km`,
@@ -357,6 +450,16 @@ export function calculateMatchScore(
   config: Partial<MatchingConfig> = {}
 ): number {
   const finalConfig = { ...DEFAULT_CONFIG, ...config }
+
+  // CRITICAL: Early rejection for cross-country matches
+  const countryMatch = checkCountryMatch(parcel, trip)
+  if (!countryMatch.allMatch) {
+    console.log(`[SCORING] ❌ REJECTED: Country mismatch for Parcel ${parcel.id} <-> Trip ${trip.id}`)
+    console.log(`  Parcel: ${parcel.pickup_address} → ${parcel.delivery_address}`)
+    console.log(`  Trip: ${trip.origin_address} → ${trip.destination_address}`)
+    console.log(`  Pickup match: ${countryMatch.pickupMatch}, Delivery match: ${countryMatch.deliveryMatch}`)
+    return 0 // Reject cross-country matches immediately
+  }
 
   // Calculate individual component scores
   const routeAlignment = calculateRouteAlignment(parcel, trip, finalConfig)

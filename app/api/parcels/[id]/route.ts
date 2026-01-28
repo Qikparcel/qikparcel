@@ -11,7 +11,7 @@ type ParcelUpdate = Database['public']['Tables']['parcels']['Update']
 type Trip = Database['public']['Tables']['trips']['Row']
 type Match = Database['public']['Tables']['parcel_trip_matches']['Row']
 
-const MIN_SCORE_THRESHOLD = parseInt(process.env.MATCHING_MIN_SCORE_THRESHOLD || '50', 10)
+const MIN_SCORE_THRESHOLD = parseInt(process.env.MATCHING_MIN_SCORE_THRESHOLD || '60', 10) // Minimum score threshold: 60%
 
 /**
  * GET /api/parcels/[id]
