@@ -95,19 +95,6 @@ export default function AddressAutocomplete({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Mapbox token - should be in environment variable
-  const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "pk.eyJ1IjoicWlrcGFyY2VsMjAyNSIsImEiOiJjbWs0Ym5kMDkwNW1xM2VxbTM2ZGZlYjZxIn0.5eSh6X3vFx_I2Y5rSM7nkQ";
-  
-  // Validate token format
-  useEffect(() => {
-    if (!MAPBOX_TOKEN || MAPBOX_TOKEN.length < 20) {
-      console.error("⚠️ Invalid Mapbox token detected. Please check NEXT_PUBLIC_MAPBOX_TOKEN environment variable.");
-    } else {
-      console.log("✅ Mapbox token loaded:", MAPBOX_TOKEN.substring(0, 20) + "...");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Close suggestions when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -125,7 +112,7 @@ export default function AddressAutocomplete({
     };
   }, []);
 
-  // Fetch suggestions from Mapbox Geocoding API
+  // Fetch suggestions via server-side Google Geocoding proxy API
   const fetchSuggestions = useCallback(
     async (query: string) => {
       if (!query.trim() || query.length < 3) {
@@ -137,44 +124,39 @@ export default function AddressAutocomplete({
       setLoading(true);
       try {
         const encodedQuery = encodeURIComponent(query);
-        
-        // Mapbox Geocoding API v6 parameters:
-        // - q: required, search query (URL-encoded, ≤256 chars, ≤20 tokens)
-        // - access_token: required
-        // - autocomplete: boolean (default true) - allows partial matches
-        // - proximity: "ip" or "longitude,latitude" - biases results to location
-        // - types: comma-separated feature types (address, street, place, postcode, etc.)
-        // - limit: number of results (default 5, max 10)
-        // - language: IETF language tag (optional)
-        
-        // Include "street" in types to get street name results like "Oxford Street"
-        // Use proximity=ip to bias results to user's location for better relevance
-        let url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=true&proximity=ip&types=address,street,place,postcode,locality,country,region`;
 
-        console.log("Fetching suggestions for:", query);
-        console.log("Mapbox URL:", url.replace(MAPBOX_TOKEN, "TOKEN_HIDDEN"));
+        // If user has specified a country (e.g. "Zimbabwe"), pass a country code
+        const countryLower = (country || "").trim().toLowerCase();
+        let countryParam = "";
+        if (countryLower === "zimbabwe" || countryLower === "zw") {
+          countryParam = "&country=ZW";
+        }
+
+        const url = `/api/geocoding/forward?q=${encodedQuery}&limit=10${countryParam}`;
+
+        console.log("Fetching suggestions (Google) for:", query);
 
         const response = await fetch(url);
         
         // Log response status for debugging
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("Mapbox API Error:", response.status, response.statusText, errorText);
+          console.error("Geocoding API Error:", response.status, response.statusText, errorText);
           throw new Error(`Failed to fetch address suggestions: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
-        console.log("Mapbox API Response:", data);
+        console.log("Geocoding API Response:", data);
         
         // Check for API errors in response
         if (data.error) {
-          console.error("Mapbox API Error:", data.error);
+          console.error("Geocoding API Error:", data.error);
           setSuggestions([]);
           setShowSuggestions(false);
           return;
         }
-        
-        // Mapbox v6 returns results in 'features' array
+
+        // Our API returns results in 'features' array (Mapbox-like shape)
         if (data.features && Array.isArray(data.features) && data.features.length > 0) {
           console.log("✅ Found", data.features.length, "suggestions");
           setSuggestions(data.features);
@@ -182,53 +164,8 @@ export default function AddressAutocomplete({
         } else {
           console.warn("⚠️ No features found in response. Query:", query);
           console.warn("Full response:", JSON.stringify(data, null, 2));
-          
-          // Try again with different parameters if first attempt failed
-          if (data.features && data.features.length === 0 && query.length >= 3) {
-            console.log("Retrying with broader search (no type restrictions)...");
-            
-            // Try without type restrictions to get more results (including countries, regions)
-            const retryUrl = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=true`;
-            
-            const retryResponse = await fetch(retryUrl);
-            if (retryResponse.ok) {
-              const retryData = await retryResponse.json();
-              console.log("Retry response (no type restrictions):", retryData);
-              if (retryData.features && retryData.features.length > 0) {
-                console.log("✅ Found", retryData.features.length, "suggestions on retry");
-                setSuggestions(retryData.features);
-                setShowSuggestions(true);
-              } else {
-                // Last attempt: try without autocomplete (exact match) for better global coverage
-                console.log("Trying exact match (no autocomplete)...");
-                const exactUrl = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=10&autocomplete=false`;
-                const exactResponse = await fetch(exactUrl);
-                if (exactResponse.ok) {
-                  const exactData = await exactResponse.json();
-                  if (exactData.features && exactData.features.length > 0) {
-                    console.log("✅ Found", exactData.features.length, "exact matches");
-                    setSuggestions(exactData.features);
-                    setShowSuggestions(true);
-                  } else {
-                    console.warn("Still no results after all retries");
-                    setSuggestions([]);
-                    setShowSuggestions(false);
-                  }
-                } else {
-                  setSuggestions([]);
-                  setShowSuggestions(false);
-                }
-              }
-            } else {
-              const retryErrorText = await retryResponse.text();
-              console.error("Retry failed:", retryResponse.status, retryErrorText);
-              setSuggestions([]);
-              setShowSuggestions(false);
-            }
-          } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
-          }
+          setSuggestions([]);
+          setShowSuggestions(false);
         }
       } catch (error) {
         console.error("Error fetching address suggestions:", error);
@@ -238,7 +175,7 @@ export default function AddressAutocomplete({
         setLoading(false);
       }
     },
-    [MAPBOX_TOKEN]
+    [country]
   );
 
   // Parse Mapbox response to extract address components
@@ -337,113 +274,145 @@ export default function AddressAutocomplete({
   }, [onAddressChange]);
 
   // Geocode manual address input when user finishes typing
-  const geocodeManualAddress = useCallback(async (address: string) => {
-    if (!address.trim() || address.length < 3) {
-      return;
-    }
-
-    // Don't geocode if user just selected a suggestion
-    if (selectedSuggestion) {
-      return;
-    }
-
-    setIsGeocodingManual(true);
-    try {
-      const encodedQuery = encodeURIComponent(address);
-      // Use proximity=ip to bias results to user's location
-      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&autocomplete=false&proximity=ip`;
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Failed to geocode address");
+  const geocodeManualAddress = useCallback(
+    async (address: string) => {
+      if (!address.trim() || address.length < 3) {
+        return;
       }
 
-      const data = await response.json();
-      
-      if (data.features && data.features.length > 0) {
-        // Use the first result - automatically select it
-        const suggestion = data.features[0];
-        handleSelectSuggestion(suggestion);
-        console.log("✅ Geocoded manual address:", address);
-      } else {
-        console.warn("⚠️ No geocoding results for:", address);
-        // Still allow submission but without coordinates
-        // User will get lower match scores (40-50 instead of 80+)
+      // Don't geocode if user just selected a suggestion
+      if (selectedSuggestion) {
+        return;
       }
-    } catch (error) {
-      console.error("Error geocoding manual address:", error);
-    } finally {
-      setIsGeocodingManual(false);
-    }
-  }, [MAPBOX_TOKEN, selectedSuggestion, handleSelectSuggestion]);
+
+      setIsGeocodingManual(true);
+      try {
+        const encodedQuery = encodeURIComponent(address);
+
+        const countryLower = (country || "").trim().toLowerCase();
+        let countryParam = "";
+        if (countryLower === "zimbabwe" || countryLower === "zw") {
+          countryParam = "&country=ZW";
+        }
+
+        const url = `/api/geocoding/forward?q=${encodedQuery}&limit=1${countryParam}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error("Failed to geocode address");
+        }
+
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+          // Use the first result - automatically select it
+          const suggestion = data.features[0];
+          handleSelectSuggestion(suggestion);
+          console.log("✅ Geocoded manual address:", address);
+        } else {
+          console.warn("⚠️ No geocoding results for:", address);
+          // Still allow submission but without coordinates
+        }
+      } catch (error) {
+        console.error("Error geocoding manual address:", error);
+      } finally {
+        setIsGeocodingManual(false);
+      }
+    },
+    [selectedSuggestion, handleSelectSuggestion, country]
+  );
 
   // Geocode when structured fields change (debounced)
-  const geocodeStructuredFields = useCallback(async () => {
-    // Build full address string from structured fields
-    const fullAddress = [
+  const geocodeStructuredFields = useCallback(
+    async () => {
+      // Build full address string from structured fields
+      const fullAddress = [
+        streetAddress,
+        addressLine2,
+        city,
+        state,
+        postcode,
+        country,
+      ]
+        .filter((part) => part && part.trim())
+        .join(", ");
+
+      // Only geocode if we have at least city and country (minimum for geocoding)
+      if (fullAddress.length < 3 || (!city.trim() && !country.trim())) {
+        return;
+      }
+
+      // Don't geocode if user just selected a suggestion
+      if (selectedSuggestion) {
+        return;
+      }
+
+      setIsGeocodingManual(true);
+      try {
+        const encodedQuery = encodeURIComponent(fullAddress);
+
+        const countryLower = (country || "").trim().toLowerCase();
+        let countryParam = "";
+        if (countryLower === "zimbabwe" || countryLower === "zw") {
+          countryParam = "&country=ZW";
+        }
+
+        const url = `/api/geocoding/forward?q=${encodedQuery}&limit=1${countryParam}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error("Failed to geocode address");
+        }
+
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+          const suggestion = data.features[0];
+          const coords =
+            suggestion.properties?.coordinates ||
+            (suggestion.geometry?.coordinates
+              ? {
+                  longitude: suggestion.geometry.coordinates[0],
+                  latitude: suggestion.geometry.coordinates[1],
+                }
+              : undefined);
+
+          if (coords) {
+            // Update coordinates without changing the address fields
+            onAddressChange({
+              streetAddress,
+              addressLine2,
+              city,
+              state,
+              postcode,
+              country,
+              coordinates: coords,
+            });
+            console.log("✅ Geocoded structured fields. Coordinates:", coords);
+          }
+        } else {
+          console.warn(
+            "⚠️ No geocoding results for structured fields:",
+            fullAddress
+          );
+        }
+      } catch (error) {
+        console.error("Error geocoding structured fields:", error);
+      } finally {
+        setIsGeocodingManual(false);
+      }
+    },
+    [
       streetAddress,
       addressLine2,
       city,
       state,
       postcode,
       country,
+      selectedSuggestion,
+      onAddressChange,
     ]
-      .filter((part) => part && part.trim())
-      .join(", ");
-
-    // Only geocode if we have at least city and country (minimum for geocoding)
-    if (fullAddress.length < 3 || (!city.trim() && !country.trim())) {
-      return;
-    }
-
-    // Don't geocode if user just selected a suggestion
-    if (selectedSuggestion) {
-      return;
-    }
-
-    setIsGeocodingManual(true);
-    try {
-      const encodedQuery = encodeURIComponent(fullAddress);
-      // Use proximity=ip to bias results to user's location
-      const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedQuery}&access_token=${MAPBOX_TOKEN}&limit=1&autocomplete=false&proximity=ip`;
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error("Failed to geocode address");
-      }
-
-      const data = await response.json();
-      
-      if (data.features && data.features.length > 0) {
-        const suggestion = data.features[0];
-        const coords = suggestion.properties?.coordinates || 
-                       (suggestion.geometry?.coordinates ? {
-                         longitude: suggestion.geometry.coordinates[0],
-                         latitude: suggestion.geometry.coordinates[1]
-                       } : undefined);
-        
-        if (coords) {
-          // Update coordinates without changing the address fields
-          onAddressChange({
-            streetAddress,
-            addressLine2,
-            city,
-            state,
-            postcode,
-            country,
-            coordinates: coords,
-          });
-          console.log("✅ Geocoded structured fields. Coordinates:", coords);
-        }
-      } else {
-        console.warn("⚠️ No geocoding results for structured fields:", fullAddress);
-      }
-    } catch (error) {
-      console.error("Error geocoding structured fields:", error);
-    } finally {
-      setIsGeocodingManual(false);
-    }
-  }, [streetAddress, addressLine2, city, state, postcode, country, selectedSuggestion, onAddressChange, MAPBOX_TOKEN]);
+  );
 
   // Debounce search query
   useEffect(() => {

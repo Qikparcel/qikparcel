@@ -185,6 +185,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify coordinates were stored
+    console.log('[TRIP API] ✅ Trip created successfully. Coordinates verification:', {
+      trip_id: trip.id,
+      origin: {
+        lat: trip.origin_latitude,
+        lon: trip.origin_longitude,
+        status: trip.origin_latitude && trip.origin_longitude ? '✅ STORED' : '❌ MISSING'
+      },
+      destination: {
+        lat: trip.destination_latitude,
+        lon: trip.destination_longitude,
+        status: trip.destination_latitude && trip.destination_longitude ? '✅ STORED' : '❌ MISSING'
+      }
+    });
+
     // Trigger automatic matching for this trip
     // Use admin client to bypass RLS and see all parcels
     // Do this asynchronously to not block the response

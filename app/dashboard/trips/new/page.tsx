@@ -292,6 +292,19 @@ export default function CreateTripPage() {
         return;
       }
 
+      // Verify coordinates are present (required for matching algorithm)
+      if (!originCoordinates || !originCoordinates.latitude || !originCoordinates.longitude) {
+        toast.error("Please select an origin address from the suggestions to get coordinates. This is required for matching.");
+        setLoading(false);
+        return;
+      }
+
+      if (!destinationCoordinates || !destinationCoordinates.latitude || !destinationCoordinates.longitude) {
+        toast.error("Please select a destination address from the suggestions to get coordinates. This is required for matching.");
+        setLoading(false);
+        return;
+      }
+
       // Build address strings
       const originAddress = buildAddressString(
         originStreetAddress,
@@ -372,9 +385,20 @@ export default function CreateTripPage() {
         >
           {/* Origin Address */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Origin Address
-            </h2>
+            <div className="flex items-center justify-between border-b pb-2">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Origin Address
+              </h2>
+              {originCoordinates?.latitude && originCoordinates?.longitude ? (
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  ✅ Coordinates: {originCoordinates.latitude.toFixed(6)}, {originCoordinates.longitude.toFixed(6)}
+                </span>
+              ) : (
+                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                  ⚠️ Select address from suggestions for coordinates
+                </span>
+              )}
+            </div>
 
             <AddressAutocomplete
               label="Origin Address"
@@ -404,9 +428,20 @@ export default function CreateTripPage() {
 
           {/* Destination Address */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900 border-b pb-2">
-              Destination Address
-            </h2>
+            <div className="flex items-center justify-between border-b pb-2">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Destination Address
+              </h2>
+              {destinationCoordinates?.latitude && destinationCoordinates?.longitude ? (
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  ✅ Coordinates: {destinationCoordinates.latitude.toFixed(6)}, {destinationCoordinates.longitude.toFixed(6)}
+                </span>
+              ) : (
+                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                  ⚠️ Select address from suggestions for coordinates
+                </span>
+              )}
+            </div>
 
             <AddressAutocomplete
               label="Destination Address"

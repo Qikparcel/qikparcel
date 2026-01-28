@@ -134,6 +134,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify coordinates were stored
+    console.log('[PARCEL API] ✅ Parcel created successfully. Coordinates verification:', {
+      parcel_id: parcel.id,
+      pickup: {
+        lat: parcel.pickup_latitude,
+        lon: parcel.pickup_longitude,
+        status: parcel.pickup_latitude && parcel.pickup_longitude ? '✅ STORED' : '❌ MISSING'
+      },
+      delivery: {
+        lat: parcel.delivery_latitude,
+        lon: parcel.delivery_longitude,
+        status: parcel.delivery_latitude && parcel.delivery_longitude ? '✅ STORED' : '❌ MISSING'
+      }
+    });
+
     // Create initial status history entry
     const statusHistoryData: ParcelStatusHistoryInsert = {
       parcel_id: parcel.id,

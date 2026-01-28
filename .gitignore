@@ -25,6 +25,7 @@ dist/
 build/
 .next/
 out/
+*.tsbuildinfo
 
 # Vercel
 .vercel
