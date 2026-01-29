@@ -338,6 +338,21 @@ export default function ParcelDetailPage() {
       return
     }
 
+    if (!formData.estimated_value.trim()) {
+      toast.error("Estimated value is required")
+      return
+    }
+    const valueNum = parseFloat(formData.estimated_value)
+    if (Number.isNaN(valueNum) || valueNum < 0) {
+      toast.error("Estimated value must be a valid number (0 or more)")
+      return
+    }
+    const MAX_ESTIMATED_VALUE = 2000
+    if (valueNum > MAX_ESTIMATED_VALUE) {
+      toast.error(`Estimated value cannot exceed ${MAX_ESTIMATED_VALUE.toLocaleString()}`)
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -370,8 +385,8 @@ export default function ParcelDetailPage() {
           description: formData.description.trim() || null,
           weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
           dimensions: formData.dimensions.trim(),
-          estimated_value: formData.estimated_value ? parseFloat(formData.estimated_value) : null,
-          estimated_value_currency: formData.estimated_value ? formData.estimated_value_currency : null,
+          estimated_value: parseFloat(formData.estimated_value),
+          estimated_value_currency: formData.estimated_value_currency,
         }),
       })
 
@@ -605,7 +620,7 @@ export default function ParcelDetailPage() {
 
                     <div>
                       <label htmlFor="estimated_value" className="block text-sm font-medium text-gray-700 mb-2">
-                        Estimated Value
+                        Estimated Value <span className="text-red-500">*</span>
                       </label>
                       <div className="flex gap-2">
                         <input
@@ -617,6 +632,8 @@ export default function ParcelDetailPage() {
                           placeholder="0.00"
                           step="0.01"
                           min="0"
+                          max="2000"
+                          required
                           className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                         />
                         <select

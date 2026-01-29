@@ -125,6 +125,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (estimated_value == null || estimated_value === "") {
+      return NextResponse.json(
+        { error: "Estimated value is required" },
+        { status: 400 }
+      );
+    }
+    const valueNum = typeof estimated_value === "number" ? estimated_value : parseFloat(estimated_value);
+    if (Number.isNaN(valueNum) || valueNum < 0) {
+      return NextResponse.json(
+        { error: "Estimated value must be a valid number (0 or more)" },
+        { status: 400 }
+      );
+    }
+    const MAX_ESTIMATED_VALUE = 2000;
+    if (valueNum > MAX_ESTIMATED_VALUE) {
+      return NextResponse.json(
+        { error: `Estimated value cannot exceed ${MAX_ESTIMATED_VALUE.toLocaleString()}` },
+        { status: 400 }
+      );
+    }
+
     // Create parcel
     const parcelData: ParcelInsert = {
       sender_id: session.user.id,
@@ -137,8 +158,8 @@ export async function POST(request: NextRequest) {
       description: description || null,
       weight_kg: weight_kg || null,
       dimensions: dimensions.trim(),
-      estimated_value: estimated_value || null,
-      estimated_value_currency: estimated_value_currency || null,
+      estimated_value: valueNum,
+      estimated_value_currency: estimated_value_currency || "USD",
       preferred_pickup_time: preferred_pickup_time || null,
       status: "pending",
     } as any;
