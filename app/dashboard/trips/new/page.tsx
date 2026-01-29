@@ -37,6 +37,11 @@ export default function CreateTripPage() {
   const [estimatedArrival, setEstimatedArrival] = useState("");
   const [availableCapacity, setAvailableCapacity] = useState("");
 
+  // Suggested travel time from origin to destination (best-case drive)
+  const [suggestedDurationSeconds, setSuggestedDurationSeconds] = useState<number | null>(null);
+  const [suggestedDurationText, setSuggestedDurationText] = useState<string | null>(null);
+  const [durationLoading, setDurationLoading] = useState(false);
+
   // Get minimum datetime for departure (current local time)
   const getMinDepartureTime = (): string => {
     const now = new Date();
@@ -52,10 +57,10 @@ export default function CreateTripPage() {
   // Get minimum datetime for estimated arrival (either departure time or now)
   const getMinArrivalTime = (): string => {
     if (departureTime) {
-      // Parse departure time as local time and add 1 minute
+      // Require at least 15 minutes trip length (anti-spam / realistic)
+      const minMinutes = 15;
       const departureDate = new Date(departureTime);
-      departureDate.setMinutes(departureDate.getMinutes() + 1);
-      // Format as YYYY-MM-DDTHH:mm for datetime-local input (local timezone)
+      departureDate.setMinutes(departureDate.getMinutes() + minMinutes);
       const year = departureDate.getFullYear();
       const month = String(departureDate.getMonth() + 1).padStart(2, "0");
       const day = String(departureDate.getDate()).padStart(2, "0");
@@ -64,6 +69,18 @@ export default function CreateTripPage() {
       return `${year}-${month}-${day}T${hours}:${minutes}`;
     }
     return getMinDepartureTime();
+  };
+
+  const applySuggestedTime = () => {
+    if (!departureTime || suggestedDurationSeconds == null) return;
+    const dep = new Date(departureTime);
+    dep.setSeconds(dep.getSeconds() + suggestedDurationSeconds);
+    const year = dep.getFullYear();
+    const month = String(dep.getMonth() + 1).padStart(2, "0");
+    const day = String(dep.getDate()).padStart(2, "0");
+    const hours = String(dep.getHours()).padStart(2, "0");
+    const minutes = String(dep.getMinutes()).padStart(2, "0");
+    setEstimatedArrival(`${year}-${month}-${day}T${hours}:${minutes}`);
   };
 
   // Convert local datetime string to UTC ISO string
@@ -87,6 +104,58 @@ export default function CreateTripPage() {
       }
     }
   }, [departureTime, estimatedArrival]);
+
+  // Fetch suggested travel time when both origin and destination coordinates are set
+  useEffect(() => {
+    if (
+      !originCoordinates?.latitude ||
+      !originCoordinates?.longitude ||
+      !destinationCoordinates?.latitude ||
+      !destinationCoordinates?.longitude
+    ) {
+      setSuggestedDurationSeconds(null);
+      setSuggestedDurationText(null);
+      return;
+    }
+
+    let cancelled = false;
+    setDurationLoading(true);
+    const params = new URLSearchParams({
+      origin_lat: String(originCoordinates.latitude),
+      origin_lng: String(originCoordinates.longitude),
+      dest_lat: String(destinationCoordinates.latitude),
+      dest_lng: String(destinationCoordinates.longitude),
+    });
+    fetch(`/api/geocoding/duration?${params}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.durationSeconds != null) {
+          setSuggestedDurationSeconds(data.durationSeconds);
+          setSuggestedDurationText(data.durationText || null);
+        } else {
+          setSuggestedDurationSeconds(null);
+          setSuggestedDurationText(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSuggestedDurationSeconds(null);
+          setSuggestedDurationText(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDurationLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    originCoordinates?.latitude,
+    originCoordinates?.longitude,
+    destinationCoordinates?.latitude,
+    destinationCoordinates?.longitude,
+  ]);
 
   // Verify user role on mount
   useEffect(() => {
@@ -292,6 +361,19 @@ export default function CreateTripPage() {
         return;
       }
 
+      // Minimum trip length: 15 minutes, or 50% of suggested drive time if available (anti-spam / realistic)
+      const tripLengthMinutes = (arrivalDate.getTime() - departureDate.getTime()) / (60 * 1000);
+      const minMinutes = suggestedDurationSeconds != null
+        ? Math.max(15, Math.round(suggestedDurationSeconds / 60) * 0.5)
+        : 15;
+      if (tripLengthMinutes < minMinutes) {
+        toast.error(
+          `Trip length must be at least ${Math.ceil(minMinutes)} minutes (realistic travel time). Use "Use suggested time" if needed.`
+        );
+        setLoading(false);
+        return;
+      }
+
       // Verify coordinates are present (required for matching algorithm)
       if (!originCoordinates || !originCoordinates.latitude || !originCoordinates.longitude) {
         toast.error("Please select an origin address from the suggestions to get coordinates. This is required for matching.");
@@ -346,6 +428,9 @@ export default function CreateTripPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error(data.error || "Too many trips. Please wait a few minutes.");
+        }
         throw new Error(data.error || data.message || "Failed to create trip");
       }
 
@@ -474,6 +559,30 @@ export default function CreateTripPage() {
             <h2 className="text-lg font-semibold text-gray-900">
               Trip Details
             </h2>
+
+            {(suggestedDurationText || durationLoading) && (
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                {durationLoading ? (
+                  <span className="text-sm text-gray-600">Estimating drive time…</span>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-700">
+                      Suggested drive time (best case): <strong>{suggestedDurationText}</strong>
+                    </span>
+                    {departureTime && (
+                      <button
+                        type="button"
+                        onClick={applySuggestedTime}
+                        className="text-sm px-3 py-1.5 rounded-md bg-primary-600 text-white hover:bg-primary-700 transition"
+                        style={{ backgroundColor: "#29772F" }}
+                      >
+                        Use suggested time
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

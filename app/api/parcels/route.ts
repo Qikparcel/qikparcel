@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { Database } from "@/types/database";
 import { findAndCreateMatchesForParcel } from "@/lib/matching/service";
+import { checkCreateRateLimit } from "@/lib/rate-limit";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Parcel = Database["public"]["Tables"]["parcels"]["Row"];
@@ -64,6 +65,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { allowed: parcelLimitAllowed } = await checkCreateRateLimit(
+      supabase,
+      "parcels",
+      "sender_id",
+      session.user.id,
+      15,
+      5
+    );
+    if (!parcelLimitAllowed) {
+      return NextResponse.json(
+        { error: "Too many parcels created. Please wait a few minutes before creating another." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const {
       pickup_address,
@@ -102,6 +118,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!dimensions || typeof dimensions !== "string" || !dimensions.trim()) {
+      return NextResponse.json(
+        { error: "Dimensions are required" },
+        { status: 400 }
+      );
+    }
+
     // Create parcel
     const parcelData: ParcelInsert = {
       sender_id: session.user.id,
@@ -113,7 +136,7 @@ export async function POST(request: NextRequest) {
       delivery_longitude: delivery_longitude || null,
       description: description || null,
       weight_kg: weight_kg || null,
-      dimensions: dimensions || null,
+      dimensions: dimensions.trim(),
       estimated_value: estimated_value || null,
       estimated_value_currency: estimated_value_currency || null,
       preferred_pickup_time: preferred_pickup_time || null,

@@ -97,10 +97,38 @@ export async function GET(
       console.error('Error fetching status history:', historyError)
     }
 
+    // When sender views their matched parcel, include courier (person) info only — not trip details.
+    // Use admin client: RLS blocks senders from reading other users' profiles and trips (completed/cancelled).
+    // We already verified the requester is the parcel sender; admin fetch is scoped to this parcel's match.
+    let matchedCourier: { full_name: string | null; phone_number: string; whatsapp_number: string | null } | null = null
+    if (parcel.matched_trip_id && profile?.role === 'sender' && parcel.sender_id === session.user.id) {
+      const adminClient = createSupabaseAdminClient()
+      const { data: trip } = await adminClient
+        .from('trips')
+        .select('courier_id')
+        .eq('id', parcel.matched_trip_id)
+        .single<Pick<Trip, 'courier_id'>>()
+      if (trip?.courier_id) {
+        const { data: courierProfile } = await adminClient
+          .from('profiles')
+          .select('full_name, phone_number, whatsapp_number')
+          .eq('id', trip.courier_id)
+          .single<Pick<Profile, 'full_name' | 'phone_number' | 'whatsapp_number'>>()
+        if (courierProfile) {
+          matchedCourier = {
+            full_name: courierProfile.full_name ?? null,
+            phone_number: courierProfile.phone_number,
+            whatsapp_number: courierProfile.whatsapp_number ?? null,
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       parcel,
       statusHistory: statusHistory || [],
+      matchedCourier: matchedCourier ?? undefined,
     })
   } catch (error: any) {
     console.error('Error in GET /api/parcels/[id]:', error)
@@ -208,6 +236,13 @@ export async function PUT(
       )
     }
 
+    if (dimensions === undefined || dimensions === null || (typeof dimensions === 'string' && !dimensions.trim())) {
+      return NextResponse.json(
+        { error: 'Dimensions are required' },
+        { status: 400 }
+      )
+    }
+
     // Prepare update data
     const updateData: ParcelUpdate & { estimated_value_currency?: string | null } = {
       pickup_address,
@@ -218,7 +253,7 @@ export async function PUT(
       delivery_longitude: delivery_longitude || null,
       description: description || null,
       weight_kg: weight_kg || null,
-      dimensions: dimensions || null,
+      dimensions: typeof dimensions === 'string' ? dimensions.trim() : dimensions,
       estimated_value: estimated_value || null,
       estimated_value_currency: estimated_value_currency || null,
       updated_at: new Date().toISOString(),
