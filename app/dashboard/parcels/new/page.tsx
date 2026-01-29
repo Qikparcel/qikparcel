@@ -200,6 +200,11 @@ export default function CreateParcelPage() {
       return;
     }
 
+    if (!formData.dimensions.trim()) {
+      toast.error("Dimensions are required");
+      return;
+    }
+
     // Verify coordinates are present (required for matching algorithm)
     if (!pickupCoordinates || !pickupCoordinates.latitude || !pickupCoordinates.longitude) {
       toast.error("Please select a pickup address from the suggestions to get coordinates. This is required for matching.");
@@ -247,7 +252,7 @@ export default function CreateParcelPage() {
           delivery_longitude: deliveryCoordinates?.longitude || null,
           description: formData.description.trim() || null,
           weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
-          dimensions: formData.dimensions.trim() || null,
+          dimensions: formData.dimensions.trim(),
           estimated_value: formData.estimated_value
             ? parseFloat(formData.estimated_value)
             : null,
@@ -447,7 +452,7 @@ export default function CreateParcelPage() {
                   htmlFor="dimensions"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Dimensions
+                  Dimensions <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -456,6 +461,7 @@ export default function CreateParcelPage() {
                   value={formData.dimensions}
                   onChange={handleChange}
                   placeholder="e.g., 30x20x15 cm"
+                  required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
               </div>

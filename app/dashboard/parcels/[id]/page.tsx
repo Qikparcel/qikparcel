@@ -12,6 +12,12 @@ import { Database } from '@/types/database'
 type Parcel = Database['public']['Tables']['parcels']['Row']
 type StatusHistory = Database['public']['Tables']['parcel_status_history']['Row']
 
+type MatchedCourier = {
+  full_name: string | null
+  phone_number: string
+  whatsapp_number: string | null
+}
+
 export default function ParcelDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -19,6 +25,7 @@ export default function ParcelDetailPage() {
 
   const [parcel, setParcel] = useState<Parcel | null>(null)
   const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([])
+  const [matchedCourier, setMatchedCourier] = useState<MatchedCourier | null>(null)
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -58,7 +65,8 @@ export default function ParcelDetailPage() {
 
         setParcel(data.parcel)
         setStatusHistory(data.statusHistory || [])
-        
+        setMatchedCourier(data.matchedCourier ?? null)
+
         // Initialize form fields with existing data
         if (data.parcel) {
           setFormData({
@@ -325,6 +333,11 @@ export default function ParcelDetailPage() {
       return
     }
 
+    if (!formData.dimensions.trim()) {
+      toast.error("Dimensions are required")
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -356,7 +369,7 @@ export default function ParcelDetailPage() {
           delivery_address: deliveryAddress,
           description: formData.description.trim() || null,
           weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
-          dimensions: formData.dimensions.trim() || null,
+          dimensions: formData.dimensions.trim(),
           estimated_value: formData.estimated_value ? parseFloat(formData.estimated_value) : null,
           estimated_value_currency: formData.estimated_value ? formData.estimated_value_currency : null,
         }),
@@ -575,7 +588,7 @@ export default function ParcelDetailPage() {
 
                       <div>
                         <label htmlFor="dimensions" className="block text-sm font-medium text-gray-700 mb-2">
-                          Dimensions
+                          Dimensions <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -584,6 +597,7 @@ export default function ParcelDetailPage() {
                           value={formData.dimensions}
                           onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
                           placeholder="e.g., 30x20x15 cm"
+                          required
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                         />
                       </div>
@@ -703,6 +717,45 @@ export default function ParcelDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Courier (person) info — shown to sender when parcel is matched */}
+            {parcel.status !== 'pending' && parcel.status !== 'cancelled' && matchedCourier && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">Your courier</h2>
+                <dl className="space-y-3">
+                  {matchedCourier.full_name && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Name</dt>
+                      <dd className="mt-0.5 text-sm text-gray-900">{matchedCourier.full_name}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Phone</dt>
+                    <dd className="mt-0.5 text-sm text-gray-900">
+                      <a href={`tel:${matchedCourier.phone_number}`} className="text-primary-600 hover:underline" style={{ color: '#29772F' }}>
+                        {matchedCourier.phone_number}
+                      </a>
+                    </dd>
+                  </div>
+                  {matchedCourier.whatsapp_number && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">WhatsApp</dt>
+                      <dd className="mt-0.5 text-sm text-gray-900">
+                        <a
+                          href={`https://wa.me/${matchedCourier.whatsapp_number.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary-600 hover:underline"
+                          style={{ color: '#29772F' }}
+                        >
+                          {matchedCourier.whatsapp_number}
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+            )}
+
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
               <div className="space-y-3">

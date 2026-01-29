@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { Database } from "@/types/database";
 import { findAndCreateMatchesForTrip } from "@/lib/matching/service";
+import { checkCreateRateLimit } from "@/lib/rate-limit";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Trip = Database["public"]["Tables"]["trips"]["Row"];
@@ -59,6 +60,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Only couriers can create trips" },
         { status: 403 }
+      );
+    }
+
+    const { allowed: tripLimitAllowed, count: tripCount } = await checkCreateRateLimit(
+      supabase,
+      "trips",
+      "courier_id",
+      session.user.id,
+      15,
+      5
+    );
+    if (!tripLimitAllowed) {
+      return NextResponse.json(
+        { error: "Too many trips created. Please wait a few minutes before creating another." },
+        { status: 429 }
       );
     }
 
@@ -152,6 +168,16 @@ export async function POST(request: NextRequest) {
     if (arrivalDate.getTime() <= departureDate.getTime()) {
       return NextResponse.json(
         { error: "Estimated arrival must be after departure time" },
+        { status: 400 }
+      );
+    }
+
+    // Minimum trip length: 15 minutes (anti-spam / realistic travel time)
+    const tripLengthSeconds = (arrivalDate.getTime() - departureDate.getTime()) / 1000;
+    const MIN_TRIP_LENGTH_SECONDS = 15 * 60;
+    if (tripLengthSeconds < MIN_TRIP_LENGTH_SECONDS) {
+      return NextResponse.json(
+        { error: "Trip length must be at least 15 minutes. Please set a realistic estimated arrival." },
         { status: 400 }
       );
     }
