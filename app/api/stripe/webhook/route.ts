@@ -104,12 +104,13 @@ export async function POST(request: NextRequest) {
           .eq("stripe_payment_intent_id", paymentIntentId)
           .limit(1);
 
-        if (matches && matches.length > 0) {
+        const matchList = (matches ?? []) as { id: string }[];
+        if (matchList.length > 0) {
           await (adminClient.from("parcel_trip_matches") as any)
             .update({ payment_status: "refunded" })
-            .eq("id", matches[0].id);
+            .eq("id", matchList[0].id);
           console.log(
-            `[STRIPE WEBHOOK] Refund processed for match ${matches[0].id}`
+            `[STRIPE WEBHOOK] Refund processed for match ${matchList[0].id}`
           );
         }
         break;

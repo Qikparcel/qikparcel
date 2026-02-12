@@ -107,6 +107,7 @@ export async function GET(
       total_amount: number;
       currency: string;
       payment_status: string;
+      delivery_confirmed_by_sender_at?: string | null;
     } | null = null;
     if (
       parcel.matched_trip_id &&
@@ -122,14 +123,22 @@ export async function GET(
         .eq("parcel_id", parcelId)
         .eq("trip_id", parcel.matched_trip_id)
         .eq("status", "accepted")
-        .single();
+        .single<
+          Pick<
+            Match,
+            | "total_amount"
+            | "currency"
+            | "payment_status"
+            | "delivery_confirmed_by_sender_at"
+          >
+        >();
       if (match?.total_amount != null) {
         paymentInfo = {
           total_amount: Number(match.total_amount),
           currency: match.currency || "USD",
           payment_status: match.payment_status || "pending",
           delivery_confirmed_by_sender_at:
-            (match as any).delivery_confirmed_by_sender_at ?? null,
+            match.delivery_confirmed_by_sender_at ?? null,
         };
       }
       const { data: trip } = await adminClient
