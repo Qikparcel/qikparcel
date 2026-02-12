@@ -29,8 +29,14 @@ export default function CreateTripPage() {
   const [destinationCountry, setDestinationCountry] = useState("");
 
   // Coordinate state
-  const [originCoordinates, setOriginCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
-  const [destinationCoordinates, setDestinationCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
+  const [originCoordinates, setOriginCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [destinationCoordinates, setDestinationCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   // Other fields
   const [departureTime, setDepartureTime] = useState("");
@@ -38,8 +44,12 @@ export default function CreateTripPage() {
   const [availableCapacity, setAvailableCapacity] = useState("");
 
   // Suggested travel time from origin to destination (best-case drive)
-  const [suggestedDurationSeconds, setSuggestedDurationSeconds] = useState<number | null>(null);
-  const [suggestedDurationText, setSuggestedDurationText] = useState<string | null>(null);
+  const [suggestedDurationSeconds, setSuggestedDurationSeconds] = useState<
+    number | null
+  >(null);
+  const [suggestedDurationText, setSuggestedDurationText] = useState<
+    string | null
+  >(null);
   const [durationLoading, setDurationLoading] = useState(false);
 
   // Get minimum datetime for departure (current local time)
@@ -362,27 +372,43 @@ export default function CreateTripPage() {
       }
 
       // Minimum trip length: 15 minutes, or 50% of suggested drive time if available (anti-spam / realistic)
-      const tripLengthMinutes = (arrivalDate.getTime() - departureDate.getTime()) / (60 * 1000);
-      const minMinutes = suggestedDurationSeconds != null
-        ? Math.max(15, Math.round(suggestedDurationSeconds / 60) * 0.5)
-        : 15;
+      const tripLengthMinutes =
+        (arrivalDate.getTime() - departureDate.getTime()) / (60 * 1000);
+      const minMinutes =
+        suggestedDurationSeconds != null
+          ? Math.max(15, Math.round(suggestedDurationSeconds / 60) * 0.5)
+          : 15;
       if (tripLengthMinutes < minMinutes) {
         toast.error(
-          `Trip length must be at least ${Math.ceil(minMinutes)} minutes (realistic travel time). Use "Use suggested time" if needed.`
+          `Trip length must be at least ${Math.ceil(
+            minMinutes
+          )} minutes (realistic travel time). Use "Use suggested time" if needed.`
         );
         setLoading(false);
         return;
       }
 
       // Verify coordinates are present (required for matching algorithm)
-      if (!originCoordinates || !originCoordinates.latitude || !originCoordinates.longitude) {
-        toast.error("Please select an origin address from the suggestions to get coordinates. This is required for matching.");
+      if (
+        !originCoordinates ||
+        !originCoordinates.latitude ||
+        !originCoordinates.longitude
+      ) {
+        toast.error(
+          "Please select an origin address from the suggestions to get coordinates. This is required for matching."
+        );
         setLoading(false);
         return;
       }
 
-      if (!destinationCoordinates || !destinationCoordinates.latitude || !destinationCoordinates.longitude) {
-        toast.error("Please select a destination address from the suggestions to get coordinates. This is required for matching.");
+      if (
+        !destinationCoordinates ||
+        !destinationCoordinates.latitude ||
+        !destinationCoordinates.longitude
+      ) {
+        toast.error(
+          "Please select a destination address from the suggestions to get coordinates. This is required for matching."
+        );
         setLoading(false);
         return;
       }
@@ -415,9 +441,11 @@ export default function CreateTripPage() {
           origin_address: originAddress,
           origin_latitude: originCoordinates?.latitude || null,
           origin_longitude: originCoordinates?.longitude || null,
+          origin_country: originCountry.trim() || null,
           destination_address: destinationAddress,
           destination_latitude: destinationCoordinates?.latitude || null,
           destination_longitude: destinationCoordinates?.longitude || null,
+          destination_country: destinationCountry.trim() || null,
           // Convert local datetime to UTC before sending (both are required)
           departure_time: convertLocalToUTC(departureTime)!,
           estimated_arrival: convertLocalToUTC(estimatedArrival)!,
@@ -429,7 +457,9 @@ export default function CreateTripPage() {
 
       if (!response.ok) {
         if (response.status === 429) {
-          throw new Error(data.error || "Too many trips. Please wait a few minutes.");
+          throw new Error(
+            data.error || "Too many trips. Please wait a few minutes."
+          );
         }
         throw new Error(data.error || data.message || "Failed to create trip");
       }
@@ -476,7 +506,8 @@ export default function CreateTripPage() {
               </h2>
               {originCoordinates?.latitude && originCoordinates?.longitude ? (
                 <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                  ✅ Coordinates: {originCoordinates.latitude.toFixed(6)}, {originCoordinates.longitude.toFixed(6)}
+                  ✅ Coordinates: {originCoordinates.latitude.toFixed(6)},{" "}
+                  {originCoordinates.longitude.toFixed(6)}
                 </span>
               ) : (
                 <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
@@ -517,9 +548,11 @@ export default function CreateTripPage() {
               <h2 className="text-lg font-semibold text-gray-900">
                 Destination Address
               </h2>
-              {destinationCoordinates?.latitude && destinationCoordinates?.longitude ? (
+              {destinationCoordinates?.latitude &&
+              destinationCoordinates?.longitude ? (
                 <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                  ✅ Coordinates: {destinationCoordinates.latitude.toFixed(6)}, {destinationCoordinates.longitude.toFixed(6)}
+                  ✅ Coordinates: {destinationCoordinates.latitude.toFixed(6)},{" "}
+                  {destinationCoordinates.longitude.toFixed(6)}
                 </span>
               ) : (
                 <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
@@ -563,11 +596,14 @@ export default function CreateTripPage() {
             {(suggestedDurationText || durationLoading) && (
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
                 {durationLoading ? (
-                  <span className="text-sm text-gray-600">Estimating drive time…</span>
+                  <span className="text-sm text-gray-600">
+                    Estimating drive time…
+                  </span>
                 ) : (
                   <>
                     <span className="text-sm text-gray-700">
-                      Suggested drive time (best case): <strong>{suggestedDurationText}</strong>
+                      Suggested drive time (best case):{" "}
+                      <strong>{suggestedDurationText}</strong>
                     </span>
                     {departureTime && (
                       <button

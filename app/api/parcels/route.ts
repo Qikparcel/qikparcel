@@ -75,7 +75,10 @@ export async function POST(request: NextRequest) {
     );
     if (!parcelLimitAllowed) {
       return NextResponse.json(
-        { error: "Too many parcels created. Please wait a few minutes before creating another." },
+        {
+          error:
+            "Too many parcels created. Please wait a few minutes before creating another.",
+        },
         { status: 429 }
       );
     }
@@ -85,9 +88,11 @@ export async function POST(request: NextRequest) {
       pickup_address,
       pickup_latitude,
       pickup_longitude,
+      pickup_country,
       delivery_address,
       delivery_latitude,
       delivery_longitude,
+      delivery_country,
       description,
       weight_kg,
       dimensions,
@@ -97,7 +102,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Log coordinates for debugging
-    console.log('[PARCEL API] Received coordinates:', {
+    console.log("[PARCEL API] Received coordinates:", {
       pickup: { lat: pickup_latitude, lon: pickup_longitude },
       delivery: { lat: delivery_latitude, lon: delivery_longitude },
     });
@@ -125,20 +130,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (estimated_value == null || estimated_value === "") {
+      return NextResponse.json(
+        { error: "Estimated value is required" },
+        { status: 400 }
+      );
+    }
+    const valueNum =
+      typeof estimated_value === "number"
+        ? estimated_value
+        : parseFloat(estimated_value);
+    if (Number.isNaN(valueNum) || valueNum < 0) {
+      return NextResponse.json(
+        { error: "Estimated value must be a valid number (0 or more)" },
+        { status: 400 }
+      );
+    }
+    const MAX_ESTIMATED_VALUE = 2000;
+    if (valueNum > MAX_ESTIMATED_VALUE) {
+      return NextResponse.json(
+        {
+          error: `Estimated value cannot exceed ${MAX_ESTIMATED_VALUE.toLocaleString()}`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Create parcel
     const parcelData: ParcelInsert = {
       sender_id: session.user.id,
       pickup_address,
       pickup_latitude: pickup_latitude || null,
       pickup_longitude: pickup_longitude || null,
+      pickup_country: pickup_country || null,
       delivery_address,
       delivery_latitude: delivery_latitude || null,
       delivery_longitude: delivery_longitude || null,
+      delivery_country: delivery_country || null,
       description: description || null,
       weight_kg: weight_kg || null,
       dimensions: dimensions.trim(),
-      estimated_value: estimated_value || null,
-      estimated_value_currency: estimated_value_currency || null,
+      estimated_value: valueNum,
+      estimated_value_currency: estimated_value_currency || "USD",
       preferred_pickup_time: preferred_pickup_time || null,
       status: "pending",
     } as any;
@@ -158,19 +191,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify coordinates were stored
-    console.log('[PARCEL API] ✅ Parcel created successfully. Coordinates verification:', {
-      parcel_id: parcel.id,
-      pickup: {
-        lat: parcel.pickup_latitude,
-        lon: parcel.pickup_longitude,
-        status: parcel.pickup_latitude && parcel.pickup_longitude ? '✅ STORED' : '❌ MISSING'
-      },
-      delivery: {
-        lat: parcel.delivery_latitude,
-        lon: parcel.delivery_longitude,
-        status: parcel.delivery_latitude && parcel.delivery_longitude ? '✅ STORED' : '❌ MISSING'
+    console.log(
+      "[PARCEL API] ✅ Parcel created successfully. Coordinates verification:",
+      {
+        parcel_id: parcel.id,
+        pickup: {
+          lat: parcel.pickup_latitude,
+          lon: parcel.pickup_longitude,
+          status:
+            parcel.pickup_latitude && parcel.pickup_longitude
+              ? "✅ STORED"
+              : "❌ MISSING",
+        },
+        delivery: {
+          lat: parcel.delivery_latitude,
+          lon: parcel.delivery_longitude,
+          status:
+            parcel.delivery_latitude && parcel.delivery_longitude
+              ? "✅ STORED"
+              : "❌ MISSING",
+        },
       }
-    });
+    );
 
     // Create initial status history entry
     const statusHistoryData: ParcelStatusHistoryInsert = {
