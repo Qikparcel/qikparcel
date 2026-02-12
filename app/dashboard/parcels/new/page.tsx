@@ -31,8 +31,14 @@ export default function CreateParcelPage() {
   const [deliveryCountry, setDeliveryCountry] = useState("");
 
   // Coordinate state
-  const [pickupCoordinates, setPickupCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
-  const [deliveryCoordinates, setDeliveryCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
+  const [pickupCoordinates, setPickupCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [deliveryCoordinates, setDeliveryCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   // Other fields
   const [formData, setFormData] = useState({
@@ -43,6 +49,16 @@ export default function CreateParcelPage() {
     estimated_value_currency: "USD",
     preferred_pickup_time: "",
   });
+
+  // Estimated delivery cost (from pricing API)
+  const [priceEstimate, setPriceEstimate] = useState<{
+    total_amount: number;
+    delivery_fee: number;
+    platform_fee: number;
+    currency: string;
+    distance_km?: number;
+  } | null>(null);
+  const [priceEstimateLoading, setPriceEstimateLoading] = useState(false);
 
   // Verify user role on mount
   useEffect(() => {
@@ -74,6 +90,70 @@ export default function CreateParcelPage() {
 
     checkRole();
   }, [router]);
+
+  // Fetch estimated delivery cost when addresses + coords are set
+  useEffect(() => {
+    if (
+      !pickupCoordinates?.latitude ||
+      !pickupCoordinates?.longitude ||
+      !deliveryCoordinates?.latitude ||
+      !deliveryCoordinates?.longitude ||
+      !pickupCountry?.trim() ||
+      !deliveryCountry?.trim()
+    ) {
+      setPriceEstimate(null);
+      return;
+    }
+
+    const weight = formData.weight_kg ? parseFloat(formData.weight_kg) : null;
+    const params = new URLSearchParams({
+      pickup_lat: String(pickupCoordinates.latitude),
+      pickup_lng: String(pickupCoordinates.longitude),
+      delivery_lat: String(deliveryCoordinates.latitude),
+      delivery_lng: String(deliveryCoordinates.longitude),
+      pickup_country: pickupCountry.trim(),
+      delivery_country: deliveryCountry.trim(),
+    });
+    if (weight != null && !Number.isNaN(weight))
+      params.set("weight_kg", String(weight));
+
+    let cancelled = false;
+    setPriceEstimateLoading(true);
+    fetch(`/api/pricing/estimate?${params}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.total_amount != null) {
+          setPriceEstimate({
+            total_amount: data.total_amount,
+            delivery_fee: data.delivery_fee,
+            platform_fee: data.platform_fee,
+            currency: data.currency || "USD",
+            distance_km: data.distance_km,
+          });
+        } else {
+          setPriceEstimate(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPriceEstimate(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPriceEstimateLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    pickupCoordinates?.latitude,
+    pickupCoordinates?.longitude,
+    deliveryCoordinates?.latitude,
+    deliveryCoordinates?.longitude,
+    pickupCountry,
+    deliveryCountry,
+    formData.weight_kg,
+  ]);
 
   const buildAddressString = (
     street: string,
@@ -216,18 +296,32 @@ export default function CreateParcelPage() {
     }
     const MAX_ESTIMATED_VALUE = 2000;
     if (valueNum > MAX_ESTIMATED_VALUE) {
-      toast.error(`Estimated value cannot exceed ${MAX_ESTIMATED_VALUE.toLocaleString()}`);
+      toast.error(
+        `Estimated value cannot exceed ${MAX_ESTIMATED_VALUE.toLocaleString()}`
+      );
       return;
     }
 
     // Verify coordinates are present (required for matching algorithm)
-    if (!pickupCoordinates || !pickupCoordinates.latitude || !pickupCoordinates.longitude) {
-      toast.error("Please select a pickup address from the suggestions to get coordinates. This is required for matching.");
+    if (
+      !pickupCoordinates ||
+      !pickupCoordinates.latitude ||
+      !pickupCoordinates.longitude
+    ) {
+      toast.error(
+        "Please select a pickup address from the suggestions to get coordinates. This is required for matching."
+      );
       return;
     }
 
-    if (!deliveryCoordinates || !deliveryCoordinates.latitude || !deliveryCoordinates.longitude) {
-      toast.error("Please select a delivery address from the suggestions to get coordinates. This is required for matching.");
+    if (
+      !deliveryCoordinates ||
+      !deliveryCoordinates.latitude ||
+      !deliveryCoordinates.longitude
+    ) {
+      toast.error(
+        "Please select a delivery address from the suggestions to get coordinates. This is required for matching."
+      );
       return;
     }
 
@@ -262,9 +356,11 @@ export default function CreateParcelPage() {
           pickup_address: pickupAddress,
           pickup_latitude: pickupCoordinates?.latitude || null,
           pickup_longitude: pickupCoordinates?.longitude || null,
+          pickup_country: pickupCountry.trim() || null,
           delivery_address: deliveryAddress,
           delivery_latitude: deliveryCoordinates?.latitude || null,
           delivery_longitude: deliveryCoordinates?.longitude || null,
+          delivery_country: deliveryCountry.trim() || null,
           description: formData.description.trim() || null,
           weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
           dimensions: formData.dimensions.trim(),
@@ -335,7 +431,8 @@ export default function CreateParcelPage() {
               </h2>
               {pickupCoordinates?.latitude && pickupCoordinates?.longitude ? (
                 <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                  ✅ Coordinates: {pickupCoordinates.latitude.toFixed(6)}, {pickupCoordinates.longitude.toFixed(6)}
+                  ✅ Coordinates: {pickupCoordinates.latitude.toFixed(6)},{" "}
+                  {pickupCoordinates.longitude.toFixed(6)}
                 </span>
               ) : (
                 <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
@@ -376,9 +473,11 @@ export default function CreateParcelPage() {
               <h2 className="text-lg font-semibold text-gray-900">
                 Delivery Address
               </h2>
-              {deliveryCoordinates?.latitude && deliveryCoordinates?.longitude ? (
+              {deliveryCoordinates?.latitude &&
+              deliveryCoordinates?.longitude ? (
                 <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                  ✅ Coordinates: {deliveryCoordinates.latitude.toFixed(6)}, {deliveryCoordinates.longitude.toFixed(6)}
+                  ✅ Coordinates: {deliveryCoordinates.latitude.toFixed(6)},{" "}
+                  {deliveryCoordinates.longitude.toFixed(6)}
                 </span>
               ) : (
                 <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
@@ -413,6 +512,41 @@ export default function CreateParcelPage() {
             />
           </div>
 
+          {/* Estimated delivery cost */}
+          {pickupCoordinates &&
+            deliveryCoordinates &&
+            pickupCountry &&
+            deliveryCountry && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  Estimated delivery cost
+                </h3>
+                {priceEstimateLoading ? (
+                  <p className="text-sm text-gray-500">Calculating…</p>
+                ) : priceEstimate ? (
+                  <div className="text-sm">
+                    <p className="text-gray-600">
+                      Total:{" "}
+                      <strong className="text-gray-900">
+                        {priceEstimate.currency}{" "}
+                        {priceEstimate.total_amount.toFixed(2)}
+                      </strong>
+                      {priceEstimate.distance_km != null && (
+                        <span className="text-gray-500 ml-2">
+                          (~{priceEstimate.distance_km.toFixed(0)} km)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No pricing for this route. You can still submit; price will
+                    be set when a courier accepts.
+                  </p>
+                )}
+              </div>
+            )}
+
           {/* Parcel Details */}
           <div className="space-y-4 border-t pt-6">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -424,7 +558,10 @@ export default function CreateParcelPage() {
                 htmlFor="description"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Description <span className="text-gray-500 font-normal">(e.g., goods box, electronics, documents)</span>
+                Description{" "}
+                <span className="text-gray-500 font-normal">
+                  (e.g., goods box, electronics, documents)
+                </span>
               </label>
               <textarea
                 id="description"

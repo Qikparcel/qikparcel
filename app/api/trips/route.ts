@@ -63,17 +63,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { allowed: tripLimitAllowed, count: tripCount } = await checkCreateRateLimit(
-      supabase,
-      "trips",
-      "courier_id",
-      session.user.id,
-      15,
-      5
-    );
+    const { allowed: tripLimitAllowed, count: tripCount } =
+      await checkCreateRateLimit(
+        supabase,
+        "trips",
+        "courier_id",
+        session.user.id,
+        15,
+        5
+      );
     if (!tripLimitAllowed) {
       return NextResponse.json(
-        { error: "Too many trips created. Please wait a few minutes before creating another." },
+        {
+          error:
+            "Too many trips created. Please wait a few minutes before creating another.",
+        },
         { status: 429 }
       );
     }
@@ -83,16 +87,18 @@ export async function POST(request: NextRequest) {
       origin_address,
       origin_latitude,
       origin_longitude,
+      origin_country,
       destination_address,
       destination_latitude,
       destination_longitude,
+      destination_country,
       departure_time,
       estimated_arrival,
       available_capacity,
     } = body;
 
     // Log coordinates for debugging
-    console.log('[TRIP API] Received coordinates:', {
+    console.log("[TRIP API] Received coordinates:", {
       origin: { lat: origin_latitude, lon: origin_longitude },
       destination: { lat: destination_latitude, lon: destination_longitude },
     });
@@ -173,11 +179,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Minimum trip length: 15 minutes (anti-spam / realistic travel time)
-    const tripLengthSeconds = (arrivalDate.getTime() - departureDate.getTime()) / 1000;
+    const tripLengthSeconds =
+      (arrivalDate.getTime() - departureDate.getTime()) / 1000;
     const MIN_TRIP_LENGTH_SECONDS = 15 * 60;
     if (tripLengthSeconds < MIN_TRIP_LENGTH_SECONDS) {
       return NextResponse.json(
-        { error: "Trip length must be at least 15 minutes. Please set a realistic estimated arrival." },
+        {
+          error:
+            "Trip length must be at least 15 minutes. Please set a realistic estimated arrival.",
+        },
         { status: 400 }
       );
     }
@@ -188,9 +198,11 @@ export async function POST(request: NextRequest) {
       origin_address,
       origin_latitude: origin_latitude || null,
       origin_longitude: origin_longitude || null,
+      origin_country: origin_country || null,
       destination_address,
       destination_latitude: destination_latitude || null,
       destination_longitude: destination_longitude || null,
+      destination_country: destination_country || null,
       departure_time: departure_time, // Required field
       estimated_arrival: estimated_arrival, // Required field
       available_capacity: available_capacity || null,
@@ -212,26 +224,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify coordinates were stored
-    console.log('[TRIP API] ✅ Trip created successfully. Coordinates verification:', {
-      trip_id: trip.id,
-      origin: {
-        lat: trip.origin_latitude,
-        lon: trip.origin_longitude,
-        status: trip.origin_latitude && trip.origin_longitude ? '✅ STORED' : '❌ MISSING'
-      },
-      destination: {
-        lat: trip.destination_latitude,
-        lon: trip.destination_longitude,
-        status: trip.destination_latitude && trip.destination_longitude ? '✅ STORED' : '❌ MISSING'
+    console.log(
+      "[TRIP API] ✅ Trip created successfully. Coordinates verification:",
+      {
+        trip_id: trip.id,
+        origin: {
+          lat: trip.origin_latitude,
+          lon: trip.origin_longitude,
+          status:
+            trip.origin_latitude && trip.origin_longitude
+              ? "✅ STORED"
+              : "❌ MISSING",
+        },
+        destination: {
+          lat: trip.destination_latitude,
+          lon: trip.destination_longitude,
+          status:
+            trip.destination_latitude && trip.destination_longitude
+              ? "✅ STORED"
+              : "❌ MISSING",
+        },
       }
-    });
+    );
 
     // Trigger automatic matching for this trip
     // Use admin client to bypass RLS and see all parcels
     // Do this asynchronously to not block the response
-    console.log(`[TRIP API] Trip created successfully: ${trip.id}, triggering matching...`)
+    console.log(
+      `[TRIP API] Trip created successfully: ${trip.id}, triggering matching...`
+    );
     const adminClient = createSupabaseAdminClient();
-    console.log(`[TRIP API] Admin client created, calling findAndCreateMatchesForTrip...`)
+    console.log(
+      `[TRIP API] Admin client created, calling findAndCreateMatchesForTrip...`
+    );
     findAndCreateMatchesForTrip(adminClient, trip.id)
       .then((result) => {
         console.log(

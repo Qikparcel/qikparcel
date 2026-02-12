@@ -128,7 +128,10 @@ export async function middleware(req: NextRequest) {
       }
 
       // Sender-only routes (exclude admin routes)
-      if (pathname.startsWith("/dashboard/parcels") && !pathname.startsWith("/dashboard/admin")) {
+      if (
+        pathname.startsWith("/dashboard/parcels") &&
+        !pathname.startsWith("/dashboard/admin")
+      ) {
         if (userRole !== "sender") {
           console.log(
             "[MIDDLEWARE] Blocking access to /dashboard/parcels - user is not a sender",
@@ -152,7 +155,10 @@ export async function middleware(req: NextRequest) {
       }
 
       // Courier-only routes (exclude admin routes)
-      if (pathname.startsWith("/dashboard/trips") && !pathname.startsWith("/dashboard/admin")) {
+      if (
+        pathname.startsWith("/dashboard/trips") &&
+        !pathname.startsWith("/dashboard/admin")
+      ) {
         if (userRole !== "courier") {
           console.log(
             "[MIDDLEWARE] Blocking access to /dashboard/trips - user is not a courier",
@@ -208,6 +214,16 @@ export async function middleware(req: NextRequest) {
         }
       }
 
+      // Payment routes - senders only
+      if (pathname.startsWith("/api/payments")) {
+        if (userRole !== "sender") {
+          return NextResponse.json(
+            { error: "Forbidden: Only senders can access payment routes" },
+            { status: 403 }
+          );
+        }
+      }
+
       console.log("[MIDDLEWARE] Role check passed", { pathname, userRole });
     } catch (error) {
       console.error("[MIDDLEWARE] Error in role check:", error);
@@ -227,6 +243,7 @@ export const config = {
     "/api/trips/:path*",
     "/api/admin/:path*",
     "/api/courier/:path*",
+    "/api/payments/:path*",
     "/login",
     "/signup",
   ],

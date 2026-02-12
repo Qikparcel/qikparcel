@@ -17,6 +17,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [connectStatus, setConnectStatus] = useState<{
+    hasAccount: boolean;
+    onboarded: boolean;
+    canReceivePayouts: boolean;
+  } | null>(null);
+  const [connectLoading, setConnectLoading] = useState(false);
 
   // Address fields for editing
   const [streetAddress, setStreetAddress] = useState("");
@@ -52,6 +58,21 @@ export default function SettingsPage() {
 
         setProfile(profileData);
 
+        // Load Connect status for couriers
+        if (profileData?.role === "courier") {
+          try {
+            const res = await fetch("/api/connect/status");
+            const data = await res.json();
+            if (res.ok) setConnectStatus(data);
+          } catch {
+            setConnectStatus({
+              hasAccount: false,
+              onboarded: false,
+              canReceivePayouts: false,
+            });
+          }
+        }
+
         // Initialize address fields
         if (profileData) {
           setStreetAddress(profileData.street_address || "");
@@ -70,6 +91,27 @@ export default function SettingsPage() {
 
     loadProfile();
   }, [router]);
+
+  // Handle return from Stripe Connect onboarding
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connect = params.get("connect");
+    if (connect === "success" || connect === "refresh") {
+      const refetch = async () => {
+        try {
+          const res = await fetch("/api/connect/status");
+          const data = await res.json();
+          if (res.ok) setConnectStatus(data);
+        } catch {
+          /* ignore */
+        }
+      };
+      refetch();
+      if (connect === "success")
+        toast.success("Stripe account connected. You can now receive payouts.");
+      window.history.replaceState({}, "", "/dashboard/settings");
+    }
+  }, []);
 
   const handleEditAddress = () => {
     setIsEditingAddress(true);
@@ -472,16 +514,62 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Additional Info for Couriers */}
+          {/* Get paid / Stripe Connect (couriers only) */}
           {profile.role === "courier" && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Courier Information
+            <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                Get paid
               </h2>
-              <p className="text-sm text-gray-600">
-                KYC verification status and courier-specific details will be
-                shown here once implemented.
-              </p>
+              {connectStatus === null ? (
+                <div className="animate-pulse h-10 bg-gray-100 rounded w-48" />
+              ) : connectStatus.canReceivePayouts ? (
+                <p className="text-sm text-gray-600 mb-2">
+                  Your Stripe account is connected. Delivery fees will be paid
+                  to you when parcels are marked delivered.
+                </p>
+              ) : connectStatus.onboarded ? (
+                <p className="text-sm text-gray-600 mb-2">
+                  Setup complete. Payouts will be enabled once Stripe verifies
+                  your account.
+                </p>
+              ) : (
+                <p className="text-sm text-gray-600 mb-4">
+                  Connect a Stripe account to receive delivery fees when you
+                  complete deliveries.
+                </p>
+              )}
+              {connectStatus !== null &&
+                !connectStatus.canReceivePayouts &&
+                !connectStatus.onboarded && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setConnectLoading(true);
+                      try {
+                        const res = await fetch("/api/connect/onboard", {
+                          method: "POST",
+                        });
+                        const data = await res.json();
+                        if (!res.ok)
+                          throw new Error(
+                            data.error || "Failed to start setup"
+                          );
+                        if (data.url) window.location.href = data.url;
+                      } catch (e: any) {
+                        toast.error(e.message || "Could not open Stripe setup");
+                      } finally {
+                        setConnectLoading(false);
+                      }
+                    }}
+                    disabled={connectLoading}
+                    className="px-4 py-2 text-sm font-medium text-white rounded-lg transition disabled:opacity-50"
+                    style={{ backgroundColor: "#29772F" }}
+                  >
+                    {connectStatus.hasAccount
+                      ? "Complete setup"
+                      : "Connect Stripe"}
+                  </button>
+                )}
             </div>
           )}
         </div>

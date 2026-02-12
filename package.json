@@ -13,6 +13,7 @@
     "migrate": "node scripts/run-migrations.js"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^8.7.0",
     "@supabase/auth-helpers-nextjs": "^0.8.7",
     "@supabase/auth-ui-react": "^0.4.6",
     "@supabase/auth-ui-shared": "^0.1.8",
@@ -21,7 +22,8 @@
     "next": "^14.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-hot-toast": "^2.6.0"
+    "react-hot-toast": "^2.6.0",
+    "stripe": "^20.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",

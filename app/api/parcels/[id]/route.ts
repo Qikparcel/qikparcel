@@ -1,17 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createSupabaseAdminClient } from '@/lib/supabase/client'
-import { findAndCreateMatchesForParcel } from '@/lib/matching/service'
-import { calculateMatchScore } from '@/lib/matching/scoring'
-import { Database } from '@/types/database'
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/client";
+import { findAndCreateMatchesForParcel } from "@/lib/matching/service";
+import { calculateMatchScore } from "@/lib/matching/scoring";
+import { Database } from "@/types/database";
 
-type Profile = Database['public']['Tables']['profiles']['Row']
-type Parcel = Database['public']['Tables']['parcels']['Row']
-type ParcelUpdate = Database['public']['Tables']['parcels']['Update']
-type Trip = Database['public']['Tables']['trips']['Row']
-type Match = Database['public']['Tables']['parcel_trip_matches']['Row']
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type Parcel = Database["public"]["Tables"]["parcels"]["Row"];
+type ParcelUpdate = Database["public"]["Tables"]["parcels"]["Update"];
+type Trip = Database["public"]["Tables"]["trips"]["Row"];
+type Match = Database["public"]["Tables"]["parcel_trip_matches"]["Row"];
 
-const MIN_SCORE_THRESHOLD = parseInt(process.env.MATCHING_MIN_SCORE_THRESHOLD || '60', 10) // Minimum score threshold: 60%
+const MIN_SCORE_THRESHOLD = parseInt(
+  process.env.MATCHING_MIN_SCORE_THRESHOLD || "60",
+  10
+); // Minimum score threshold: 60%
 
 /**
  * GET /api/parcels/[id]
@@ -22,104 +25,132 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient()
-    
+    const supabase = createClient();
+
     // Get authenticated user
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
     if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const parcelId = params.id
+    const parcelId = params.id;
 
     // Get parcel
     const { data: parcel, error: parcelError } = await supabase
-      .from('parcels')
-      .select('*')
-      .eq('id', parcelId)
-      .single<Parcel>()
+      .from("parcels")
+      .select("*")
+      .eq("id", parcelId)
+      .single<Parcel>();
 
     if (parcelError || !parcel) {
-      return NextResponse.json(
-        { error: 'Parcel not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Parcel not found" }, { status: 404 });
     }
 
     // Get user profile to check role
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single<Pick<Profile, 'role'>>()
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single<Pick<Profile, "role">>();
 
     // Sender can view their own parcel, courier can view parcels matched to their trips
-    if (profile?.role === 'sender' && parcel.sender_id !== session.user.id) {
+    if (profile?.role === "sender" && parcel.sender_id !== session.user.id) {
       return NextResponse.json(
-        { error: 'Unauthorized to view this parcel' },
+        { error: "Unauthorized to view this parcel" },
         { status: 403 }
-      )
+      );
     }
 
     // If courier, verify parcel is matched to one of their trips
-    if (profile?.role === 'courier' && parcel.matched_trip_id) {
+    if (profile?.role === "courier" && parcel.matched_trip_id) {
       const { data: trip } = await supabase
-        .from('trips')
-        .select('courier_id')
-        .eq('id', parcel.matched_trip_id)
-        .single<Pick<Trip, 'courier_id'>>()
-      
+        .from("trips")
+        .select("courier_id")
+        .eq("id", parcel.matched_trip_id)
+        .single<Pick<Trip, "courier_id">>();
+
       if (trip && trip.courier_id !== session.user.id) {
         return NextResponse.json(
-          { error: 'Unauthorized to view this parcel' },
+          { error: "Unauthorized to view this parcel" },
           { status: 403 }
-        )
+        );
       }
-    } else if (profile?.role === 'courier' && !parcel.matched_trip_id) {
+    } else if (profile?.role === "courier" && !parcel.matched_trip_id) {
       return NextResponse.json(
-        { error: 'Unauthorized to view this parcel' },
+        { error: "Unauthorized to view this parcel" },
         { status: 403 }
-      )
+      );
     }
 
     // Get status history
     const { data: statusHistory, error: historyError } = await supabase
-      .from('parcel_status_history')
-      .select('*')
-      .eq('parcel_id', parcelId)
-      .order('created_at', { ascending: true })
+      .from("parcel_status_history")
+      .select("*")
+      .eq("parcel_id", parcelId)
+      .order("created_at", { ascending: true });
 
     if (historyError) {
-      console.error('Error fetching status history:', historyError)
+      console.error("Error fetching status history:", historyError);
     }
 
-    // When sender views their matched parcel, include courier (person) info only — not trip details.
-    // Use admin client: RLS blocks senders from reading other users' profiles and trips (completed/cancelled).
-    // We already verified the requester is the parcel sender; admin fetch is scoped to this parcel's match.
-    let matchedCourier: { full_name: string | null; phone_number: string; whatsapp_number: string | null } | null = null
-    if (parcel.matched_trip_id && profile?.role === 'sender' && parcel.sender_id === session.user.id) {
-      const adminClient = createSupabaseAdminClient()
+    // When sender views their matched parcel, include courier info and payment details
+    let matchedCourier: {
+      full_name: string | null;
+      phone_number: string;
+      whatsapp_number: string | null;
+    } | null = null;
+    let paymentInfo: {
+      total_amount: number;
+      currency: string;
+      payment_status: string;
+    } | null = null;
+    if (
+      parcel.matched_trip_id &&
+      profile?.role === "sender" &&
+      parcel.sender_id === session.user.id
+    ) {
+      const adminClient = createSupabaseAdminClient();
+      const { data: match } = await adminClient
+        .from("parcel_trip_matches")
+        .select(
+          "total_amount, currency, payment_status, delivery_confirmed_by_sender_at"
+        )
+        .eq("parcel_id", parcelId)
+        .eq("trip_id", parcel.matched_trip_id)
+        .eq("status", "accepted")
+        .single();
+      if (match?.total_amount != null) {
+        paymentInfo = {
+          total_amount: Number(match.total_amount),
+          currency: match.currency || "USD",
+          payment_status: match.payment_status || "pending",
+          delivery_confirmed_by_sender_at:
+            (match as any).delivery_confirmed_by_sender_at ?? null,
+        };
+      }
       const { data: trip } = await adminClient
-        .from('trips')
-        .select('courier_id')
-        .eq('id', parcel.matched_trip_id)
-        .single<Pick<Trip, 'courier_id'>>()
+        .from("trips")
+        .select("courier_id")
+        .eq("id", parcel.matched_trip_id)
+        .single<Pick<Trip, "courier_id">>();
       if (trip?.courier_id) {
         const { data: courierProfile } = await adminClient
-          .from('profiles')
-          .select('full_name, phone_number, whatsapp_number')
-          .eq('id', trip.courier_id)
-          .single<Pick<Profile, 'full_name' | 'phone_number' | 'whatsapp_number'>>()
+          .from("profiles")
+          .select("full_name, phone_number, whatsapp_number")
+          .eq("id", trip.courier_id)
+          .single<
+            Pick<Profile, "full_name" | "phone_number" | "whatsapp_number">
+          >();
         if (courierProfile) {
           matchedCourier = {
             full_name: courierProfile.full_name ?? null,
             phone_number: courierProfile.phone_number,
             whatsapp_number: courierProfile.whatsapp_number ?? null,
-          }
+          };
         }
       }
     }
@@ -129,13 +160,14 @@ export async function GET(
       parcel,
       statusHistory: statusHistory || [],
       matchedCourier: matchedCourier ?? undefined,
-    })
+      paymentInfo: paymentInfo ?? undefined,
+    });
   } catch (error: any) {
-    console.error('Error in GET /api/parcels/[id]:', error)
+    console.error("Error in GET /api/parcels/[id]:", error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: "Internal server error", details: error.message },
       { status: 500 }
-    )
+    );
   }
 }
 
@@ -148,51 +180,48 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient()
-    
+    const supabase = createClient();
+
     // Get authenticated user
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
     if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const parcelId = params.id
+    const parcelId = params.id;
 
     // Get existing parcel to verify ownership and check matched_trip_id
     const { data: existingParcel, error: parcelError } = await supabase
-      .from('parcels')
-      .select('sender_id, status, matched_trip_id')
-      .eq('id', parcelId)
-      .single<Pick<Parcel, 'sender_id' | 'status' | 'matched_trip_id'>>()
+      .from("parcels")
+      .select("sender_id, status, matched_trip_id")
+      .eq("id", parcelId)
+      .single<Pick<Parcel, "sender_id" | "status" | "matched_trip_id">>();
 
     if (parcelError || !existingParcel) {
-      return NextResponse.json(
-        { error: 'Parcel not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Parcel not found" }, { status: 404 });
     }
 
     // Only sender can update their own parcel
     if (existingParcel.sender_id !== session.user.id) {
       return NextResponse.json(
-        { error: 'Unauthorized to update this parcel' },
+        { error: "Unauthorized to update this parcel" },
         { status: 403 }
-      )
+      );
     }
 
     // Only allow editing if parcel is in pending state
-    if (existingParcel.status !== 'pending') {
+    if (existingParcel.status !== "pending") {
       return NextResponse.json(
-        { error: 'Can only edit parcels in pending state' },
+        { error: "Can only edit parcels in pending state" },
         { status: 400 }
-      )
+      );
     }
 
-    const body = await request.json()
+    const body = await request.json();
     const {
       pickup_address,
       pickup_latitude,
@@ -205,14 +234,14 @@ export async function PUT(
       dimensions,
       estimated_value,
       estimated_value_currency,
-    } = body
+    } = body;
 
     // Validate required fields
     if (!pickup_address || !delivery_address) {
       return NextResponse.json(
-        { error: 'Pickup and delivery addresses are required' },
+        { error: "Pickup and delivery addresses are required" },
         { status: 400 }
-      )
+      );
     }
 
     // Normalize address for comparison
@@ -220,52 +249,63 @@ export async function PUT(
       return address
         .toLowerCase()
         .trim()
-        .replace(/\s+/g, ' ')
-        .replace(/[^\w\s,]/g, '')
-    }
+        .replace(/\s+/g, " ")
+        .replace(/[^\w\s,]/g, "");
+    };
 
     const areAddressesSame = (address1: string, address2: string): boolean => {
-      return normalizeAddress(address1) === normalizeAddress(address2)
-    }
+      return normalizeAddress(address1) === normalizeAddress(address2);
+    };
 
     // Validate that pickup and delivery addresses are different
     if (areAddressesSame(pickup_address, delivery_address)) {
       return NextResponse.json(
-        { error: 'Pickup and delivery addresses cannot be the same' },
+        { error: "Pickup and delivery addresses cannot be the same" },
         { status: 400 }
-      )
+      );
     }
 
-    if (dimensions === undefined || dimensions === null || (typeof dimensions === 'string' && !dimensions.trim())) {
+    if (
+      dimensions === undefined ||
+      dimensions === null ||
+      (typeof dimensions === "string" && !dimensions.trim())
+    ) {
       return NextResponse.json(
-        { error: 'Dimensions are required' },
+        { error: "Dimensions are required" },
         { status: 400 }
-      )
+      );
     }
 
-    if (estimated_value == null || estimated_value === '') {
+    if (estimated_value == null || estimated_value === "") {
       return NextResponse.json(
-        { error: 'Estimated value is required' },
+        { error: "Estimated value is required" },
         { status: 400 }
-      )
+      );
     }
-    const valueNum = typeof estimated_value === 'number' ? estimated_value : parseFloat(estimated_value)
+    const valueNum =
+      typeof estimated_value === "number"
+        ? estimated_value
+        : parseFloat(estimated_value);
     if (Number.isNaN(valueNum) || valueNum < 0) {
       return NextResponse.json(
-        { error: 'Estimated value must be a valid number (0 or more)' },
+        { error: "Estimated value must be a valid number (0 or more)" },
         { status: 400 }
-      )
+      );
     }
-    const MAX_ESTIMATED_VALUE = 2000
+    const MAX_ESTIMATED_VALUE = 2000;
     if (valueNum > MAX_ESTIMATED_VALUE) {
       return NextResponse.json(
-        { error: `Estimated value cannot exceed ${MAX_ESTIMATED_VALUE.toLocaleString()}` },
+        {
+          error: `Estimated value cannot exceed ${MAX_ESTIMATED_VALUE.toLocaleString()}`,
+        },
         { status: 400 }
-      )
+      );
     }
 
     // Prepare update data
-    const updateData: ParcelUpdate & { estimated_value_currency?: string | null } = {
+    const updateData: ParcelUpdate & {
+      estimated_value_currency?: string | null;
+    } = {
       pickup_address,
       pickup_latitude: pickup_latitude || null,
       pickup_longitude: pickup_longitude || null,
@@ -274,129 +314,154 @@ export async function PUT(
       delivery_longitude: delivery_longitude || null,
       description: description || null,
       weight_kg: weight_kg || null,
-      dimensions: typeof dimensions === 'string' ? dimensions.trim() : dimensions,
+      dimensions:
+        typeof dimensions === "string" ? dimensions.trim() : dimensions,
       estimated_value: valueNum,
-      estimated_value_currency: estimated_value_currency || 'USD',
+      estimated_value_currency: estimated_value_currency || "USD",
       updated_at: new Date().toISOString(),
-    }
+    };
 
     // Update parcel
     const { data: updatedParcel, error: updateError } = await supabase
-      .from('parcels')
+      .from("parcels")
       // @ts-expect-error - Supabase update method type inference issue
       .update(updateData)
-      .eq('id', parcelId)
+      .eq("id", parcelId)
       .select()
-      .single<Parcel>()
+      .single<Parcel>();
 
     if (updateError) {
-      console.error('Error updating parcel:', updateError)
+      console.error("Error updating parcel:", updateError);
       return NextResponse.json(
-        { error: 'Failed to update parcel', details: updateError.message },
+        { error: "Failed to update parcel", details: updateError.message },
         { status: 500 }
-      )
+      );
     }
 
     // If parcel was matched, invalidate existing matches and clear matched_trip_id
     // Only if parcel is still in 'pending' status (can't change matched/accepted parcels)
-    if (existingParcel.status === 'pending') {
-      const adminClient = createSupabaseAdminClient()
-      
+    if (existingParcel.status === "pending") {
+      const adminClient = createSupabaseAdminClient();
+
       // Clear matched_trip_id if it was set
       if (existingParcel.matched_trip_id) {
-        console.log(`[PARCEL UPDATE] Clearing matched_trip_id for parcel ${parcelId} due to update`)
-        await (adminClient.from('parcels') as any)
+        console.log(
+          `[PARCEL UPDATE] Clearing matched_trip_id for parcel ${parcelId} due to update`
+        );
+        await (adminClient.from("parcels") as any)
           .update({ matched_trip_id: null })
-          .eq('id', parcelId)
+          .eq("id", parcelId);
       }
 
       // Invalidate existing pending matches (delete them so they can be re-created with new scores)
       const { error: deleteMatchesError } = await adminClient
-        .from('parcel_trip_matches')
+        .from("parcel_trip_matches")
         .delete()
-        .eq('parcel_id', parcelId)
-        .eq('status', 'pending')
+        .eq("parcel_id", parcelId)
+        .eq("status", "pending");
 
       if (deleteMatchesError) {
-        console.error(`[PARCEL UPDATE] Error deleting pending matches:`, deleteMatchesError)
+        console.error(
+          `[PARCEL UPDATE] Error deleting pending matches:`,
+          deleteMatchesError
+        );
       } else {
-        console.log(`[PARCEL UPDATE] Invalidated pending matches for parcel ${parcelId}`)
+        console.log(
+          `[PARCEL UPDATE] Invalidated pending matches for parcel ${parcelId}`
+        );
       }
 
       // For accepted matches, re-score them to see if they're still valid
       // If score drops below threshold, mark as expired
-      const { data: acceptedMatches, error: acceptedMatchesError } = await adminClient
-        .from('parcel_trip_matches')
-        .select('id, trip_id, trips(*)')
-        .eq('parcel_id', parcelId)
-        .eq('status', 'accepted') as { data: Array<{ id: string; trip_id: string; trips: Trip }> | null; error: any }
+      const { data: acceptedMatches, error: acceptedMatchesError } =
+        (await adminClient
+          .from("parcel_trip_matches")
+          .select("id, trip_id, trips(*)")
+          .eq("parcel_id", parcelId)
+          .eq("status", "accepted")) as {
+          data: Array<{ id: string; trip_id: string; trips: Trip }> | null;
+          error: any;
+        };
 
       if (acceptedMatchesError) {
-        console.error(`[PARCEL UPDATE] Error fetching accepted matches:`, acceptedMatchesError)
+        console.error(
+          `[PARCEL UPDATE] Error fetching accepted matches:`,
+          acceptedMatchesError
+        );
       } else if (acceptedMatches && acceptedMatches.length > 0) {
-        console.log(`[PARCEL UPDATE] Re-scoring ${acceptedMatches.length} accepted matches`)
-        
+        console.log(
+          `[PARCEL UPDATE] Re-scoring ${acceptedMatches.length} accepted matches`
+        );
+
         for (const match of acceptedMatches) {
-          const trip = match.trips
+          const trip = match.trips;
           if (!trip) {
-            console.warn(`[PARCEL UPDATE] Match ${match.id} has no associated trip, skipping`)
-            continue
+            console.warn(
+              `[PARCEL UPDATE] Match ${match.id} has no associated trip, skipping`
+            );
+            continue;
           }
-          
-          const newScore = calculateMatchScore(updatedParcel, trip)
-          console.log(`[PARCEL UPDATE] Match ${match.id} new score: ${newScore} (threshold: ${MIN_SCORE_THRESHOLD})`)
-          
+
+          const newScore = calculateMatchScore(updatedParcel, trip);
+          console.log(
+            `[PARCEL UPDATE] Match ${match.id} new score: ${newScore} (threshold: ${MIN_SCORE_THRESHOLD})`
+          );
+
           // If score drops below threshold, expire the match
           if (newScore < MIN_SCORE_THRESHOLD) {
-            console.log(`[PARCEL UPDATE] Expiring accepted match ${match.id} - score dropped to ${newScore}`)
-            await (adminClient.from('parcel_trip_matches') as any)
-              .update({ status: 'expired' })
-              .eq('id', match.id)
-            
+            console.log(
+              `[PARCEL UPDATE] Expiring accepted match ${match.id} - score dropped to ${newScore}`
+            );
+            await (adminClient.from("parcel_trip_matches") as any)
+              .update({ status: "expired" })
+              .eq("id", match.id);
+
             // Clear matched_trip_id if this was the matched trip
             if (updatedParcel.matched_trip_id === trip.id) {
-              await (adminClient.from('parcels') as any)
+              await (adminClient.from("parcels") as any)
                 .update({ matched_trip_id: null })
-                .eq('id', parcelId)
+                .eq("id", parcelId);
             }
           } else {
             // Update the match score even if still valid
-            await (adminClient.from('parcel_trip_matches') as any)
+            await (adminClient.from("parcel_trip_matches") as any)
               .update({ match_score: newScore })
-              .eq('id', match.id)
-            console.log(`[PARCEL UPDATE] Updated match ${match.id} score to ${newScore}`)
+              .eq("id", match.id);
+            console.log(
+              `[PARCEL UPDATE] Updated match ${match.id} score to ${newScore}`
+            );
           }
         }
       }
     }
 
     // Trigger matching after parcel update (async, don't block response)
-    console.log(`[PARCEL UPDATE] Triggering matching for updated parcel: ${parcelId}`)
-    const adminClient = createSupabaseAdminClient()
+    console.log(
+      `[PARCEL UPDATE] Triggering matching for updated parcel: ${parcelId}`
+    );
+    const adminClient = createSupabaseAdminClient();
     findAndCreateMatchesForParcel(adminClient, parcelId)
       .then((result) => {
         console.log(
           `[PARCEL UPDATE] ✅ Matching completed for parcel ${parcelId}: ${result.created} matches created`
-        )
+        );
       })
       .catch((error) => {
         console.error(
           `[PARCEL UPDATE] ❌ Error triggering matching for parcel ${parcelId}:`,
           error
-        )
-      })
+        );
+      });
 
     return NextResponse.json({
       success: true,
       parcel: updatedParcel,
-    })
+    });
   } catch (error: any) {
-    console.error('Error in PUT /api/parcels/[id]:', error)
+    console.error("Error in PUT /api/parcels/[id]:", error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: "Internal server error", details: error.message },
       { status: 500 }
-    )
+    );
   }
 }
-
-

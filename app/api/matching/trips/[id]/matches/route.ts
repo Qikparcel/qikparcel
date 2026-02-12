@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { Database } from "@/types/database";
+import { calculateDeliveryPricing } from "@/lib/pricing";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Match = Database["public"]["Tables"]["parcel_trip_matches"]["Row"];
@@ -106,7 +107,7 @@ export async function GET(
       );
     }
 
-    // Fetch parcels for all matches
+    // Fetch parcels for all matches (include coords/countries for pricing)
     const parcelIds = matches.map((m) => m.parcel_id);
     const { data: parcels, error: parcelsError } = await parcelClient
       .from("parcels")
@@ -120,6 +121,12 @@ export async function GET(
         weight_kg,
         dimensions,
         status,
+        pickup_latitude,
+        pickup_longitude,
+        delivery_latitude,
+        delivery_longitude,
+        pickup_country,
+        delivery_country,
         sender:profiles!parcels_sender_id_fkey(
           id,
           full_name,
@@ -143,14 +150,62 @@ export async function GET(
       });
     }
 
-    // Combine matches with parcel data
-    const processedMatches = matches.map((match: any) => {
-      const parcel = parcelMap.get(match.parcel_id);
-      return {
-        ...match,
-        parcel: parcel || null,
-      };
-    });
+    // Add estimated pricing for courier: for pending use calculated estimate; for accepted use stored values
+    const adminClient =
+      supabaseUrl && supabaseServiceKey ? (parcelClient as any) : null;
+
+    const processedMatches = await Promise.all(
+      matches.map(async (match: any) => {
+        const parcel = parcelMap.get(match.parcel_id);
+        let estimated_delivery_fee: number | null = null;
+        let estimated_total_amount: number | null = null;
+        let estimated_currency: string | null = null;
+
+        if (match.status === "accepted" && match.delivery_fee != null) {
+          estimated_delivery_fee = Number(match.delivery_fee);
+          estimated_total_amount =
+            match.total_amount != null ? Number(match.total_amount) : null;
+          estimated_currency = match.currency || "USD";
+        } else if (
+          parcel &&
+          adminClient &&
+          parcel.pickup_latitude != null &&
+          parcel.pickup_longitude != null &&
+          parcel.delivery_latitude != null &&
+          parcel.delivery_longitude != null
+        ) {
+          const weight = parcel.weight_kg;
+          const parcelSize =
+            weight != null && weight <= 2
+              ? ("small" as const)
+              : weight != null && weight <= 10
+              ? ("medium" as const)
+              : ("large" as const);
+          const pricing = await calculateDeliveryPricing(adminClient, {
+            pickupLat: parcel.pickup_latitude,
+            pickupLng: parcel.pickup_longitude,
+            deliveryLat: parcel.delivery_latitude,
+            deliveryLng: parcel.delivery_longitude,
+            pickupCountry: parcel.pickup_country ?? null,
+            deliveryCountry: parcel.delivery_country ?? null,
+            parcelSize,
+          });
+          if (pricing) {
+            estimated_delivery_fee = pricing.deliveryFee;
+            estimated_total_amount = pricing.totalAmount;
+            estimated_currency = pricing.currency;
+          }
+        }
+
+        return {
+          ...match,
+          parcel: parcel || null,
+          estimated_delivery_fee,
+          estimated_total_amount,
+          estimated_currency,
+        };
+      })
+    );
 
     return NextResponse.json({
       success: true,
