@@ -41,6 +41,7 @@ export default function ParcelDetailPage() {
   const [paying, setPaying] = useState(false);
   const [confirmingDelivery, setConfirmingDelivery] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showPaymentSuccessModal, setShowPaymentSuccessModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -113,13 +114,18 @@ export default function ParcelDetailPage() {
   useEffect(() => {
     const payment = searchParams.get("payment");
     if (payment === "success") {
-      toast.success("Payment completed successfully!");
+      router.replace(`/dashboard/parcels/${parcelId}`, { scroll: false });
       fetch(`/api/parcels/${parcelId}`)
         .then((r) => r.json())
         .then((d) => {
           if (d.paymentInfo) setPaymentInfo(d.paymentInfo);
+          if (d.paymentInfo?.payment_status === "paid") {
+            setShowPaymentSuccessModal(true);
+            toast.success("You have paid the delivery fee.");
+          } else {
+            toast.success("Payment completed! It may take a moment to update.");
+          }
         });
-      router.replace(`/dashboard/parcels/${parcelId}`, { scroll: false });
     } else if (payment === "cancelled") {
       toast.error("Payment was cancelled");
       router.replace(`/dashboard/parcels/${parcelId}`, { scroll: false });
@@ -559,6 +565,61 @@ export default function ParcelDetailPage() {
 
   return (
     <DashboardLayout>
+      {/* Payment success modal */}
+      {showPaymentSuccessModal && paymentInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-6 h-6 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              Payment successful
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              You have paid the delivery fee of{" "}
+              <strong className="text-gray-900">
+                {paymentInfo.currency} {paymentInfo.total_amount.toFixed(2)}
+              </strong>
+              .
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPaymentSuccessModal(false);
+                  document
+                    .getElementById("invoice")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+                style={{ backgroundColor: "#29772F" }}
+              >
+                View invoice
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPaymentSuccessModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <Link
@@ -950,11 +1011,63 @@ export default function ParcelDetailPage() {
             )}
 
             {paymentInfo && paymentInfo.payment_status === "paid" && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-2">
-                  Payment
+              <div id="invoice" className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">
+                  Invoice
                 </h2>
-                <p className="text-sm text-green-600 font-medium">Paid</p>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Parcel reference</dt>
+                    <dd className="font-medium text-gray-900">
+                      #{parcel?.id?.slice(0, 8) ?? "—"}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Description</dt>
+                    <dd className="text-gray-900">Delivery fee</dd>
+                  </div>
+                  <div className="flex justify-between border-t pt-2 mt-2">
+                    <dt className="text-gray-500 font-medium">Amount paid</dt>
+                    <dd className="font-semibold text-gray-900">
+                      {paymentInfo.currency}{" "}
+                      {paymentInfo.total_amount.toFixed(2)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Status</dt>
+                    <dd className="text-green-600 font-medium">Paid</dd>
+                  </div>
+                </dl>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const win = window.open(
+                      "",
+                      "_blank",
+                      "width=480,height=520"
+                    );
+                    if (!win) return;
+                    win.document.write(`
+                      <!DOCTYPE html><html><head><title>Invoice</title></head><body style="font-family:sans-serif;padding:24px;">
+                      <h1 style="margin-bottom:16px;">Invoice</h1>
+                      <p><strong>Parcel:</strong> #${
+                        parcel?.id?.slice(0, 8) ?? "—"
+                      }</p>
+                      <p><strong>Description:</strong> Delivery fee</p>
+                      <p><strong>Amount paid:</strong> ${
+                        paymentInfo.currency
+                      } ${paymentInfo.total_amount.toFixed(2)}</p>
+                      <p><strong>Status:</strong> Paid</p>
+                      <p style="margin-top:24px;color:#666;font-size:14px;">QikParcel</p>
+                      </body></html>`);
+                    win.document.close();
+                    win.focus();
+                    win.print();
+                  }}
+                  className="mt-4 w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition text-sm font-medium"
+                >
+                  Print invoice
+                </button>
               </div>
             )}
 

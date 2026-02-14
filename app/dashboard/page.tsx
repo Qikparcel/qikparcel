@@ -18,6 +18,10 @@ export default function DashboardPage() {
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [parcelIdFilter, setParcelIdFilter] = useState("");
+  const [parcelStatusFilter, setParcelStatusFilter] = useState("all");
+  const [tripIdFilter, setTripIdFilter] = useState("");
+  const [tripStatusFilter, setTripStatusFilter] = useState("all");
 
   useEffect(() => {
     // Check for stored errors from callback page
@@ -206,110 +210,175 @@ export default function DashboardPage() {
         {parcels.length > 0 ? (
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">My Parcels</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                My Parcels
+              </h2>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder="Filter by parcel ID..."
+                  value={parcelIdFilter}
+                  onChange={(e) => setParcelIdFilter(e.target.value)}
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+                <select
+                  value={parcelStatusFilter}
+                  onChange={(e) => setParcelStatusFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white min-w-[140px]"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="matched">Matched</option>
+                  <option value="picked_up">Picked Up</option>
+                  <option value="in_transit">In Transit</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              {(() => {
+                const idLower = parcelIdFilter.trim().toLowerCase();
+                const filtered = parcels.filter((p) => {
+                  const matchId =
+                    !idLower || p.id.toLowerCase().includes(idLower);
+                  const matchStatus =
+                    parcelStatusFilter === "all" ||
+                    p.status === parcelStatusFilter;
+                  return matchId && matchStatus;
+                });
+                return (
+                  <>
+                    {(parcelIdFilter || parcelStatusFilter !== "all") && (
+                      <p className="mt-2 text-sm text-gray-500">
+                        Showing {filtered.length} of {parcels.length} parcels
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div className="divide-y divide-gray-200">
-              {parcels.map((parcel) => (
-                <div key={parcel.id} className="flex items-center gap-2">
-                  <Link
-                    href={`/dashboard/parcels/${parcel.id}`}
-                    className="flex-1 block p-4 sm:p-6 hover:bg-gray-50 transition min-w-0"
-                  >
-                    <div className="flex items-start sm:items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
-                            Parcel #{parcel.id.slice(0, 8)}
-                          </h3>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                              statusConfig[parcel.status]?.color ||
-                              "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {statusConfig[parcel.status]?.label ||
-                              parcel.status}
-                          </span>
-                        </div>
-                        <p className="text-xs sm:text-sm text-gray-600 mb-1 truncate">
-                          <span className="font-medium">From:</span>{" "}
-                          <span className="truncate block sm:inline">
-                            {parcel.pickup_address.substring(0, 40)}
-                          </span>
-                          {parcel.pickup_address.length > 40 && "..."}
-                        </p>
-                        <p className="text-xs sm:text-sm text-gray-600 truncate">
-                          <span className="font-medium">To:</span>{" "}
-                          <span className="truncate block sm:inline">
-                            {parcel.delivery_address.substring(0, 40)}
-                          </span>
-                          {parcel.delivery_address.length > 40 && "..."}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Created {formatDate(parcel.created_at)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <svg
-                          className="w-5 h-5 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                  </Link>
-                  {parcel.status === "pending" && (
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        if (
-                          !window.confirm(
-                            "Delete this parcel? This cannot be undone."
-                          )
-                        )
-                          return;
-                        const res = await fetch(`/api/parcels/${parcel.id}`, {
-                          method: "DELETE",
-                        });
-                        const data = await res.json();
-                        if (res.ok) {
-                          toast.success("Parcel deleted");
-                          setParcels((prev) =>
-                            prev.filter((p) => p.id !== parcel.id)
-                          );
-                        } else {
-                          toast.error(data.error || "Failed to delete");
-                        }
-                      }}
-                      className="flex-shrink-0 p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
-                      title="Delete parcel"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+              {(() => {
+                const idLower = parcelIdFilter.trim().toLowerCase();
+                const filteredParcels = parcels.filter((p) => {
+                  const matchId =
+                    !idLower || p.id.toLowerCase().includes(idLower);
+                  const matchStatus =
+                    parcelStatusFilter === "all" ||
+                    p.status === parcelStatusFilter;
+                  return matchId && matchStatus;
+                });
+                return filteredParcels.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500 text-sm">
+                    No parcels match your filters. Try changing the ID or
+                    status.
+                  </div>
+                ) : (
+                  filteredParcels.map((parcel) => (
+                    <div key={parcel.id} className="flex items-center gap-2">
+                      <Link
+                        href={`/dashboard/parcels/${parcel.id}`}
+                        className="flex-1 block p-4 sm:p-6 hover:bg-gray-50 transition min-w-0"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
+                        <div className="flex items-start sm:items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                              <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
+                                Parcel #{parcel.id.slice(0, 8)}
+                              </h3>
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                                  statusConfig[parcel.status]?.color ||
+                                  "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {statusConfig[parcel.status]?.label ||
+                                  parcel.status}
+                              </span>
+                            </div>
+                            <p className="text-xs sm:text-sm text-gray-600 mb-1 truncate">
+                              <span className="font-medium">From:</span>{" "}
+                              <span className="truncate block sm:inline">
+                                {parcel.pickup_address.substring(0, 40)}
+                              </span>
+                              {parcel.pickup_address.length > 40 && "..."}
+                            </p>
+                            <p className="text-xs sm:text-sm text-gray-600 truncate">
+                              <span className="font-medium">To:</span>{" "}
+                              <span className="truncate block sm:inline">
+                                {parcel.delivery_address.substring(0, 40)}
+                              </span>
+                              {parcel.delivery_address.length > 40 && "..."}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Created {formatDate(parcel.created_at)}
+                            </p>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <svg
+                              className="w-5 h-5 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                      </Link>
+                      {parcel.status === "pending" && (
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (
+                              !window.confirm(
+                                "Delete this parcel? This cannot be undone."
+                              )
+                            )
+                              return;
+                            const res = await fetch(
+                              `/api/parcels/${parcel.id}`,
+                              {
+                                method: "DELETE",
+                              }
+                            );
+                            const data = await res.json();
+                            if (res.ok) {
+                              toast.success("Parcel deleted");
+                              setParcels((prev) =>
+                                prev.filter((p) => p.id !== parcel.id)
+                              );
+                            } else {
+                              toast.error(data.error || "Failed to delete");
+                            }
+                          }}
+                          className="flex-shrink-0 p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                          title="Delete parcel"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))
+                );
+              })()}
             </div>
           </div>
         ) : (
@@ -401,109 +470,163 @@ export default function DashboardPage() {
         {trips.length > 0 ? (
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">My Trips</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4">My Trips</h2>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder="Filter by trip ID..."
+                  value={tripIdFilter}
+                  onChange={(e) => setTripIdFilter(e.target.value)}
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+                <select
+                  value={tripStatusFilter}
+                  onChange={(e) => setTripStatusFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white min-w-[140px]"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              {(tripIdFilter || tripStatusFilter !== "all") && (
+                <p className="mt-2 text-sm text-gray-500">
+                  Showing{" "}
+                  {
+                    trips.filter((t) => {
+                      const idLower = tripIdFilter.trim().toLowerCase();
+                      const matchId =
+                        !idLower || t.id.toLowerCase().includes(idLower);
+                      const matchStatus =
+                        tripStatusFilter === "all" ||
+                        t.status === tripStatusFilter;
+                      return matchId && matchStatus;
+                    }).length
+                  }{" "}
+                  of {trips.length} trips
+                </p>
+              )}
             </div>
             <div className="divide-y divide-gray-200">
-              {trips.map((trip) => (
-                <div key={trip.id} className="flex items-center gap-2">
-                  <Link
-                    href={`/dashboard/trips/${trip.id}`}
-                    className="flex-1 block p-4 sm:p-6 hover:bg-gray-50 transition min-w-0"
-                  >
-                    <div className="flex items-start sm:items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
-                            Trip #{trip.id.slice(0, 8)}
-                          </h3>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                              statusConfig[trip.status]?.color ||
-                              "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {statusConfig[trip.status]?.label || trip.status}
-                          </span>
-                        </div>
-                        <p className="text-xs sm:text-sm text-gray-600 mb-1 truncate">
-                          <span className="font-medium">From:</span>{" "}
-                          <span className="truncate block sm:inline">
-                            {trip.origin_address.substring(0, 40)}
-                          </span>
-                          {trip.origin_address.length > 40 && "..."}
-                        </p>
-                        <p className="text-xs sm:text-sm text-gray-600 truncate">
-                          <span className="font-medium">To:</span>{" "}
-                          <span className="truncate block sm:inline">
-                            {trip.destination_address.substring(0, 40)}
-                          </span>
-                          {trip.destination_address.length > 40 && "..."}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Created {formatDate(trip.created_at)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <svg
-                          className="w-5 h-5 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                  </Link>
-                  {trip.status === "scheduled" && (
-                    <button
-                      type="button"
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        if (
-                          !window.confirm(
-                            "Delete this trip? This cannot be undone."
-                          )
-                        )
-                          return;
-                        const res = await fetch(`/api/trips/${trip.id}`, {
-                          method: "DELETE",
-                        });
-                        const data = await res.json();
-                        if (res.ok) {
-                          toast.success("Trip deleted");
-                          setTrips((prev) =>
-                            prev.filter((t) => t.id !== trip.id)
-                          );
-                        } else {
-                          toast.error(data.error || "Failed to delete");
-                        }
-                      }}
-                      className="flex-shrink-0 p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
-                      title="Delete trip"
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+              {(() => {
+                const idLower = tripIdFilter.trim().toLowerCase();
+                const filteredTrips = trips.filter((t) => {
+                  const matchId =
+                    !idLower || t.id.toLowerCase().includes(idLower);
+                  const matchStatus =
+                    tripStatusFilter === "all" || t.status === tripStatusFilter;
+                  return matchId && matchStatus;
+                });
+                return filteredTrips.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500 text-sm">
+                    No trips match your filters. Try changing the ID or status.
+                  </div>
+                ) : (
+                  filteredTrips.map((trip) => (
+                    <div key={trip.id} className="flex items-center gap-2">
+                      <Link
+                        href={`/dashboard/trips/${trip.id}`}
+                        className="flex-1 block p-4 sm:p-6 hover:bg-gray-50 transition min-w-0"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
+                        <div className="flex items-start sm:items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                              <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
+                                Trip #{trip.id.slice(0, 8)}
+                              </h3>
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                                  statusConfig[trip.status]?.color ||
+                                  "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {statusConfig[trip.status]?.label ||
+                                  trip.status}
+                              </span>
+                            </div>
+                            <p className="text-xs sm:text-sm text-gray-600 mb-1 truncate">
+                              <span className="font-medium">From:</span>{" "}
+                              <span className="truncate block sm:inline">
+                                {trip.origin_address.substring(0, 40)}
+                              </span>
+                              {trip.origin_address.length > 40 && "..."}
+                            </p>
+                            <p className="text-xs sm:text-sm text-gray-600 truncate">
+                              <span className="font-medium">To:</span>{" "}
+                              <span className="truncate block sm:inline">
+                                {trip.destination_address.substring(0, 40)}
+                              </span>
+                              {trip.destination_address.length > 40 && "..."}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Created {formatDate(trip.created_at)}
+                            </p>
+                          </div>
+                          <div className="flex-shrink-0">
+                            <svg
+                              className="w-5 h-5 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                      </Link>
+                      {trip.status === "scheduled" && (
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (
+                              !window.confirm(
+                                "Delete this trip? This cannot be undone."
+                              )
+                            )
+                              return;
+                            const res = await fetch(`/api/trips/${trip.id}`, {
+                              method: "DELETE",
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              toast.success("Trip deleted");
+                              setTrips((prev) =>
+                                prev.filter((t) => t.id !== trip.id)
+                              );
+                            } else {
+                              toast.error(data.error || "Failed to delete");
+                            }
+                          }}
+                          className="flex-shrink-0 p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
+                          title="Delete trip"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))
+                );
+              })()}
             </div>
           </div>
         ) : (
