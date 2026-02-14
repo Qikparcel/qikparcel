@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Stripe from "stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { stripe } from "@/lib/stripe/client";
+import { notifySenderOfPaymentSuccess } from "@/lib/matching/notifications";
 
 export const runtime = "nodejs";
 
@@ -89,6 +90,12 @@ export async function POST(request: NextRequest) {
 
         console.log(
           `[STRIPE WEBHOOK] Payment completed for match ${matchId}, parcel ${parcelId}`
+        );
+        notifySenderOfPaymentSuccess(adminClient, parcelId).catch((err) =>
+          console.error(
+            "[STRIPE WEBHOOK] Payment success notification failed:",
+            err
+          )
         );
         break;
       }

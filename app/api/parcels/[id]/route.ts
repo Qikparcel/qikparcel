@@ -474,3 +474,81 @@ export async function PUT(
     );
   }
 }
+
+/**
+ * DELETE /api/parcels/[id]
+ * Delete a parcel. Only allowed for sender when parcel is pending (not matched).
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = createClient();
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const parcelId = params.id;
+
+    const { data: parcel, error: parcelError } = await supabase
+      .from("parcels")
+      .select("id, status, sender_id, matched_trip_id")
+      .eq("id", parcelId)
+      .single<Parcel>();
+
+    if (parcelError || !parcel) {
+      return NextResponse.json({ error: "Parcel not found" }, { status: 404 });
+    }
+
+    if (parcel.sender_id !== session.user.id) {
+      return NextResponse.json(
+        { error: "You can only delete your own parcels" },
+        { status: 403 }
+      );
+    }
+
+    if (parcel.status !== "pending") {
+      return NextResponse.json(
+        {
+          error:
+            "Only pending (unmatched) parcels can be deleted. Cancel or contact support for matched parcels.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (parcel.matched_trip_id) {
+      return NextResponse.json(
+        { error: "Parcel is matched and cannot be deleted" },
+        { status: 400 }
+      );
+    }
+
+    const adminClient = createSupabaseAdminClient();
+    const { error: deleteError } = await (adminClient.from("parcels") as any)
+      .delete()
+      .eq("id", parcelId);
+
+    if (deleteError) {
+      console.error("[PARCEL DELETE] Error:", deleteError);
+      return NextResponse.json(
+        { error: "Failed to delete parcel", details: deleteError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, message: "Parcel deleted" });
+  } catch (error: any) {
+    console.error("Error in DELETE /api/parcels/[id]:", error);
+    return NextResponse.json(
+      { error: "Internal server error", details: error.message },
+      { status: 500 }
+    );
+  }
+}

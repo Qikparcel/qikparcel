@@ -32,7 +32,7 @@ export async function GET(
       .from('parcels')
       .select('sender_id')
       .eq('id', parcelId)
-      .single()
+      .single<{ sender_id: string }>()
 
     if (parcelError || !parcel) {
       return NextResponse.json(
@@ -40,8 +40,6 @@ export async function GET(
         { status: 404 }
       )
     }
-
-    const parcelData = parcel as { sender_id: string }
 
     // Get user profile to check role
     const { data: profile, error: profileError } = await supabase
@@ -55,7 +53,7 @@ export async function GET(
     }
 
     // Only sender of parcel or admin can view matches
-    if (profile.role !== 'admin' && parcelData.sender_id !== session.user.id) {
+    if (profile.role !== 'admin' && parcel.sender_id !== session.user.id) {
       return NextResponse.json(
         { error: 'Forbidden: Cannot view matches for this parcel' },
         { status: 403 }

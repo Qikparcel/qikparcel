@@ -43,13 +43,21 @@ async function getPricingRow(
   currency: string;
   is_domestic: boolean;
 } | null> {
+  type PricingRow = {
+    base_fee: number;
+    rate_per_km: number;
+    max_distance_km: number | null;
+    currency: string | null;
+    is_domestic: boolean;
+  };
+
   // Try exact pair first
   const { data: exact } = await supabase
     .from("delivery_pricing")
     .select("base_fee, rate_per_km, max_distance_km, currency, is_domestic")
     .eq("origin_country", originCountry)
     .eq("destination_country", destCountry)
-    .single();
+    .single<PricingRow>();
 
   if (exact) {
     return {
@@ -70,7 +78,7 @@ async function getPricingRow(
       .select("base_fee, rate_per_km, max_distance_km, currency, is_domestic")
       .eq("origin_country", "*")
       .eq("destination_country", "*")
-      .single();
+      .single<PricingRow>();
 
     if (fallback) {
       return {

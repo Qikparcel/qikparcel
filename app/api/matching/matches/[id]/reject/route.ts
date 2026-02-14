@@ -39,14 +39,13 @@ export async function POST(
       `
       )
       .eq('id', matchId)
-      .single()
+      .single<Match & { trip: Pick<Trip, 'id' | 'courier_id'> }>()
 
     if (matchError || !match) {
       return NextResponse.json({ error: 'Match not found' }, { status: 404 })
     }
 
-    const matchData = match as any
-    const trip = matchData.trip as Trip
+    const trip = match.trip
 
     // Verify user is the courier of this trip
     if (trip.courier_id !== session.user.id) {
@@ -57,7 +56,7 @@ export async function POST(
     }
 
     // Verify match is still pending
-    if ((match as Match).status !== 'pending') {
+    if (match.status !== 'pending') {
       return NextResponse.json(
         { error: 'Match is not pending (already accepted or rejected)' },
         { status: 400 }

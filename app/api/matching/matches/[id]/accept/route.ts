@@ -40,14 +40,13 @@ export async function POST(
         "*, trip:trips!parcel_trip_matches_trip_id_fkey(id, courier_id, status)"
       )
       .eq("id", matchId)
-      .single();
+      .single<Match & { trip: Pick<Trip, "id" | "courier_id" | "status"> }>();
 
     if (matchError || !match) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
-    const matchData = match as any;
-    const trip = matchData.trip as Trip;
+    const trip = match.trip;
     if (!trip) {
       return NextResponse.json(
         { error: "Trip not found for this match" },
@@ -64,7 +63,7 @@ export async function POST(
     }
 
     // Verify match is still pending
-    if ((match as Match).status !== "pending") {
+    if (match.status !== "pending") {
       return NextResponse.json(
         { error: "Match is not pending (already accepted or rejected)" },
         { status: 400 }
@@ -99,7 +98,7 @@ export async function POST(
       .select(
         "id, status, sender_id, pickup_latitude, pickup_longitude, delivery_latitude, delivery_longitude, pickup_country, delivery_country, weight_kg"
       )
-      .eq("id", (match as Match).parcel_id)
+      .eq("id", match.parcel_id)
       .single<Parcel>();
 
     if (parcelError || !parcel) {
@@ -153,7 +152,7 @@ export async function POST(
       .from("trips")
       .select("id, locked_parcel_id")
       .eq("id", trip.id)
-      .single();
+      .single<{ id: string; locked_parcel_id: string | null }>();
 
     if (tripCheckError || !tripCheck) {
       return NextResponse.json(
@@ -163,13 +162,9 @@ export async function POST(
     }
 
     // If trip is already locked to a different parcel, reject
-    const tripCheckTyped = tripCheck as {
-      id: string;
-      locked_parcel_id: string | null;
-    };
     if (
-      tripCheckTyped.locked_parcel_id &&
-      tripCheckTyped.locked_parcel_id !== parcel.id
+      tripCheck.locked_parcel_id &&
+      tripCheck.locked_parcel_id !== parcel.id
     ) {
       return NextResponse.json(
         { error: "This trip is already locked to another parcel" },
