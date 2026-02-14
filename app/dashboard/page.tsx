@@ -22,6 +22,13 @@ export default function DashboardPage() {
   const [parcelStatusFilter, setParcelStatusFilter] = useState("all");
   const [tripIdFilter, setTripIdFilter] = useState("");
   const [tripStatusFilter, setTripStatusFilter] = useState("all");
+  const [amounts, setAmounts] = useState<{
+    totalPaid?: number;
+    earningsInProcess?: number;
+    earningsPaidOut?: number;
+    currency: string;
+    role: string;
+  } | null>(null);
 
   useEffect(() => {
     // Check for stored errors from callback page
@@ -82,19 +89,32 @@ export default function DashboardPage() {
         if (profileData) {
           setProfile(profileData as any);
 
-          // Load parcels or trips based on role
           const role = (profileData as any)?.role;
           if (role === "sender") {
-            const parcelsResponse = await fetch("/api/parcels");
+            const [parcelsResponse, amountsResponse] = await Promise.all([
+              fetch("/api/parcels"),
+              fetch("/api/dashboard/amounts"),
+            ]);
             const parcelsData = await parcelsResponse.json();
             if (parcelsData.success) {
               setParcels(parcelsData.parcels || []);
             }
+            if (amountsResponse.ok) {
+              const amountsData = await amountsResponse.json();
+              setAmounts(amountsData);
+            }
           } else if (role === "courier") {
-            const tripsResponse = await fetch("/api/trips");
+            const [tripsResponse, amountsResponse] = await Promise.all([
+              fetch("/api/trips"),
+              fetch("/api/dashboard/amounts"),
+            ]);
             const tripsData = await tripsResponse.json();
             if (tripsData.success) {
               setTrips(tripsData.trips || []);
+            }
+            if (amountsResponse.ok) {
+              const amountsData = await amountsResponse.json();
+              setAmounts(amountsData);
             }
           }
         }
@@ -131,6 +151,15 @@ export default function DashboardPage() {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  const formatMoney = (amount: number, currency: string) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency || "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   };
 
   if (loading) {
@@ -176,33 +205,78 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Amount card: Total paid (sender) */}
+        {amounts?.role === "sender" && (
+          <div className="mb-6">
+            <div className="bg-white rounded-lg shadow p-4 inline-block">
+              <div className="text-sm text-gray-600 mb-1">Total paid</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {formatMoney(amounts.totalPaid ?? 0, amounts.currency)}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Amount you have paid for accepted deliveries
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Stats Cards - click to apply filter */}
         {stats.total > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow p-4">
+            <button
+              type="button"
+              onClick={() => setParcelStatusFilter("all")}
+              className={`bg-white rounded-lg shadow p-4 text-left transition ring-2 ring-transparent hover:ring-primary-300 ${
+                parcelStatusFilter === "all" ? "ring-primary-500 ring-2" : ""
+              }`}
+            >
               <div className="text-2xl font-bold text-gray-900">
                 {stats.total}
               </div>
               <div className="text-sm text-gray-600">Total Parcels</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </button>
+            <button
+              type="button"
+              onClick={() => setParcelStatusFilter("pending")}
+              className={`bg-white rounded-lg shadow p-4 text-left transition ring-2 ring-transparent hover:ring-primary-300 ${
+                parcelStatusFilter === "pending"
+                  ? "ring-primary-500 ring-2"
+                  : ""
+              }`}
+            >
               <div className="text-2xl font-bold text-yellow-600">
                 {stats.pending}
               </div>
               <div className="text-sm text-gray-600">Pending</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </button>
+            <button
+              type="button"
+              onClick={() => setParcelStatusFilter("in_progress")}
+              className={`bg-white rounded-lg shadow p-4 text-left transition ring-2 ring-transparent hover:ring-primary-300 ${
+                parcelStatusFilter === "in_progress"
+                  ? "ring-primary-500 ring-2"
+                  : ""
+              }`}
+            >
               <div className="text-2xl font-bold text-purple-600">
                 {stats.inProgress}
               </div>
               <div className="text-sm text-gray-600">In Progress</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </button>
+            <button
+              type="button"
+              onClick={() => setParcelStatusFilter("delivered")}
+              className={`bg-white rounded-lg shadow p-4 text-left transition ring-2 ring-transparent hover:ring-primary-300 ${
+                parcelStatusFilter === "delivered"
+                  ? "ring-primary-500 ring-2"
+                  : ""
+              }`}
+            >
               <div className="text-2xl font-bold text-green-600">
                 {stats.completed}
               </div>
               <div className="text-sm text-gray-600">Delivered</div>
-            </div>
+            </button>
           </div>
         )}
 
@@ -219,15 +293,16 @@ export default function DashboardPage() {
                   placeholder="Filter by parcel ID..."
                   value={parcelIdFilter}
                   onChange={(e) => setParcelIdFilter(e.target.value)}
-                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                 />
                 <select
                   value={parcelStatusFilter}
                   onChange={(e) => setParcelStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white min-w-[140px]"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white min-w-[140px]"
                 >
                   <option value="all">All statuses</option>
                   <option value="pending">Pending</option>
+                  <option value="in_progress">In Progress</option>
                   <option value="matched">Matched</option>
                   <option value="picked_up">Picked Up</option>
                   <option value="in_transit">In Transit</option>
@@ -237,13 +312,15 @@ export default function DashboardPage() {
               </div>
               {(() => {
                 const idLower = parcelIdFilter.trim().toLowerCase();
+                const matchStatus = (p: Parcel) =>
+                  parcelStatusFilter === "all" ||
+                  (parcelStatusFilter === "in_progress"
+                    ? ["matched", "picked_up", "in_transit"].includes(p.status)
+                    : p.status === parcelStatusFilter);
                 const filtered = parcels.filter((p) => {
                   const matchId =
                     !idLower || p.id.toLowerCase().includes(idLower);
-                  const matchStatus =
-                    parcelStatusFilter === "all" ||
-                    p.status === parcelStatusFilter;
-                  return matchId && matchStatus;
+                  return matchId && matchStatus(p);
                 });
                 return (
                   <>
@@ -259,13 +336,15 @@ export default function DashboardPage() {
             <div className="divide-y divide-gray-200">
               {(() => {
                 const idLower = parcelIdFilter.trim().toLowerCase();
+                const matchStatus = (p: Parcel) =>
+                  parcelStatusFilter === "all" ||
+                  (parcelStatusFilter === "in_progress"
+                    ? ["matched", "picked_up", "in_transit"].includes(p.status)
+                    : p.status === parcelStatusFilter);
                 const filteredParcels = parcels.filter((p) => {
                   const matchId =
                     !idLower || p.id.toLowerCase().includes(idLower);
-                  const matchStatus =
-                    parcelStatusFilter === "all" ||
-                    p.status === parcelStatusFilter;
-                  return matchId && matchStatus;
+                  return matchId && matchStatus(p);
                 });
                 return filteredParcels.length === 0 ? (
                   <div className="p-8 text-center text-gray-500 text-sm">
@@ -436,33 +515,90 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Amount cards: Earnings in process & Paid out (courier) */}
+        {amounts?.role === "courier" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 max-w-2xl">
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-sm text-gray-600 mb-1">
+                Earnings in process
+              </div>
+              <div className="text-2xl font-bold text-purple-600">
+                {formatMoney(amounts.earningsInProcess ?? 0, amounts.currency)}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Delivery fees from paid matches (payout after delivery
+                confirmed)
+              </p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="text-sm text-gray-600 mb-1">Paid out</div>
+              <div className="text-2xl font-bold text-green-600">
+                {formatMoney(amounts.earningsPaidOut ?? 0, amounts.currency)}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Delivered and paid to your Stripe account
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Stats Cards - click to apply filter */}
         {stats.total > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow p-4">
+            <button
+              type="button"
+              onClick={() => setTripStatusFilter("all")}
+              className={`bg-white rounded-lg shadow p-4 text-left transition ring-2 ring-transparent hover:ring-primary-300 ${
+                tripStatusFilter === "all" ? "ring-primary-500 ring-2" : ""
+              }`}
+            >
               <div className="text-2xl font-bold text-gray-900">
                 {stats.total}
               </div>
               <div className="text-sm text-gray-600">Total Trips</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </button>
+            <button
+              type="button"
+              onClick={() => setTripStatusFilter("scheduled")}
+              className={`bg-white rounded-lg shadow p-4 text-left transition ring-2 ring-transparent hover:ring-primary-300 ${
+                tripStatusFilter === "scheduled"
+                  ? "ring-primary-500 ring-2"
+                  : ""
+              }`}
+            >
               <div className="text-2xl font-bold text-blue-600">
                 {stats.pending}
               </div>
               <div className="text-sm text-gray-600">Scheduled</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </button>
+            <button
+              type="button"
+              onClick={() => setTripStatusFilter("in_progress")}
+              className={`bg-white rounded-lg shadow p-4 text-left transition ring-2 ring-transparent hover:ring-primary-300 ${
+                tripStatusFilter === "in_progress"
+                  ? "ring-primary-500 ring-2"
+                  : ""
+              }`}
+            >
               <div className="text-2xl font-bold text-purple-600">
                 {stats.inProgress}
               </div>
               <div className="text-sm text-gray-600">In Progress</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
+            </button>
+            <button
+              type="button"
+              onClick={() => setTripStatusFilter("completed")}
+              className={`bg-white rounded-lg shadow p-4 text-left transition ring-2 ring-transparent hover:ring-primary-300 ${
+                tripStatusFilter === "completed"
+                  ? "ring-primary-500 ring-2"
+                  : ""
+              }`}
+            >
               <div className="text-2xl font-bold text-green-600">
                 {stats.completed}
               </div>
               <div className="text-sm text-gray-600">Completed</div>
-            </div>
+            </button>
           </div>
         )}
 
@@ -477,12 +613,12 @@ export default function DashboardPage() {
                   placeholder="Filter by trip ID..."
                   value={tripIdFilter}
                   onChange={(e) => setTripIdFilter(e.target.value)}
-                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white"
                 />
                 <select
                   value={tripStatusFilter}
                   onChange={(e) => setTripStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white min-w-[140px]"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white min-w-[140px]"
                 >
                   <option value="all">All statuses</option>
                   <option value="scheduled">Scheduled</option>
