@@ -56,7 +56,7 @@ export async function notifyCourierOfMatch(
       `
       )
       .eq("id", matchId)
-      .single();
+      .single<Match & { parcel: Parcel; trip: Trip & { courier?: Pick<Profile, "whatsapp_number" | "full_name" | "phone_number"> } }>();
 
     if (matchError) {
       console.error(
@@ -77,12 +77,8 @@ export async function notifyCourierOfMatch(
 
     console.log(`[NOTIFICATIONS] Match data fetched successfully`);
 
-    // Supabase returns the structure differently with joins
-    const match = matchData as any;
-    const parcel = match.parcel as Parcel;
-    const trip = match.trip as Trip & {
-      courier: Pick<Profile, "whatsapp_number" | "full_name" | "phone_number">;
-    };
+    const parcel = matchData.parcel;
+    const trip = matchData.trip;
 
     console.log(`[NOTIFICATIONS] Match details:`, {
       matchId,
@@ -116,7 +112,9 @@ export async function notifyCourierOfMatch(
           .from("profiles")
           .select("whatsapp_number, phone_number, full_name")
           .eq("id", trip.courier_id)
-          .single();
+          .single<
+            Pick<Profile, "whatsapp_number" | "phone_number" | "full_name">
+          >();
 
         if (profileError) {
           console.error(
@@ -124,14 +122,11 @@ export async function notifyCourierOfMatch(
             profileError
           );
         } else if (courierProfile) {
-          const profile = courierProfile as Pick<
-            Profile,
-            "whatsapp_number" | "phone_number" | "full_name"
-          >;
-          courierWhatsApp = profile.whatsapp_number || profile.phone_number;
+          courierWhatsApp =
+            courierProfile.whatsapp_number || courierProfile.phone_number;
           console.log(`[NOTIFICATIONS] Fetched courier profile separately:`, {
-            whatsappNumber: profile.whatsapp_number,
-            phoneNumber: profile.phone_number,
+            whatsappNumber: courierProfile.whatsapp_number,
+            phoneNumber: courierProfile.phone_number,
             resolvedWhatsApp: courierWhatsApp,
           });
         }
@@ -177,8 +172,8 @@ export async function notifyCourierOfMatch(
     //
     // For now, using sendTextMessage() which works in sandbox mode but requires templates in production.
 
-    const matchScore = match.match_score
-      ? `Match Score: ${match.match_score}/100\n`
+    const matchScore = matchData.match_score
+      ? `Match Score: ${matchData.match_score}/100\n`
       : "";
     const message = `🚚 New Parcel Match Available!
 
@@ -337,7 +332,7 @@ export async function notifySenderOfAcceptedMatch(
       `
       )
       .eq("id", matchId)
-      .single();
+      .single<Match & { parcel: Parcel & { sender?: Pick<Profile, "whatsapp_number" | "full_name" | "phone_number"> }; trip: Trip & { courier?: Pick<Profile, "full_name" | "phone_number" | "whatsapp_number"> } }>();
 
     if (matchError || !matchData) {
       console.error(
@@ -347,13 +342,11 @@ export async function notifySenderOfAcceptedMatch(
       return;
     }
 
-    // Supabase returns the structure differently with joins
-    const match = matchData as any;
-    const parcel = match.parcel as Parcel & {
-      sender: Pick<Profile, "whatsapp_number" | "full_name" | "phone_number">;
+    const parcel = matchData.parcel as Parcel & {
+      sender?: Pick<Profile, "whatsapp_number" | "full_name" | "phone_number">;
     };
-    const trip = match.trip as Trip & {
-      courier: Pick<Profile, "full_name" | "phone_number" | "whatsapp_number">;
+    const trip = matchData.trip as Trip & {
+      courier?: Pick<Profile, "full_name" | "phone_number" | "whatsapp_number">;
     };
 
     const senderWhatsApp =
@@ -496,7 +489,7 @@ export async function notifySenderOfPaymentSuccess(
       .from("parcels")
       .select("id, sender_id")
       .eq("id", parcelId)
-      .single();
+      .single<{ id: string; sender_id: string }>();
 
     if (parcelError || !parcel) {
       console.warn(
