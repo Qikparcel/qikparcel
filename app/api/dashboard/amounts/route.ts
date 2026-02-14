@@ -39,7 +39,7 @@ export async function GET() {
         .from("parcels")
         .select("id")
         .eq("sender_id", session.user.id);
-      const parcelIds = (parcels ?? []).map((p) => p.id);
+      const parcelIds = ((parcels ?? []) as { id: string }[]).map((p) => p.id);
       if (parcelIds.length === 0) {
         return NextResponse.json({
           totalPaid: 0,
@@ -52,11 +52,13 @@ export async function GET() {
         .select("total_amount, currency")
         .in("parcel_id", parcelIds)
         .eq("payment_status", "paid");
-      const totalPaid = (matches ?? []).reduce(
+      type MatchRow = { total_amount: number | null; currency: string | null };
+      const matchRows = (matches ?? []) as MatchRow[];
+      const totalPaid = matchRows.reduce(
         (sum, m) => sum + (Number(m.total_amount) || 0),
         0
       );
-      const matchCurrency = (matches && matches[0]?.currency) || currency;
+      const matchCurrency = matchRows[0]?.currency || currency;
       return NextResponse.json({
         totalPaid: Math.round(totalPaid * 100) / 100,
         currency: matchCurrency,
@@ -69,7 +71,7 @@ export async function GET() {
         .from("trips")
         .select("id")
         .eq("courier_id", session.user.id);
-      const tripIds = (trips ?? []).map((t) => t.id);
+      const tripIds = ((trips ?? []) as { id: string }[]).map((t) => t.id);
       if (tripIds.length === 0) {
         return NextResponse.json({
           earningsInProcess: 0,
