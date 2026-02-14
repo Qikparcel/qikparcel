@@ -40,6 +40,7 @@ export default function ParcelDetailPage() {
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [paying, setPaying] = useState(false);
   const [confirmingDelivery, setConfirmingDelivery] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -577,13 +578,43 @@ export default function ParcelDetailPage() {
                 {statusConfig[parcel.status].label}
               </span>
               {!isEditing && parcel.status === "pending" && (
-                <button
-                  onClick={handleEdit}
-                  className="px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition"
-                  style={{ borderColor: "#29772F", color: "#29772F" }}
-                >
-                  Edit Parcel
-                </button>
+                <>
+                  <button
+                    onClick={handleEdit}
+                    className="px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition"
+                    style={{ borderColor: "#29772F", color: "#29772F" }}
+                  >
+                    Edit Parcel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          "Delete this parcel? This cannot be undone."
+                        )
+                      )
+                        return;
+                      setDeleting(true);
+                      fetch(`/api/parcels/${parcelId}`, { method: "DELETE" })
+                        .then(async (res) => {
+                          const data = await res.json();
+                          if (res.ok) {
+                            toast.success("Parcel deleted");
+                            router.push("/dashboard");
+                          } else {
+                            toast.error(data.error || "Failed to delete");
+                          }
+                        })
+                        .catch(() => toast.error("Failed to delete parcel"))
+                        .finally(() => setDeleting(false));
+                    }}
+                    disabled={deleting}
+                    className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
+                  >
+                    {deleting ? "Deleting…" : "Delete"}
+                  </button>
+                </>
               )}
             </div>
           </div>
