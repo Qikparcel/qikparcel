@@ -84,6 +84,8 @@ export async function GET(request: NextRequest) {
       currency: pricing.currency,
       is_domestic: pricing.isDomestic,
       distance_km: pricing.distanceKm,
+      estimated_delivery_min_hours: pricing.estimatedDeliveryMinHours,
+      estimated_delivery_max_hours: pricing.estimatedDeliveryMaxHours,
     });
   } catch (error: any) {
     console.error("[PRICING] Estimate error:", error);
