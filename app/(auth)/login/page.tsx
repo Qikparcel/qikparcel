@@ -203,9 +203,7 @@ export default function LoginPage() {
                   className="flex-1 px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500 ">
-                Include country code (e.g., +1234567890)
-              </p>
+
               <p className="mt-1 text-xs text-gray-500 font-bold">
                 Verification code will be sent to Whatsapp
               </p>

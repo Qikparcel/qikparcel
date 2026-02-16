@@ -57,6 +57,9 @@ export default function CreateParcelPage() {
     platform_fee: number;
     currency: string;
     distance_km?: number;
+    estimated_delivery_min_hours?: number;
+    estimated_delivery_max_hours?: number;
+    is_domestic?: boolean;
   } | null>(null);
   const [priceEstimateLoading, setPriceEstimateLoading] = useState(false);
 
@@ -130,6 +133,9 @@ export default function CreateParcelPage() {
             platform_fee: data.platform_fee,
             currency: data.currency || "USD",
             distance_km: data.distance_km,
+            estimated_delivery_min_hours: data.estimated_delivery_min_hours,
+            estimated_delivery_max_hours: data.estimated_delivery_max_hours,
+            is_domestic: data.is_domestic,
           });
         } else {
           setPriceEstimate(null);
@@ -154,6 +160,18 @@ export default function CreateParcelPage() {
     deliveryCountry,
     formData.weight_kg,
   ]);
+
+  const formatDeliveryTimeRange = (
+    minHours: number,
+    maxHours: number
+  ): string => {
+    const fmt = (h: number) =>
+      h < 24
+        ? `${Math.round(h)} ${h === 1 ? "hour" : "hours"}`
+        : `${Math.round(h / 24)} ${h / 24 === 1 ? "day" : "days"}`;
+    if (minHours === maxHours) return fmt(minHours);
+    return `${fmt(minHours)} – ${fmt(maxHours)}`;
+  };
 
   const buildAddressString = (
     street: string,
@@ -524,7 +542,7 @@ export default function CreateParcelPage() {
                 {priceEstimateLoading ? (
                   <p className="text-sm text-gray-500">Calculating…</p>
                 ) : priceEstimate ? (
-                  <div className="text-sm">
+                  <div className="text-sm space-y-1">
                     <p className="text-gray-600">
                       Total:{" "}
                       <strong className="text-gray-900">
@@ -537,6 +555,21 @@ export default function CreateParcelPage() {
                         </span>
                       )}
                     </p>
+                    {priceEstimate.estimated_delivery_min_hours != null &&
+                      priceEstimate.estimated_delivery_max_hours != null && (
+                        <p className="text-gray-600">
+                          Estimated delivery:{" "}
+                          {formatDeliveryTimeRange(
+                            priceEstimate.estimated_delivery_min_hours,
+                            priceEstimate.estimated_delivery_max_hours
+                          )}
+                          {priceEstimate.is_domestic === false && (
+                            <span className="text-gray-500 ml-1">
+                              (cross-border)
+                            </span>
+                          )}
+                        </p>
+                      )}
                   </div>
                 ) : (
                   <p className="text-sm text-gray-500">

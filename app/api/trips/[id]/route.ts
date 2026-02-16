@@ -464,9 +464,7 @@ export async function DELETE(
         { error: "Failed to delete trip", details: deleteError.message },
         { status: 500 }
       );
-    }
-
-    return NextResponse.json({ success: true, message: "Trip deleted" });
+    }    return NextResponse.json({ success: true, message: "Trip deleted" });
   } catch (error: any) {
     console.error("Error in DELETE /api/trips/[id]:", error);
     return NextResponse.json(
