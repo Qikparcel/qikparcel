@@ -1,21 +1,21 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import { Providers } from './providers'
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'QikParcel - WhatsApp Logistics Platform',
-  description: 'Connect senders with couriers through WhatsApp',
+  title: "QikParcel - WhatsApp Logistics Platform",
+  description: "Connect senders with couriers through WhatsApp",
   icons: {
-    icon: '/logo.jpeg',
+    icon: "/logo.jpeg",
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
@@ -23,8 +23,5 @@ export default function RootLayout({
         <Providers>{children}</Providers>
       </body>
     </html>
-  )
+  );
 }
-
-
-
