@@ -89,13 +89,13 @@ export async function GET(request: NextRequest) {
 
     if (threadError && threadError.code === "PGRST116") {
       // No row - create thread
-      const { data: newThread, error: insertError } = await adminClient
-        .from("chat_threads")
+      const { data: rawNewThread, error: insertError } = await (
+        adminClient.from("chat_threads") as any
+      )
         .insert({ parcel_id: parcelId })
         .select()
         .single();
-      const typedNewThread = newThread as ChatThread | null;
-
+      const newThread = rawNewThread as ChatThread | null;
       if (insertError) {
         console.error("[CHAT] Failed to create thread:", insertError);
         return NextResponse.json(
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
           { status: 500 }
         );
       }
-      thread = typedNewThread;
+      thread = newThread;
     } else if (threadError) {
       console.error("[CHAT] Thread error:", threadError);
       return NextResponse.json(

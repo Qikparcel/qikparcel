@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -28,7 +28,7 @@ type Message = {
   is_me: boolean;
 };
 
-export default function ChatPage() {
+function ChatPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedParcelId = searchParams.get("parcel");
@@ -502,5 +502,21 @@ export default function ChatPage() {
         </main>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="flex items-center justify-center py-24">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" />
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <ChatPageContent />
+    </Suspense>
   );
 }

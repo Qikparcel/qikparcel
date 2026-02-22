@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       .from("chat_threads")
       .select("id, parcel_id")
       .eq("id", threadId)
-      .single();
+      .single<{ id: string; parcel_id: string }>();
 
     if (!thread?.parcel_id) {
       return NextResponse.json({ error: "Thread not found" }, { status: 404 });
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       .from("parcels")
       .select("sender_id, matched_trip_id")
       .eq("id", thread.parcel_id)
-      .single();
+      .single<{ sender_id: string; matched_trip_id: string | null }>();
 
     if (!parcel) {
       return NextResponse.json({ error: "Parcel not found" }, { status: 404 });
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
         .from("trips")
         .select("courier_id")
         .eq("id", parcel.matched_trip_id)
-        .single();
+        .single<{ courier_id: string }>();
       isCourier = trip?.courier_id === userId;
     }
 

@@ -42,12 +42,12 @@ export async function GET(request: NextRequest) {
             .in("matched_trip_id", tripIds)
         : { data: [] };
 
-    const parcelIds = [
-      ...new Set([
+    const parcelIds = Array.from(
+      new Set([
         ...(parcelsAsSender || []).map((p: { id: string }) => p.id),
         ...(parcelsAsCourier || []).map((p: { id: string }) => p.id),
-      ]),
-    ];
+      ])
+    );
 
     if (parcelIds.length === 0) {
       return NextResponse.json({ count: 0 });

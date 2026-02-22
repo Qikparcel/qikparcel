@@ -128,6 +128,7 @@ export default function InAppChat({
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase is stable
   }, [threadId]);
 
   const handleSend = async (e: React.FormEvent) => {
