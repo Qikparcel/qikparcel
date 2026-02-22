@@ -7,7 +7,6 @@ import toast from "react-hot-toast";
 import DashboardLayout from "@/components/DashboardLayout";
 import ParcelTimeline from "@/components/ParcelTimeline";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
-import InAppChat from "@/components/InAppChat";
 import { Database } from "@/types/database";
 
 type Parcel = Database["public"]["Tables"]["parcels"]["Row"];
@@ -1185,16 +1184,35 @@ export default function ParcelDetailPage() {
                 </div>
               )}
 
-            {/* In-app chat — shown only when parcel status is matched */}
+            {/* Chat link — opens dedicated chat page when parcel status is matched */}
             {parcel.status === "matched" && parcel.matched_trip_id && (
-              <div className="space-y-2">
-                <h2 className="text-lg font-bold text-gray-900">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-3">
                   Chat with courier
                 </h2>
-                <InAppChat
-                  parcelId={parcelId}
-                  otherPartyName={matchedCourier?.full_name || "Courier"}
-                />
+                <Link
+                  href={`/dashboard/chat?parcel=${parcelId}`}
+                  className="flex items-center gap-2 px-4 py-3 rounded-lg border border-primary-600 text-primary-600 hover:bg-primary-50 transition font-medium"
+                  style={{
+                    borderColor: "#29772F",
+                    color: "#29772F",
+                  }}
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  Open chat with {matchedCourier?.full_name || "courier"}
+                </Link>
               </div>
             )}
 

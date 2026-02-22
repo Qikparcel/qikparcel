@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
-import { notifyChatRecipientOfNewMessage } from "@/lib/matching/notifications";
 
 /**
- * POST /api/chat/messages
- * Body: { thread_id: string, content: string }
- * Sends a message in a chat thread. Uses admin client to bypass RLS (auth.uid()
- * can be unset in API context). Access is verified before insert.
+ * GET /api/chat/sender-name?sender_id=xxx&thread_id=yyy
+ * Returns full_name for a message sender. Verifies requester has access to the thread.
  */
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { thread_id, content } = body;
+    const senderId = request.nextUrl.searchParams.get("sender_id");
+    const threadId = request.nextUrl.searchParams.get("thread_id");
 
-    if (!thread_id || typeof content !== "string" || !content.trim()) {
+    if (!senderId || !threadId) {
       return NextResponse.json(
-        { error: "thread_id and content (non-empty) are required" },
+        { error: "sender_id and thread_id are required" },
         { status: 400 }
       );
     }
@@ -33,12 +30,12 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id;
 
-    // Verify user has access to thread (sender or courier of parcel)
     const adminClient = createSupabaseAdminClient();
+
     const { data: thread } = await adminClient
       .from("chat_threads")
       .select("id, parcel_id")
-      .eq("id", thread_id)
+      .eq("id", threadId)
       .single();
 
     if (!thread?.parcel_id) {
@@ -68,46 +65,22 @@ export async function POST(request: NextRequest) {
 
     if (!isSender && !isCourier) {
       return NextResponse.json(
-        { error: "You cannot send messages in this thread" },
+        { error: "You cannot access this thread" },
         { status: 403 }
       );
     }
 
-    const { data: message, error } = await adminClient
-      .from("chat_messages")
-      .insert({
-        thread_id,
-        sender_id: userId,
-        content: content.trim(),
-      })
-      .select()
-      .single();
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("full_name")
+      .eq("id", senderId)
+      .single<{ full_name: string | null }>();
 
-    if (error) {
-      if (error.code === "23503") {
-        return NextResponse.json(
-          { error: "Thread not found or access denied" },
-          { status: 404 }
-        );
-      }
-      console.error("[CHAT] Insert error:", error);
-      return NextResponse.json(
-        { error: "Failed to send message" },
-        { status: 500 }
-      );
-    }
-
-    // Fire-and-forget: notify recipient via WhatsApp if they haven't been active
-    notifyChatRecipientOfNewMessage(
-      adminClient,
-      thread_id,
-      userId,
-      thread.parcel_id
-    ).catch(() => {});
-
-    return NextResponse.json({ message, success: true });
+    return NextResponse.json({
+      full_name: profile?.full_name || "Unknown",
+    });
   } catch (error: unknown) {
-    console.error("[CHAT] Error:", error);
+    console.error("[CHAT] sender-name error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

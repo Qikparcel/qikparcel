@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { Database } from "@/types/database";
 
 type ChatThread = Database["public"]["Tables"]["chat_threads"]["Row"];
@@ -33,8 +34,10 @@ export async function GET(request: NextRequest) {
 
     const userId = session.user.id;
 
-    // Verify user can access this parcel (sender or courier of matched trip)
-    const { data: parcel, error: parcelError } = await supabase
+    // Fetch parcel with admin client to bypass RLS (couriers can't SELECT parcels
+    // due to migration 008 removing "Couriers can view matched parcels" policy)
+    const adminClient = createSupabaseAdminClient();
+    const { data: parcel, error: parcelError } = await adminClient
       .from("parcels")
       .select("id, sender_id, matched_trip_id, status")
       .eq("id", parcelId)
@@ -76,8 +79,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get or create thread
-    let { data: thread, error: threadError } = await supabase
+    // Get or create thread (use admin client to bypass RLS - auth.uid() can be
+    // unset in API route context, and we've already verified access above)
+    let { data: thread, error: threadError } = await adminClient
       .from("chat_threads")
       .select("*")
       .eq("parcel_id", parcelId)
@@ -85,9 +89,8 @@ export async function GET(request: NextRequest) {
 
     if (threadError && threadError.code === "PGRST116") {
       // No row - create thread
-      const { data: newThread, error: insertError } = await (
-        supabase.from("chat_threads") as any
-      )
+      const { data: newThread, error: insertError } = await adminClient
+        .from("chat_threads")
         .insert({ parcel_id: parcelId })
         .select()
         .single();
@@ -116,8 +119,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch messages with sender profiles
-    const { data: messages, error: messagesError } = await supabase
+    // Fetch messages with sender profiles (admin client bypasses RLS)
+    const { data: messages, error: messagesError } = await adminClient
       .from("chat_messages")
       .select(
         `

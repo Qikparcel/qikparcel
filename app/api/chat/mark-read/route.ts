@@ -1,22 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
-import { notifyChatRecipientOfNewMessage } from "@/lib/matching/notifications";
 
 /**
- * POST /api/chat/messages
- * Body: { thread_id: string, content: string }
- * Sends a message in a chat thread. Uses admin client to bypass RLS (auth.uid()
- * can be unset in API context). Access is verified before insert.
+ * POST /api/chat/mark-read
+ * Body: { thread_id: string }
+ * Marks a thread as read for the current user.
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { thread_id, content } = body;
+    const { thread_id } = body;
 
-    if (!thread_id || typeof content !== "string" || !content.trim()) {
+    if (!thread_id) {
       return NextResponse.json(
-        { error: "thread_id and content (non-empty) are required" },
+        { error: "thread_id is required" },
         { status: 400 }
       );
     }
@@ -32,9 +30,9 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = session.user.id;
-
-    // Verify user has access to thread (sender or courier of parcel)
     const adminClient = createSupabaseAdminClient();
+
+    // Verify user has access to thread
     const { data: thread } = await adminClient
       .from("chat_threads")
       .select("id, parcel_id")
@@ -68,46 +66,23 @@ export async function POST(request: NextRequest) {
 
     if (!isSender && !isCourier) {
       return NextResponse.json(
-        { error: "You cannot send messages in this thread" },
+        { error: "You cannot access this thread" },
         { status: 403 }
       );
     }
 
-    const { data: message, error } = await adminClient
-      .from("chat_messages")
-      .insert({
+    await adminClient.from("chat_thread_reads").upsert(
+      {
+        user_id: userId,
         thread_id,
-        sender_id: userId,
-        content: content.trim(),
-      })
-      .select()
-      .single();
+        last_read_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id, thread_id" }
+    );
 
-    if (error) {
-      if (error.code === "23503") {
-        return NextResponse.json(
-          { error: "Thread not found or access denied" },
-          { status: 404 }
-        );
-      }
-      console.error("[CHAT] Insert error:", error);
-      return NextResponse.json(
-        { error: "Failed to send message" },
-        { status: 500 }
-      );
-    }
-
-    // Fire-and-forget: notify recipient via WhatsApp if they haven't been active
-    notifyChatRecipientOfNewMessage(
-      adminClient,
-      thread_id,
-      userId,
-      thread.parcel_id
-    ).catch(() => {});
-
-    return NextResponse.json({ message, success: true });
+    return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error("[CHAT] Error:", error);
+    console.error("[CHAT] mark-read error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
