@@ -6,6 +6,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/components/DashboardLayout";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import InAppChat from "@/components/InAppChat";
 import { Database } from "@/types/database";
 
 type Trip = Database["public"]["Tables"]["trips"]["Row"];
@@ -1372,17 +1373,31 @@ export default function TripDetailPage() {
                     </div>
                   )}
 
-                  {selectedMatch.status === "accepted" && (
-                    <div className="pt-4 border-t">
-                      <Link
-                        href={`/dashboard/matched-parcels`}
-                        className="block w-full px-4 py-3 bg-primary-600 text-white text-center rounded-lg hover:bg-primary-700 transition font-medium"
-                        style={{ backgroundColor: "#29772F" }}
-                      >
-                        Manage Parcel
-                      </Link>
-                    </div>
-                  )}
+                  {selectedMatch.status === "accepted" &&
+                    selectedMatch.parcel.status === "matched" && (
+                      <>
+                        <div className="pt-4 border-t">
+                          <Link
+                            href={`/dashboard/matched-parcels`}
+                            className="block w-full px-4 py-3 bg-primary-600 text-white text-center rounded-lg hover:bg-primary-700 transition font-medium"
+                            style={{ backgroundColor: "#29772F" }}
+                          >
+                            Manage Parcel
+                          </Link>
+                        </div>
+                        <div className="pt-4 border-t mt-4">
+                          <h3 className="text-sm font-medium text-gray-900 mb-2">
+                            Chat with sender
+                          </h3>
+                          <InAppChat
+                            parcelId={selectedMatch.parcel.id}
+                            otherPartyName={
+                              selectedMatch.parcel.sender?.full_name || "Sender"
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">

@@ -319,6 +319,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   My Parcels
                 </Link>
                 <Link
+                  href="/dashboard/chat"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/chat")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Chat
+                </Link>
+                <Link
                   href="/dashboard/parcels/new"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block py-2 px-3 rounded-lg text-sm font-medium ${
@@ -387,6 +398,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   }`}
                 >
                   Matched Parcels
+                </Link>
+                <Link
+                  href="/dashboard/chat"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/chat")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Chat
                 </Link>
                 <Link
                   href="/dashboard/trips/new"
@@ -493,6 +515,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   Matches Overview
                 </Link>
                 <Link
+                  href="/dashboard/chat"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/chat")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Chat
+                </Link>
+                <Link
                   href="/dashboard/settings"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block py-2 px-3 rounded-lg text-sm font-medium ${
@@ -523,6 +556,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 My Parcels
+              </Link>
+              <Link
+                href="/dashboard/chat"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/chat")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Chat
               </Link>
               <Link
                 href="/dashboard/parcels/new"
@@ -592,6 +635,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 Matched Parcels
+              </Link>
+              <Link
+                href="/dashboard/chat"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/chat")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Chat
               </Link>
               <Link
                 href="/dashboard/trips/new"
@@ -692,6 +745,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 Matches Overview
+              </Link>
+              <Link
+                href="/dashboard/chat"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/chat")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Chat
               </Link>
               <Link
                 href="/dashboard/settings"

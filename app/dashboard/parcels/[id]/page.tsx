@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import DashboardLayout from "@/components/DashboardLayout";
 import ParcelTimeline from "@/components/ParcelTimeline";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
+import InAppChat from "@/components/InAppChat";
 import { Database } from "@/types/database";
 
 type Parcel = Database["public"]["Tables"]["parcels"]["Row"];
@@ -1183,6 +1184,19 @@ export default function ParcelDetailPage() {
                   </dl>
                 </div>
               )}
+
+            {/* In-app chat — shown only when parcel status is matched */}
+            {parcel.status === "matched" && parcel.matched_trip_id && (
+              <div className="space-y-2">
+                <h2 className="text-lg font-bold text-gray-900">
+                  Chat with courier
+                </h2>
+                <InAppChat
+                  parcelId={parcelId}
+                  otherPartyName={matchedCourier?.full_name || "Courier"}
+                />
+              </div>
+            )}
 
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">
