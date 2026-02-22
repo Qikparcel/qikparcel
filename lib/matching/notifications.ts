@@ -56,7 +56,17 @@ export async function notifyCourierOfMatch(
       `
       )
       .eq("id", matchId)
-      .single<Match & { parcel: Parcel; trip: Trip & { courier?: Pick<Profile, "whatsapp_number" | "full_name" | "phone_number"> } }>();
+      .single<
+        Match & {
+          parcel: Parcel;
+          trip: Trip & {
+            courier?: Pick<
+              Profile,
+              "whatsapp_number" | "full_name" | "phone_number"
+            >;
+          };
+        }
+      >();
 
     if (matchError) {
       console.error(
@@ -332,7 +342,22 @@ export async function notifySenderOfAcceptedMatch(
       `
       )
       .eq("id", matchId)
-      .single<Match & { parcel: Parcel & { sender?: Pick<Profile, "whatsapp_number" | "full_name" | "phone_number"> }; trip: Trip & { courier?: Pick<Profile, "full_name" | "phone_number" | "whatsapp_number"> } }>();
+      .single<
+        Match & {
+          parcel: Parcel & {
+            sender?: Pick<
+              Profile,
+              "whatsapp_number" | "full_name" | "phone_number"
+            >;
+          };
+          trip: Trip & {
+            courier?: Pick<
+              Profile,
+              "full_name" | "phone_number" | "whatsapp_number"
+            >;
+          };
+        }
+      >();
 
     if (matchError || !matchData) {
       console.error(
@@ -527,5 +552,104 @@ export async function notifySenderOfPaymentSuccess(
       error?.message ?? error
     );
     // Don't throw - payment is already recorded
+  }
+}
+
+/** Minutes of inactivity before sending WhatsApp notification for new chat message */
+const CHAT_NOTIFY_INACTIVE_MINUTES = 5;
+
+/**
+ * Notify the other party in a chat via WhatsApp when a new in-app message is sent.
+ * Only sends when there's a "gap" - recipient hasn't read recently (last_read_at old or missing).
+ * Template: Hi {{1}}, You have a new message from {{2}} on {{3}}. Please open the app...
+ * Variables: {{1}}=recipient name, {{2}}=sender name, {{3}}=QikParcel
+ */
+export async function notifyChatRecipientOfNewMessage(
+  supabase: SupabaseClient<Database>,
+  threadId: string,
+  senderId: string,
+  parcelId: string
+): Promise<void> {
+  const templateContentId =
+    process.env.TWILIO_CHAT_MESSAGE_TEMPLATE_SID ||
+    "HXfb734712f0310ae4ccfe1e5ee31012bd";
+
+  try {
+    const { data: parcel } = await supabase
+      .from("parcels")
+      .select("sender_id, matched_trip_id")
+      .eq("id", parcelId)
+      .single<{ sender_id: string; matched_trip_id: string | null }>();
+
+    if (!parcel) return;
+
+    let recipientId: string;
+    if (parcel.sender_id === senderId && parcel.matched_trip_id) {
+      const { data: trip } = await supabase
+        .from("trips")
+        .select("courier_id")
+        .eq("id", parcel.matched_trip_id)
+        .single<{ courier_id: string }>();
+      recipientId = trip?.courier_id || "";
+    } else {
+      recipientId = parcel.sender_id;
+    }
+
+    if (!recipientId || recipientId === senderId) return;
+
+    const { data: recipientRead } = await supabase
+      .from("chat_thread_reads")
+      .select("last_read_at")
+      .eq("user_id", recipientId)
+      .eq("thread_id", threadId)
+      .single<{ last_read_at: string }>();
+
+    const now = Date.now();
+    const lastReadAt = recipientRead?.last_read_at
+      ? new Date(recipientRead.last_read_at).getTime()
+      : 0;
+    const gapMinutes = (now - lastReadAt) / (60 * 1000);
+    if (gapMinutes < CHAT_NOTIFY_INACTIVE_MINUTES) {
+      return;
+    }
+
+    const [{ data: recipientProfile }, { data: senderProfile }] =
+      await Promise.all([
+        supabase
+          .from("profiles")
+          .select("full_name, whatsapp_number, phone_number")
+          .eq("id", recipientId)
+          .single<
+            Pick<Profile, "full_name" | "whatsapp_number" | "phone_number">
+          >(),
+        supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", senderId)
+          .single<Pick<Profile, "full_name">>(),
+      ]);
+
+    const recipientWhatsApp =
+      recipientProfile?.whatsapp_number || recipientProfile?.phone_number;
+    if (!recipientWhatsApp) return;
+
+    const recipientName = recipientProfile?.full_name || "there";
+    const senderName = senderProfile?.full_name || "a user";
+
+    const whatsappClient = createWhatsAppClient();
+    await whatsappClient.sendContentTemplate(
+      recipientWhatsApp,
+      templateContentId,
+      { "1": recipientName, "2": senderName, "3": "QikParcel" }
+    );
+    console.log(
+      "[NOTIFICATIONS] Chat message notification sent to",
+      recipientId
+    );
+  } catch (error: unknown) {
+    console.error(
+      "[NOTIFICATIONS] Chat message notification failed:",
+      error instanceof Error ? error.message : error
+    );
   }
 }

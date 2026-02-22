@@ -456,9 +456,7 @@ export async function DELETE(
 
     const { error: deleteError } = await (adminClient.from("trips") as any)
       .delete()
-      .eq("id", tripId);
-
-    if (deleteError) {
+      .eq("id", tripId);    if (deleteError) {
       console.error("[TRIP DELETE] Error:", deleteError);
       return NextResponse.json(
         { error: "Failed to delete trip", details: deleteError.message },

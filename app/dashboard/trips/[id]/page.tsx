@@ -1226,9 +1226,37 @@ export default function TripDetailPage() {
                   {/* Sender Info */}
                   {selectedMatch.parcel.sender && (
                     <div className="border border-gray-200 rounded-lg p-4">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                        Sender Information
-                      </h3>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Sender Information
+                        </h3>
+                        {selectedMatch.status === "accepted" &&
+                          selectedMatch.parcel.status === "matched" && (
+                            <Link
+                              href={`/dashboard/chat?parcel=${selectedMatch.parcel.id}`}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-primary-600 text-primary-600 hover:bg-primary-50 transition text-sm font-medium"
+                              style={{
+                                borderColor: "#29772F",
+                                color: "#29772F",
+                              }}
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                />
+                              </svg>
+                              Chat
+                            </Link>
+                          )}
+                      </div>
                       <dl className="space-y-2">
                         <div>
                           <dt className="text-sm font-medium text-gray-500">
@@ -1372,17 +1400,49 @@ export default function TripDetailPage() {
                     </div>
                   )}
 
-                  {selectedMatch.status === "accepted" && (
-                    <div className="pt-4 border-t">
-                      <Link
-                        href={`/dashboard/matched-parcels`}
-                        className="block w-full px-4 py-3 bg-primary-600 text-white text-center rounded-lg hover:bg-primary-700 transition font-medium"
-                        style={{ backgroundColor: "#29772F" }}
-                      >
-                        Manage Parcel
-                      </Link>
-                    </div>
-                  )}
+                  {selectedMatch.status === "accepted" &&
+                    selectedMatch.parcel.status === "matched" && (
+                      <>
+                        <div className="pt-4 border-t">
+                          <Link
+                            href={`/dashboard/matched-parcels`}
+                            className="block w-full px-4 py-3 bg-primary-600 text-white text-center rounded-lg hover:bg-primary-700 transition font-medium"
+                            style={{ backgroundColor: "#29772F" }}
+                          >
+                            Manage Parcel
+                          </Link>
+                        </div>
+                        <div className="pt-4 border-t mt-4">
+                          <h3 className="text-sm font-medium text-gray-900 mb-2">
+                            Chat with sender
+                          </h3>
+                          <Link
+                            href={`/dashboard/chat?parcel=${selectedMatch.parcel.id}`}
+                            className="flex items-center gap-2 px-4 py-3 rounded-lg border border-primary-600 text-primary-600 hover:bg-primary-50 transition font-medium text-sm"
+                            style={{
+                              borderColor: "#29772F",
+                              color: "#29772F",
+                            }}
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                              />
+                            </svg>
+                            Open chat with{" "}
+                            {selectedMatch.parcel.sender?.full_name || "sender"}
+                          </Link>
+                        </div>
+                      </>
+                    )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">

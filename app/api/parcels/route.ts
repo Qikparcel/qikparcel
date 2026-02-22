@@ -310,9 +310,51 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const rawParcels = parcels || [];
+
+    // Enrich matched parcels with courier name for chat/sender view
+    const matchedIds = rawParcels
+      .filter((p: { matched_trip_id?: string | null }) => p.matched_trip_id)
+      .map((p: { matched_trip_id: string }) => p.matched_trip_id);
+    const courierMap = new Map<string, string>();
+
+    if (matchedIds.length > 0) {
+      const adminClient = createSupabaseAdminClient();
+      const { data: trips } = await adminClient
+        .from("trips")
+        .select("id, courier_id")
+        .in("id", matchedIds);
+      const courierIds = (trips || [])
+        .map((t: { courier_id: string }) => t.courier_id)
+        .filter(Boolean);
+      if (courierIds.length > 0) {
+        const { data: profiles } = await adminClient
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", courierIds);
+        (profiles || []).forEach(
+          (p: { id: string; full_name: string | null }) => {
+            courierMap.set(p.id, p.full_name || "Courier");
+          }
+        );
+      }
+      const tripCourierMap = new Map<string, string>();
+      (trips || []).forEach((t: { id: string; courier_id: string }) => {
+        const name = courierMap.get(t.courier_id);
+        if (name) tripCourierMap.set(t.id, name);
+      });
+      rawParcels.forEach((p: Record<string, unknown>) => {
+        const tid = p.matched_trip_id as string | undefined;
+        if (tid)
+          (p as Record<string, unknown>).courier = {
+            full_name: tripCourierMap.get(tid) || "Courier",
+          };
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      parcels: parcels || [],
+      parcels: rawParcels,
     });
   } catch (error: any) {
     console.error("Error in GET /api/parcels:", error);

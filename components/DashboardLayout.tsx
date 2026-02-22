@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -27,8 +27,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   } | null>(null);
   const [showStripeConnectModal, setShowStripeConnectModal] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
 
-  console.log("[DashboardLayout] Component rendering, loading:", loading);
+  const fetchChatUnread = useCallback(() => {
+    fetch("/api/chat/unread-count")
+      .then((r) => r.json())
+      .then((d) => setChatUnreadCount(d.count ?? 0))
+      .catch(() => setChatUnreadCount(0));
+  }, []);
+
+  useEffect(() => {
+    if (!profile?.role) return;
+    fetchChatUnread();
+  }, [profile?.role, fetchChatUnread]);
+
+  useEffect(() => {
+    window.addEventListener("chat-read", fetchChatUnread);
+    return () => window.removeEventListener("chat-read", fetchChatUnread);
+  }, [fetchChatUnread]);
+
+  const chatBadge =
+    chatUnreadCount > 0 ? (
+      <span className="absolute -top-0.5 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+        {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+      </span>
+    ) : null;
 
   useEffect(() => {
     console.log("[DashboardLayout] useEffect running");
@@ -319,6 +342,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   My Parcels
                 </Link>
                 <Link
+                  href="/dashboard/chat"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`relative block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/chat")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Chat {chatBadge}
+                </Link>
+                <Link
                   href="/dashboard/parcels/new"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block py-2 px-3 rounded-lg text-sm font-medium ${
@@ -387,6 +421,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   }`}
                 >
                   Matched Parcels
+                </Link>
+                <Link
+                  href="/dashboard/chat"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`relative block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/chat")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Chat {chatBadge}
                 </Link>
                 <Link
                   href="/dashboard/trips/new"
@@ -493,6 +538,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   Matches Overview
                 </Link>
                 <Link
+                  href="/dashboard/chat"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`relative block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/chat")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Chat {chatBadge}
+                </Link>
+                <Link
                   href="/dashboard/settings"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block py-2 px-3 rounded-lg text-sm font-medium ${
@@ -523,6 +579,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 My Parcels
+              </Link>
+              <Link
+                href="/dashboard/chat"
+                className={`relative py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/chat")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Chat {chatBadge}
               </Link>
               <Link
                 href="/dashboard/parcels/new"
@@ -592,6 +658,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 Matched Parcels
+              </Link>
+              <Link
+                href="/dashboard/chat"
+                className={`relative py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/chat")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Chat {chatBadge}
               </Link>
               <Link
                 href="/dashboard/trips/new"
@@ -692,6 +768,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 }`}
               >
                 Matches Overview
+              </Link>
+              <Link
+                href="/dashboard/chat"
+                className={`relative py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/chat")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Chat {chatBadge}
               </Link>
               <Link
                 href="/dashboard/settings"

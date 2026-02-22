@@ -323,6 +323,66 @@ export interface Database {
           created_at?: string;
         };
       };
+      chat_threads: {
+        Row: {
+          id: string;
+          parcel_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          parcel_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          parcel_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      chat_messages: {
+        Row: {
+          id: string;
+          thread_id: string;
+          sender_id: string;
+          content: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          thread_id: string;
+          sender_id: string;
+          content: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          thread_id?: string;
+          sender_id?: string;
+          content?: string;
+          created_at?: string;
+        };
+      };
+      chat_thread_reads: {
+        Row: {
+          user_id: string;
+          thread_id: string;
+          last_read_at: string;
+        };
+        Insert: {
+          user_id: string;
+          thread_id: string;
+          last_read_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          thread_id?: string;
+          last_read_at?: string;
+        };
+      };
       courier_kyc: {
         Row: {
           id: string;
