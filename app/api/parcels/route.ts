@@ -130,6 +130,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const MAX_WEIGHT_KG = 10;
+    if (weight_kg != null && weight_kg !== "") {
+      const w =
+        typeof weight_kg === "number" ? weight_kg : parseFloat(weight_kg);
+      if (Number.isNaN(w) || w < 0) {
+        return NextResponse.json(
+          { error: "Weight must be a valid number (0 or more)" },
+          { status: 400 }
+        );
+      }
+      if (w > MAX_WEIGHT_KG) {
+        return NextResponse.json(
+          {
+            error: `Maximum package weight is ${MAX_WEIGHT_KG} kg. Please enter ${MAX_WEIGHT_KG} kg or less.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (estimated_value == null || estimated_value === "") {
       return NextResponse.json(
         { error: "Estimated value is required" },

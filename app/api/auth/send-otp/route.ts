@@ -52,6 +52,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If it's a login request and user does NOT exist, don't send OTP
+    if (!isSignup && !userExists) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Account does not exist. Please sign up.",
+          accountNotFound: true,
+        },
+        { status: 404 }
+      );
+    }
+
     const supabase = createSupabaseServerClient();
 
     // Generate 6-digit OTP
@@ -102,35 +114,44 @@ export async function POST(request: NextRequest) {
       });
 
       // Return user-friendly error message
-      const userMessage = whatsappError.userMessage || whatsappError.message || "Failed to send OTP via WhatsApp"
-      
+      const userMessage =
+        whatsappError.userMessage ||
+        whatsappError.message ||
+        "Failed to send OTP via WhatsApp";
+
       // Check for specific error codes
-      if (whatsappError.code === '21211') {
+      if (whatsappError.code === "21211") {
         // Invalid phone number
         return NextResponse.json(
           {
             error: "Invalid phone number",
-            message: "The phone number you entered is not valid. Please check the number format and try again. Make sure to include the country code (e.g., +92 for Pakistan).",
+            message:
+              "The phone number you entered is not valid. Please check the number format and try again. Make sure to include the country code (e.g., +92 for Pakistan).",
             code: whatsappError.code,
           },
           { status: 400 }
         );
-      } else if (whatsappError.code === '21608' || whatsappError.code === '21610') {
+      } else if (
+        whatsappError.code === "21608" ||
+        whatsappError.code === "21610"
+      ) {
         // Unsubscribed recipient
         return NextResponse.json(
           {
             error: "Phone number not registered",
-            message: "This phone number is not registered to receive WhatsApp messages. For testing, please join the WhatsApp Sandbox by sending the join code to the Twilio WhatsApp number.",
+            message:
+              "This phone number is not registered to receive WhatsApp messages. For testing, please join the WhatsApp Sandbox by sending the join code to the Twilio WhatsApp number.",
             code: whatsappError.code,
           },
           { status: 400 }
         );
-      } else if (whatsappError.code === '21614') {
+      } else if (whatsappError.code === "21614") {
         // Invalid WhatsApp number
         return NextResponse.json(
           {
             error: "Not a WhatsApp number",
-            message: "This phone number does not have WhatsApp installed or is not a valid WhatsApp number. Please use a different number.",
+            message:
+              "This phone number does not have WhatsApp installed or is not a valid WhatsApp number. Please use a different number.",
             code: whatsappError.code,
           },
           { status: 400 }
@@ -170,14 +191,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Store new OTP
-    const { error: storeError } = await (adminSupabase
-      .from("otp_codes") as any)
-      .insert({
-        phone_number: formattedPhone,
-        otp_code: otp,
-        expires_at: expiresAt,
-        used: false,
-      });
+    const { error: storeError } = await (
+      adminSupabase.from("otp_codes") as any
+    ).insert({
+      phone_number: formattedPhone,
+      otp_code: otp,
+      expires_at: expiresAt,
+      used: false,
+    });
 
     if (storeError) {
       console.error("Error storing OTP:", storeError);

@@ -303,6 +303,20 @@ export default function CreateParcelPage() {
       return;
     }
 
+    const weightNum = formData.weight_kg.trim()
+      ? parseFloat(formData.weight_kg)
+      : null;
+    if (weightNum != null && !Number.isNaN(weightNum)) {
+      if (weightNum < 0) {
+        toast.error("Weight must be 0 or more");
+        return;
+      }
+      if (weightNum > 10) {
+        toast.error("Maximum package weight is 10 kg");
+        return;
+      }
+    }
+
     if (!formData.estimated_value.trim()) {
       toast.error("Estimated value is required");
       return;
@@ -624,8 +638,12 @@ export default function CreateParcelPage() {
                   placeholder="0.0"
                   step="0.1"
                   min="0"
+                  max="10"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Optional. Maximum 10 kg per package.
+                </p>
               </div>
 
               <div>

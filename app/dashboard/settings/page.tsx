@@ -16,7 +16,9 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingPersonal, setSavingPersonal] = useState(false);
   const [connectStatus, setConnectStatus] = useState<{
     hasAccount: boolean;
     onboarded: boolean;
@@ -31,6 +33,10 @@ export default function SettingsPage() {
   const [state, setState] = useState("");
   const [postcode, setPostcode] = useState("");
   const [country, setCountry] = useState("");
+
+  const [fullNameEdit, setFullNameEdit] = useState("");
+  const [emailEdit, setEmailEdit] = useState("");
+  const [phoneNumberEdit, setPhoneNumberEdit] = useState("");
 
   useEffect(() => {
     async function loadProfile() {
@@ -81,6 +87,9 @@ export default function SettingsPage() {
           setState(profileData.state || "");
           setPostcode(profileData.postcode || "");
           setCountry(profileData.country || "");
+          setFullNameEdit(profileData.full_name || "");
+          setEmailEdit(profileData.email || "");
+          setPhoneNumberEdit(profileData.phone_number || "");
         }
       } catch (error) {
         console.error("Error loading profile:", error);
@@ -118,7 +127,6 @@ export default function SettingsPage() {
   };
 
   const handleCancelEdit = () => {
-    // Reset to original values
     if (profile) {
       setStreetAddress(profile.street_address || "");
       setAddressLine2(profile.address_line_2 || "");
@@ -128,6 +136,68 @@ export default function SettingsPage() {
       setCountry(profile.country || "");
     }
     setIsEditingAddress(false);
+  };
+
+  const handleEditPersonal = () => {
+    if (profile) {
+      setFullNameEdit(profile.full_name || "");
+      setEmailEdit(profile.email || "");
+      setPhoneNumberEdit(profile.phone_number || "");
+    }
+    setIsEditingPersonal(true);
+  };
+
+  const handleCancelEditPersonal = () => {
+    if (profile) {
+      setFullNameEdit(profile.full_name || "");
+      setEmailEdit(profile.email || "");
+      setPhoneNumberEdit(profile.phone_number || "");
+    }
+    setIsEditingPersonal(false);
+  };
+
+  const handleSavePersonal = async () => {
+    if (!profile) return;
+    if (!fullNameEdit?.trim()) {
+      toast.error("Full name is required");
+      return;
+    }
+    setSavingPersonal(true);
+    try {
+      const supabase = createSupabaseClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Session expired. Please log in again.");
+        router.push("/login");
+        return;
+      }
+      const response = await fetch("/api/auth/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: session.user.id,
+          fullName: fullNameEdit.trim(),
+          email: emailEdit?.trim() || null,
+          phoneNumber: phoneNumberEdit?.trim() || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to update");
+      const { data: updatedProfile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single<Profile>();
+      if (updatedProfile) setProfile(updatedProfile);
+      setIsEditingPersonal(false);
+      toast.success("Personal information updated!");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to update");
+    } finally {
+      setSavingPersonal(false);
+    }
   };
 
   const handleSaveAddress = async () => {
@@ -308,50 +378,140 @@ export default function SettingsPage() {
 
           {/* Personal Information */}
           <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
-              Personal Information
-            </h2>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-                <dd className="mt-1 text-sm text-gray-900">
-                  {profile.full_name || "Not set"}
-                </dd>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                Personal Information
+              </h2>
+              {!isEditingPersonal && (
+                <button
+                  type="button"
+                  onClick={handleEditPersonal}
+                  className="px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition"
+                  style={{ borderColor: "#29772F", color: "#29772F" }}
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+            {isEditingPersonal ? (
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="fullName"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Full Name *
+                  </label>
+                  <input
+                    id="fullName"
+                    type="text"
+                    value={fullNameEdit}
+                    onChange={(e) => setFullNameEdit(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                    placeholder="Your full name"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={emailEdit}
+                    onChange={(e) => setEmailEdit(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                    placeholder="your@email.com"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="phoneNumber"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Phone Number
+                  </label>
+                  <input
+                    id="phoneNumber"
+                    type="tel"
+                    value={phoneNumberEdit}
+                    onChange={(e) =>
+                      setPhoneNumberEdit(e.target.value.replace(/\D/g, ""))
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                    placeholder="Phone number"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Updating phone here updates your profile display. Sign-in
+                    still uses the number you verified.
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSavePersonal}
+                    disabled={savingPersonal}
+                    className="flex-1 px-4 py-2 text-white rounded-lg hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: "#29772F" }}
+                  >
+                    {savingPersonal ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelEditPersonal}
+                    disabled={savingPersonal}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
+            ) : (
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">
+                    Full Name
+                  </dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {profile.full_name || "Not set"}
+                  </dd>
+                </div>
 
-              <div>
-                <dt className="text-sm font-medium text-gray-500">
-                  Phone Number
-                </dt>
-                <dd className="mt-1 text-sm text-gray-900">
-                  {profile.phone_number || "Not set"}
-                </dd>
-              </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">
+                    Phone Number
+                  </dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {profile.phone_number || "Not set"}
+                  </dd>
+                </div>
 
-              {profile.email && (
                 <div>
                   <dt className="text-sm font-medium text-gray-500">
                     Email Address
                   </dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {profile.email}
+                    {profile.email || "Not set"}
                   </dd>
                 </div>
-              )}
 
-              <div>
-                <dt className="text-sm font-medium text-gray-500">
-                  Account Created
-                </dt>
-                <dd className="mt-1 text-sm text-gray-900">
-                  {new Date(profile.created_at).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </dd>
-              </div>
-            </dl>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">
+                    Account Created
+                  </dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {new Date(profile.created_at).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </dd>
+                </div>
+              </dl>
+            )}
           </div>
 
           {/* Address Information */}

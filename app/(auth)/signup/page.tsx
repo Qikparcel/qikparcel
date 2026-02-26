@@ -367,6 +367,16 @@ export default function SignUpPage() {
         body: JSON.stringify({
           phoneNumber: finalFormatted,
           otp: otp,
+          fullName: fullName.trim(),
+          role,
+          streetAddress: streetAddress.trim(),
+          addressLine2: addressLine2?.trim() || "",
+          city: city.trim(),
+          state: state.trim(),
+          postcode: postcode.trim(),
+          country: country.trim(),
+          email: role === "sender" ? email.trim() : undefined,
+          documentType: documentType || undefined,
         }),
       });
 

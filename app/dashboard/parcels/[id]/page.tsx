@@ -67,6 +67,7 @@ export default function ParcelDetailPage() {
     dimensions: "",
     estimated_value: "",
     estimated_value_currency: "USD",
+    preferred_pickup_time: "",
   });
 
   useEffect(() => {
@@ -86,6 +87,20 @@ export default function ParcelDetailPage() {
 
         // Initialize form fields with existing data
         if (data.parcel) {
+          const p = data.parcel as { preferred_pickup_time?: string | null };
+          const prefDate = p.preferred_pickup_time
+            ? new Date(p.preferred_pickup_time)
+            : null;
+          const preferredPickupLocal =
+            prefDate &&
+            (() => {
+              const pad = (n: number) => n.toString().padStart(2, "0");
+              return `${prefDate.getFullYear()}-${pad(
+                prefDate.getMonth() + 1
+              )}-${pad(prefDate.getDate())}T${pad(prefDate.getHours())}:${pad(
+                prefDate.getMinutes()
+              )}`;
+            })();
           setFormData({
             description: data.parcel.description || "",
             weight_kg: data.parcel.weight_kg?.toString() || "",
@@ -93,6 +108,7 @@ export default function ParcelDetailPage() {
             estimated_value: data.parcel.estimated_value?.toString() || "",
             estimated_value_currency:
               (data.parcel as any).estimated_value_currency || "USD",
+            preferred_pickup_time: preferredPickupLocal || "",
           });
         }
 
@@ -269,6 +285,20 @@ export default function ParcelDetailPage() {
     setIsEditing(false);
     // Reset form fields to original values
     if (parcel) {
+      const p = parcel as { preferred_pickup_time?: string | null };
+      const prefDate = p.preferred_pickup_time
+        ? new Date(p.preferred_pickup_time)
+        : null;
+      const preferredPickupLocal =
+        prefDate &&
+        (() => {
+          const pad = (n: number) => n.toString().padStart(2, "0");
+          return `${prefDate.getFullYear()}-${pad(
+            prefDate.getMonth() + 1
+          )}-${pad(prefDate.getDate())}T${pad(prefDate.getHours())}:${pad(
+            prefDate.getMinutes()
+          )}`;
+        })();
       setFormData({
         description: parcel.description || "",
         weight_kg: parcel.weight_kg?.toString() || "",
@@ -276,6 +306,7 @@ export default function ParcelDetailPage() {
         estimated_value: parcel.estimated_value?.toString() || "",
         estimated_value_currency:
           (parcel as any).estimated_value_currency || "USD",
+        preferred_pickup_time: preferredPickupLocal || "",
       });
     }
     // Reset address fields (they'll need to be set via AddressAutocomplete)
@@ -415,6 +446,20 @@ export default function ParcelDetailPage() {
       return;
     }
 
+    const weightNum = formData.weight_kg.trim()
+      ? parseFloat(formData.weight_kg)
+      : null;
+    if (weightNum != null && !Number.isNaN(weightNum)) {
+      if (weightNum < 0) {
+        toast.error("Weight must be 0 or more");
+        return;
+      }
+      if (weightNum > 10) {
+        toast.error("Maximum package weight is 10 kg");
+        return;
+      }
+    }
+
     if (!formData.estimated_value.trim()) {
       toast.error("Estimated value is required");
       return;
@@ -466,6 +511,9 @@ export default function ParcelDetailPage() {
           dimensions: formData.dimensions.trim(),
           estimated_value: parseFloat(formData.estimated_value),
           estimated_value_currency: formData.estimated_value_currency,
+          preferred_pickup_time: formData.preferred_pickup_time.trim()
+            ? formData.preferred_pickup_time
+            : null,
         }),
       });
 
@@ -794,8 +842,12 @@ export default function ParcelDetailPage() {
                           placeholder="0.0"
                           step="0.1"
                           min="0"
+                          max="10"
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                         />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Optional. Maximum 10 kg per package.
+                        </p>
                       </div>
 
                       <div>
@@ -821,6 +873,31 @@ export default function ParcelDetailPage() {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="preferred_pickup_time"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Preferred Pickup Time (Optional)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        id="preferred_pickup_time"
+                        name="preferred_pickup_time"
+                        value={formData.preferred_pickup_time}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            preferred_pickup_time: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        When would you like the courier to pick up your parcel?
+                      </p>
                     </div>
 
                     <div>
@@ -945,6 +1022,24 @@ export default function ParcelDetailPage() {
                         </dt>
                         <dd className="mt-1 text-sm text-gray-900">
                           {parcel.dimensions}
+                        </dd>
+                      </div>
+                    )}
+
+                    {(parcel as { preferred_pickup_time?: string | null })
+                      .preferred_pickup_time && (
+                      <div className="col-span-2">
+                        <dt className="text-sm font-medium text-gray-500">
+                          Preferred Pickup Time
+                        </dt>
+                        <dd className="mt-1 text-sm text-gray-900">
+                          {new Date(
+                            (
+                              parcel as unknown as {
+                                preferred_pickup_time: string;
+                              }
+                            ).preferred_pickup_time
+                          ).toLocaleString()}
                         </dd>
                       </div>
                     )}

@@ -74,7 +74,7 @@ export default function LoginPage() {
         const errorMessage = data.message || data.error || "Failed to send OTP";
         setError(errorMessage);
         toast.error(errorMessage, {
-          duration: 5000,
+          duration: data.accountNotFound ? 6000 : 5000,
         });
         setLoading(false);
         return;
@@ -149,8 +149,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4 overflow-hidden">
+      <div className="max-w-md w-full min-w-0 bg-white rounded-lg shadow-xl p-8">
         <div className="flex justify-center mb-2">
           <Image
             src="/logo.jpeg"
@@ -171,6 +171,15 @@ export default function LoginPage() {
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
             {error}
+            {error.toLowerCase().includes("sign up") && (
+              <Link
+                href="/signup"
+                className="block mt-2 font-medium underline"
+                style={{ color: "#29772F" }}
+              >
+                Create an account →
+              </Link>
+            )}
           </div>
         )}
 
@@ -183,7 +192,7 @@ export default function LoginPage() {
               >
                 Phone Number *
               </label>
-              <div className="flex">
+              <div className="flex min-w-0">
                 <CountryCodeSelector
                   value={countryCode}
                   onChange={setCountryCode}
@@ -200,7 +209,7 @@ export default function LoginPage() {
                   }}
                   placeholder="1234567890"
                   required
-                  className="flex-1 px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                  className="flex-1 min-w-0 w-0 text-base px-4 py-2 border border-gray-300 border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
               </div>
 
@@ -235,6 +244,8 @@ export default function LoginPage() {
               </label>
               <input
                 type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 id="otp"
                 value={otp}
                 onChange={(e) =>
@@ -243,7 +254,7 @@ export default function LoginPage() {
                 placeholder="000000"
                 maxLength={6}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-2xl tracking-widest text-black"
+                className="w-full min-w-0 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-center text-2xl tracking-widest text-black"
               />
               <p className="mt-2 text-sm text-gray-600">
                 We sent a code to {countryCode}
