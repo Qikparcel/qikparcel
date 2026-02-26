@@ -243,6 +243,7 @@ export async function PUT(
       dimensions,
       estimated_value,
       estimated_value_currency,
+      preferred_pickup_time,
     } = body;
 
     // Validate required fields
@@ -285,6 +286,26 @@ export async function PUT(
       );
     }
 
+    const MAX_WEIGHT_KG = 10;
+    if (weight_kg != null && weight_kg !== "") {
+      const w =
+        typeof weight_kg === "number" ? weight_kg : parseFloat(weight_kg);
+      if (Number.isNaN(w) || w < 0) {
+        return NextResponse.json(
+          { error: "Weight must be a valid number (0 or more)" },
+          { status: 400 }
+        );
+      }
+      if (w > MAX_WEIGHT_KG) {
+        return NextResponse.json(
+          {
+            error: `Maximum package weight is ${MAX_WEIGHT_KG} kg. Please enter ${MAX_WEIGHT_KG} kg or less.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (estimated_value == null || estimated_value === "") {
       return NextResponse.json(
         { error: "Estimated value is required" },
@@ -314,6 +335,7 @@ export async function PUT(
     // Prepare update data
     const updateData: ParcelUpdate & {
       estimated_value_currency?: string | null;
+      preferred_pickup_time?: string | null;
     } = {
       pickup_address,
       pickup_latitude: pickup_latitude || null,
@@ -327,6 +349,7 @@ export async function PUT(
         typeof dimensions === "string" ? dimensions.trim() : dimensions,
       estimated_value: valueNum,
       estimated_value_currency: estimated_value_currency || "USD",
+      preferred_pickup_time: preferred_pickup_time || null,
       updated_at: new Date().toISOString(),
     };
 
