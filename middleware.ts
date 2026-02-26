@@ -122,19 +122,24 @@ export async function middleware(req: NextRequest) {
           const dashboardUrl = new URL("/dashboard", req.url);
           return NextResponse.redirect(dashboardUrl);
         }
-        // Admin has access to all admin routes, allow to proceed
         console.log("[MIDDLEWARE] Admin access granted to", pathname);
         return response;
       }
 
-      // Sender-only routes (exclude admin routes)
+      // Admin can view any parcel detail (e.g. from admin panel View button)
+      if (userRole === "admin" && pathname.startsWith("/dashboard/parcels")) {
+        console.log("[MIDDLEWARE] Admin parcel view - allowing", pathname);
+        return response;
+      }
+
+      // Sender-only routes (exclude admin routes) - allow admin to view parcel details
       if (
         pathname.startsWith("/dashboard/parcels") &&
         !pathname.startsWith("/dashboard/admin")
       ) {
-        if (userRole !== "sender") {
+        if (userRole !== "sender" && userRole !== "admin") {
           console.log(
-            "[MIDDLEWARE] Blocking access to /dashboard/parcels - user is not a sender",
+            "[MIDDLEWARE] Blocking access to /dashboard/parcels - user is not a sender or admin",
             { userRole }
           );
           const dashboardUrl = new URL("/dashboard", req.url);
@@ -169,19 +174,26 @@ export async function middleware(req: NextRequest) {
         }
       }
 
-      // API route role protection
-      // Allow couriers to access parcel status update endpoint
+      // Admin can access parcel API (for parcel detail view)
+      if (userRole === "admin" && pathname.startsWith("/api/parcels")) {
+        return response;
+      }
+
+      // API route role protection - allow admin to access parcel GET (detail view)
       if (
         pathname.startsWith("/api/parcels") &&
         !pathname.includes("/status")
       ) {
-        if (userRole !== "sender") {
+        if (userRole !== "sender" && userRole !== "admin") {
           console.log(
-            "[MIDDLEWARE] Blocking API access to /api/parcels - user is not a sender",
+            "[MIDDLEWARE] Blocking API access to /api/parcels - user is not a sender or admin",
             { userRole }
           );
           return NextResponse.json(
-            { error: "Forbidden: Only senders can access parcel routes" },
+            {
+              error:
+                "Forbidden: Only senders and admins can access parcel routes",
+            },
             { status: 403 }
           );
         }

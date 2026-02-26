@@ -39,8 +39,20 @@ export async function GET(
 
     const parcelId = params.id;
 
-    // Get parcel
-    const { data: parcel, error: parcelError } = await supabase
+    // Get user profile first (to check role)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single<Pick<Profile, "role">>();
+
+    const isAdmin = profile?.role === "admin";
+
+    // Admin: use admin client to bypass RLS (auth.uid() can be unset in API context)
+    // Others: use regular client (RLS allows sender/courier)
+    const fetchClient = isAdmin ? createSupabaseAdminClient() : supabase;
+
+    const { data: parcel, error: parcelError } = await fetchClient
       .from("parcels")
       .select("*")
       .eq("id", parcelId)
@@ -49,13 +61,6 @@ export async function GET(
     if (parcelError || !parcel) {
       return NextResponse.json({ error: "Parcel not found" }, { status: 404 });
     }
-
-    // Get user profile to check role
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", session.user.id)
-      .single<Pick<Profile, "role">>();
 
     // Sender can view their own parcel, courier can view parcels matched to their trips, admin can view any
     if (profile?.role === "admin") {
@@ -89,8 +94,9 @@ export async function GET(
       }
     }
 
-    // Get status history
-    const { data: statusHistory, error: historyError } = await supabase
+    // Get status history (use admin client for admin to bypass RLS)
+    const historyClient = isAdmin ? createSupabaseAdminClient() : supabase;
+    const { data: statusHistory, error: historyError } = await historyClient
       .from("parcel_status_history")
       .select("*")
       .eq("parcel_id", parcelId)
@@ -121,7 +127,6 @@ export async function GET(
     } | null = null;
 
     const adminClient = createSupabaseAdminClient();
-    const isAdmin = profile?.role === "admin";
     const senderViewingOwnMatched =
       parcel.matched_trip_id &&
       profile?.role === "sender" &&
