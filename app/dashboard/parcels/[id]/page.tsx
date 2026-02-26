@@ -26,6 +26,13 @@ type PaymentInfo = {
   delivery_confirmed_by_sender_at?: string | null;
 };
 
+type SenderInfo = {
+  id: string;
+  full_name: string | null;
+  phone_number: string;
+  email: string | null;
+};
+
 export default function ParcelDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -38,6 +45,7 @@ export default function ParcelDetailPage() {
     null
   );
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
+  const [senderInfo, setSenderInfo] = useState<SenderInfo | null>(null);
   const [paying, setPaying] = useState(false);
   const [confirmingDelivery, setConfirmingDelivery] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -84,6 +92,7 @@ export default function ParcelDetailPage() {
         setStatusHistory(data.statusHistory || []);
         setMatchedCourier(data.matchedCourier ?? null);
         setPaymentInfo(data.paymentInfo ?? null);
+        setSenderInfo(data.senderInfo ?? null);
 
         // Initialize form fields with existing data
         if (data.parcel) {
@@ -671,10 +680,10 @@ export default function ParcelDetailPage() {
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <Link
-            href="/dashboard"
+            href={senderInfo ? "/dashboard/admin/parcels" : "/dashboard"}
             className="text-primary-600 hover:text-primary-700 text-sm font-medium mb-4 inline-block"
           >
-            ← Back to Dashboard
+            ← Back to {senderInfo ? "Admin Parcels" : "Dashboard"}
           </Link>
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">Parcel Details</h1>
@@ -686,7 +695,7 @@ export default function ParcelDetailPage() {
               >
                 {statusConfig[parcel.status].label}
               </span>
-              {!isEditing && parcel.status === "pending" && (
+              {!isEditing && parcel.status === "pending" && !senderInfo && (
                 <>
                   <button
                     onClick={handleEdit}
@@ -728,6 +737,41 @@ export default function ParcelDetailPage() {
             </div>
           </div>
         </div>
+
+        {senderInfo && (
+          <div className="mb-6 bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-3">
+              Parcel owner (Sender)
+            </h2>
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Name</dt>
+                <dd className="mt-0.5 text-sm text-gray-900">
+                  {senderInfo.full_name || "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Phone</dt>
+                <dd className="mt-0.5 text-sm text-gray-900">
+                  {senderInfo.phone_number || "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Email</dt>
+                <dd className="mt-0.5 text-sm text-gray-900">
+                  {senderInfo.email || "—"}
+                </dd>
+              </div>
+            </dl>
+            <Link
+              href={`/dashboard/admin/users/${senderInfo.id}`}
+              className="inline-block mt-3 text-sm font-medium hover:underline"
+              style={{ color: "#29772F" }}
+            >
+              View sender profile →
+            </Link>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Details */}

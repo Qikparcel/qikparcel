@@ -57,33 +57,36 @@ export async function GET(
       .eq("id", session.user.id)
       .single<Pick<Profile, "role">>();
 
-    // Sender can view their own parcel, courier can view parcels matched to their trips
-    if (profile?.role === "sender" && parcel.sender_id !== session.user.id) {
+    // Sender can view their own parcel, courier can view parcels matched to their trips, admin can view any
+    if (profile?.role === "admin") {
+      // Admin: allow access, we'll attach sender (and optionally courier) info below
+    } else if (
+      profile?.role === "sender" &&
+      parcel.sender_id !== session.user.id
+    ) {
       return NextResponse.json(
         { error: "Unauthorized to view this parcel" },
         { status: 403 }
       );
-    }
-
-    // If courier, verify parcel is matched to one of their trips
-    if (profile?.role === "courier" && parcel.matched_trip_id) {
+    } else if (profile?.role === "courier") {
+      if (!parcel.matched_trip_id) {
+        return NextResponse.json(
+          { error: "Unauthorized to view this parcel" },
+          { status: 403 }
+        );
+      }
       const { data: trip } = await supabase
         .from("trips")
         .select("courier_id")
         .eq("id", parcel.matched_trip_id)
         .single<Pick<Trip, "courier_id">>();
 
-      if (trip && trip.courier_id !== session.user.id) {
+      if (!trip || trip.courier_id !== session.user.id) {
         return NextResponse.json(
           { error: "Unauthorized to view this parcel" },
           { status: 403 }
         );
       }
-    } else if (profile?.role === "courier" && !parcel.matched_trip_id) {
-      return NextResponse.json(
-        { error: "Unauthorized to view this parcel" },
-        { status: 403 }
-      );
     }
 
     // Get status history
@@ -98,6 +101,7 @@ export async function GET(
     }
 
     // When sender views their matched parcel, include courier info and payment details
+    // When admin views any parcel, include sender info and (if matched) courier + payment
     let matchedCourier: {
       full_name: string | null;
       phone_number: string;
@@ -109,12 +113,37 @@ export async function GET(
       payment_status: string;
       delivery_confirmed_by_sender_at?: string | null;
     } | null = null;
-    if (
+    let senderInfo: {
+      full_name: string | null;
+      phone_number: string;
+      email: string | null;
+      id: string;
+    } | null = null;
+
+    const adminClient = createSupabaseAdminClient();
+    const isAdmin = profile?.role === "admin";
+    const senderViewingOwnMatched =
       parcel.matched_trip_id &&
       profile?.role === "sender" &&
-      parcel.sender_id === session.user.id
-    ) {
-      const adminClient = createSupabaseAdminClient();
+      parcel.sender_id === session.user.id;
+
+    if (isAdmin && parcel.sender_id) {
+      const { data: senderProfile } = await adminClient
+        .from("profiles")
+        .select("id, full_name, phone_number, email")
+        .eq("id", parcel.sender_id)
+        .single<Pick<Profile, "id" | "full_name" | "phone_number" | "email">>();
+      if (senderProfile) {
+        senderInfo = {
+          id: senderProfile.id,
+          full_name: senderProfile.full_name ?? null,
+          phone_number: senderProfile.phone_number,
+          email: senderProfile.email ?? null,
+        };
+      }
+    }
+
+    if (parcel.matched_trip_id && (isAdmin || senderViewingOwnMatched)) {
       const { data: match } = await adminClient
         .from("parcel_trip_matches")
         .select(
@@ -170,6 +199,7 @@ export async function GET(
       statusHistory: statusHistory || [],
       matchedCourier: matchedCourier ?? undefined,
       paymentInfo: paymentInfo ?? undefined,
+      senderInfo: senderInfo ?? undefined,
     });
   } catch (error: any) {
     console.error("Error in GET /api/parcels/[id]:", error);
