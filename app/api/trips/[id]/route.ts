@@ -38,8 +38,19 @@ export async function GET(
 
     const tripId = params.id;
 
-    // Get trip
-    const { data: trip, error: tripError } = await supabase
+    // Get user profile first (to check role)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single<Pick<Profile, "role">>();
+
+    const isAdmin = profile?.role === "admin";
+
+    // Admin: use admin client to bypass RLS; others: use regular client
+    const fetchClient = isAdmin ? createSupabaseAdminClient() : supabase;
+
+    const { data: trip, error: tripError } = await fetchClient
       .from("trips")
       .select("*")
       .eq("id", tripId)
@@ -49,24 +60,25 @@ export async function GET(
       return NextResponse.json({ error: "Trip not found" }, { status: 404 });
     }
 
-    // Get user profile to check role
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", session.user.id)
-      .single<Pick<Profile, "role">>();
-
-    // Only courier can view their own trip
-    if (profile?.role === "courier" && trip.courier_id !== session.user.id) {
+    // Admin can view any; courier can only view their own trip
+    if (
+      !isAdmin &&
+      profile?.role === "courier" &&
+      trip.courier_id !== session.user.id
+    ) {
       return NextResponse.json(
         { error: "Unauthorized to view this trip" },
         { status: 403 }
       );
     }
 
+    const isCourier = trip.courier_id === session.user.id;
+
+    // isCourier: true only when viewer is the trip's courier (couriers see actions; admins do not)
     return NextResponse.json({
       success: true,
       trip,
+      isCourier, // true only when viewer is the trip's courier (hide Edit/Delete for admin)
     });
   } catch (error: any) {
     console.error("Error in GET /api/trips/[id]:", error);
@@ -453,16 +465,17 @@ export async function DELETE(
         { status: 400 }
       );
     }
-
     const { error: deleteError } = await (adminClient.from("trips") as any)
       .delete()
-      .eq("id", tripId);    if (deleteError) {
+      .eq("id", tripId);
+    if (deleteError) {
       console.error("[TRIP DELETE] Error:", deleteError);
       return NextResponse.json(
         { error: "Failed to delete trip", details: deleteError.message },
         { status: 500 }
       );
-    }    return NextResponse.json({ success: true, message: "Trip deleted" });
+    }
+    return NextResponse.json({ success: true, message: "Trip deleted" });
   } catch (error: any) {
     console.error("Error in DELETE /api/trips/[id]:", error);
     return NextResponse.json(

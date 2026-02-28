@@ -198,6 +198,9 @@ export async function GET(
       }
     }
 
+    const isOwner = parcel.sender_id === session.user.id;
+
+    // isOwner: true only when viewer is the parcel sender (senders see actions; admins/couriers do not)
     return NextResponse.json({
       success: true,
       parcel,
@@ -205,6 +208,7 @@ export async function GET(
       matchedCourier: matchedCourier ?? undefined,
       paymentInfo: paymentInfo ?? undefined,
       senderInfo: senderInfo ?? undefined,
+      isOwner, // true only when viewer is the parcel's sender (hide Edit/Delete/Pay/Confirm for admin/courier)
     });
   } catch (error: any) {
     console.error("Error in GET /api/parcels/[id]:", error);
