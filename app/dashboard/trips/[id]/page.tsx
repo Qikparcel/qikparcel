@@ -42,6 +42,7 @@ export default function TripDetailPage() {
   const tripId = params.id as string;
 
   const [trip, setTrip] = useState<Trip | null>(null);
+  const [isCourier, setIsCourier] = useState(false);
   const [matches, setMatches] = useState<MatchWithParcel[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -119,6 +120,7 @@ export default function TripDetailPage() {
         }
 
         setTrip(data.trip);
+        setIsCourier(data.isCourier ?? false);
 
         // Initialize form fields with existing data
         if (data.trip) {
@@ -701,10 +703,10 @@ export default function TripDetailPage() {
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <Link
-            href="/dashboard"
+            href={isCourier ? "/dashboard" : "/dashboard/admin/trips"}
             className="text-primary-600 hover:text-primary-700 text-sm font-medium mb-4 inline-block"
           >
-            ← Back to Dashboard
+            ← Back to {isCourier ? "Dashboard" : "Admin Trips"}
           </Link>
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">Trip Details</h1>
@@ -716,7 +718,7 @@ export default function TripDetailPage() {
               >
                 {statusConfig[trip.status].label}
               </span>
-              {!isEditing && trip.status === "scheduled" && (
+              {!isEditing && trip.status === "scheduled" && isCourier && (
                 <>
                   <button
                     onClick={handleEdit}
@@ -1059,41 +1061,47 @@ export default function TripDetailPage() {
                                 </div>
                               </div>
                             )}
-                            <div
-                              className="flex gap-2 mt-3"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {match.status === "pending" && (
-                                <>
-                                  <button
-                                    onClick={() => handleAcceptMatch(match.id)}
-                                    disabled={processingMatch === match.id}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                            {isCourier && (
+                              <div
+                                className="flex gap-2 mt-3"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {match.status === "pending" && (
+                                  <>
+                                    <button
+                                      onClick={() =>
+                                        handleAcceptMatch(match.id)
+                                      }
+                                      disabled={processingMatch === match.id}
+                                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                                    >
+                                      {processingMatch === match.id
+                                        ? "Processing..."
+                                        : "Accept"}
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleRejectMatch(match.id)
+                                      }
+                                      disabled={processingMatch === match.id}
+                                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
+                                {match.status === "accepted" && (
+                                  <Link
+                                    href={`/dashboard/matched-parcels`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+                                    style={{ backgroundColor: "#29772F" }}
                                   >
-                                    {processingMatch === match.id
-                                      ? "Processing..."
-                                      : "Accept"}
-                                  </button>
-                                  <button
-                                    onClick={() => handleRejectMatch(match.id)}
-                                    disabled={processingMatch === match.id}
-                                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              {match.status === "accepted" && (
-                                <Link
-                                  href={`/dashboard/matched-parcels`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
-                                  style={{ backgroundColor: "#29772F" }}
-                                >
-                                  Manage Parcel
-                                </Link>
-                              )}
-                            </div>
+                                    Manage Parcel
+                                  </Link>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="ml-4">
                             <svg
@@ -1126,29 +1134,31 @@ export default function TripDetailPage() {
             )}
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
-                Quick Actions
-              </h2>
-              <div className="space-y-3">
-                <Link
-                  href="/dashboard/trips/new"
-                  className="block w-full px-4 py-2 text-center bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-                  style={{ backgroundColor: "#29772F" }}
-                >
-                  Create New Trip
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="block w-full px-4 py-2 text-center border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                >
-                  View All Trips
-                </Link>
+          {/* Sidebar - Quick Actions for courier only */}
+          {isCourier && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">
+                  Quick Actions
+                </h2>
+                <div className="space-y-3">
+                  <Link
+                    href="/dashboard/trips/new"
+                    className="block w-full px-4 py-2 text-center bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                    style={{ backgroundColor: "#29772F" }}
+                  >
+                    Create New Trip
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="block w-full px-4 py-2 text-center border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    View All Trips
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -1372,8 +1382,8 @@ export default function TripDetailPage() {
                     </dl>
                   </div>
 
-                  {/* Actions */}
-                  {selectedMatch.status === "pending" && (
+                  {/* Actions - courier only */}
+                  {isCourier && selectedMatch.status === "pending" && (
                     <div className="flex gap-3 pt-4 border-t">
                       <button
                         onClick={(e) => {
@@ -1400,7 +1410,8 @@ export default function TripDetailPage() {
                     </div>
                   )}
 
-                  {selectedMatch.status === "accepted" &&
+                  {isCourier &&
+                    selectedMatch.status === "accepted" &&
                     selectedMatch.parcel.status === "matched" && (
                       <>
                         <div className="pt-4 border-t">

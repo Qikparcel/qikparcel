@@ -46,6 +46,7 @@ export default function ParcelDetailPage() {
   );
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [senderInfo, setSenderInfo] = useState<SenderInfo | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
   const [paying, setPaying] = useState(false);
   const [confirmingDelivery, setConfirmingDelivery] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -93,6 +94,7 @@ export default function ParcelDetailPage() {
         setMatchedCourier(data.matchedCourier ?? null);
         setPaymentInfo(data.paymentInfo ?? null);
         setSenderInfo(data.senderInfo ?? null);
+        setIsOwner(data.isOwner ?? false);
 
         // Initialize form fields with existing data
         if (data.parcel) {
@@ -695,7 +697,7 @@ export default function ParcelDetailPage() {
               >
                 {statusConfig[parcel.status].label}
               </span>
-              {!isEditing && parcel.status === "pending" && !senderInfo && (
+              {!isEditing && parcel.status === "pending" && isOwner && (
                 <>
                   <button
                     onClick={handleEdit}
@@ -1126,28 +1128,31 @@ export default function ParcelDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Payment — show Pay button when matched and payment pending */}
-            {paymentInfo && paymentInfo.payment_status === "pending" && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">
-                  Payment
-                </h2>
-                <p className="text-sm text-gray-600 mb-3">
-                  Total:{" "}
-                  <strong>
-                    {paymentInfo.currency} {paymentInfo.total_amount.toFixed(2)}
-                  </strong>
-                </p>
-                <button
-                  onClick={handlePay}
-                  disabled={paying}
-                  className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
-                  style={{ backgroundColor: "#29772F" }}
-                >
-                  {paying ? "Redirecting..." : "Pay now"}
-                </button>
-              </div>
-            )}
+            {/* Payment — show Pay button when matched and payment pending (sender only) */}
+            {isOwner &&
+              paymentInfo &&
+              paymentInfo.payment_status === "pending" && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h2 className="text-lg font-bold text-gray-900 mb-4">
+                    Payment
+                  </h2>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Total:{" "}
+                    <strong>
+                      {paymentInfo.currency}{" "}
+                      {paymentInfo.total_amount.toFixed(2)}
+                    </strong>
+                  </p>
+                  <button
+                    onClick={handlePay}
+                    disabled={paying}
+                    className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50"
+                    style={{ backgroundColor: "#29772F" }}
+                  >
+                    {paying ? "Redirecting..." : "Pay now"}
+                  </button>
+                </div>
+              )}
 
             {paymentInfo && paymentInfo.payment_status === "paid" && (
               <div id="invoice" className="bg-white rounded-lg shadow p-6">
@@ -1210,8 +1215,8 @@ export default function ParcelDetailPage() {
               </div>
             )}
 
-            {/* Sender confirms delivery — triggers courier payout */}
-            {parcel.status === "delivered" && paymentInfo && (
+            {/* Sender confirms delivery — triggers courier payout (sender only) */}
+            {isOwner && parcel.status === "delivered" && paymentInfo && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-2">
                   Delivery
@@ -1266,7 +1271,8 @@ export default function ParcelDetailPage() {
             )}
 
             {/* Courier (person) info — shown to sender when parcel is matched */}
-            {parcel.status !== "pending" &&
+            {isOwner &&
+              parcel.status !== "pending" &&
               parcel.status !== "cancelled" &&
               matchedCourier && (
                 <div className="bg-white rounded-lg shadow p-6">
@@ -1323,58 +1329,62 @@ export default function ParcelDetailPage() {
                 </div>
               )}
 
-            {/* Chat link — opens dedicated chat page when parcel status is matched */}
-            {parcel.status === "matched" && parcel.matched_trip_id && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-3">
-                  Chat with courier
-                </h2>
-                <Link
-                  href={`/dashboard/chat?parcel=${parcelId}`}
-                  className="flex items-center gap-2 px-4 py-3 rounded-lg border border-primary-600 text-primary-600 hover:bg-primary-50 transition font-medium"
-                  style={{
-                    borderColor: "#29772F",
-                    color: "#29772F",
-                  }}
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+            {/* Chat link — opens dedicated chat page when parcel status is matched (sender only) */}
+            {isOwner &&
+              parcel.status === "matched" &&
+              parcel.matched_trip_id && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h2 className="text-lg font-bold text-gray-900 mb-3">
+                    Chat with courier
+                  </h2>
+                  <Link
+                    href={`/dashboard/chat?parcel=${parcelId}`}
+                    className="flex items-center gap-2 px-4 py-3 rounded-lg border border-primary-600 text-primary-600 hover:bg-primary-50 transition font-medium"
+                    style={{
+                      borderColor: "#29772F",
+                      color: "#29772F",
+                    }}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  Open chat with {matchedCourier?.full_name || "courier"}
-                </Link>
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
+                    </svg>
+                    Open chat with {matchedCourier?.full_name || "courier"}
+                  </Link>
+                </div>
+              )}
+
+            {isOwner && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">
+                  Quick Actions
+                </h2>
+                <div className="space-y-3">
+                  <Link
+                    href="/dashboard/parcels/new"
+                    className="block w-full px-4 py-2 text-center bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                    style={{ backgroundColor: "#29772F" }}
+                  >
+                    Create New Parcel
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="block w-full px-4 py-2 text-center border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    View All Parcels
+                  </Link>
+                </div>
               </div>
             )}
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
-                Quick Actions
-              </h2>
-              <div className="space-y-3">
-                <Link
-                  href="/dashboard/parcels/new"
-                  className="block w-full px-4 py-2 text-center bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-                  style={{ backgroundColor: "#29772F" }}
-                >
-                  Create New Parcel
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="block w-full px-4 py-2 text-center border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                >
-                  View All Parcels
-                </Link>
-              </div>
-            </div>
           </div>
         </div>
       </div>

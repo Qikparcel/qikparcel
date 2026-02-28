@@ -159,6 +159,12 @@ export async function middleware(req: NextRequest) {
         }
       }
 
+      // Admin can view any trip detail (e.g. from admin panel View button)
+      if (userRole === "admin" && pathname.startsWith("/dashboard/trips")) {
+        console.log("[MIDDLEWARE] Admin trip view - allowing", pathname);
+        return response;
+      }
+
       // Courier-only routes (exclude admin routes)
       if (
         pathname.startsWith("/dashboard/trips") &&
@@ -197,6 +203,11 @@ export async function middleware(req: NextRequest) {
             { status: 403 }
           );
         }
+      }
+
+      // Admin can access trip API (for trip detail view from admin panel)
+      if (userRole === "admin" && pathname.startsWith("/api/trips")) {
+        return response;
       }
 
       if (pathname.startsWith("/api/trips")) {
