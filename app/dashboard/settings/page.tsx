@@ -26,6 +26,18 @@ export default function SettingsPage() {
   } | null>(null);
   const [connectLoading, setConnectLoading] = useState(false);
 
+  // KYC (courier only)
+  const [kycStatus, setKycStatus] = useState<{
+    verification_status: string;
+    id_document_type: string | null;
+    rejection_reason: string | null;
+    verified_at: string | null;
+    has_document: boolean;
+  } | null>(null);
+  const [kycUploading, setKycUploading] = useState(false);
+  const [kycDocumentType, setKycDocumentType] = useState("national_id");
+  const [kycFile, setKycFile] = useState<File | null>(null);
+
   // Address fields for editing
   const [streetAddress, setStreetAddress] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
@@ -76,6 +88,13 @@ export default function SettingsPage() {
               onboarded: false,
               canReceivePayouts: false,
             });
+          }
+          try {
+            const kycRes = await fetch("/api/kyc/status");
+            const kycData = await kycRes.json();
+            if (kycRes.ok && kycData.kyc) setKycStatus(kycData.kyc);
+          } catch {
+            setKycStatus(null);
           }
         }
 
@@ -730,6 +749,120 @@ export default function SettingsPage() {
                       : "Connect Stripe"}
                   </button>
                 )}
+            </div>
+          )}
+
+          {/* ID verification (couriers only) */}
+          {profile.role === "courier" && (
+            <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                ID verification
+              </h2>
+              {kycStatus && (
+                <div className="mb-4">
+                  <span className="text-sm font-medium text-gray-600 mr-2">
+                    Status:
+                  </span>
+                  <span
+                    className={`px-2 py-1 rounded text-sm font-medium ${
+                      kycStatus.verification_status === "approved"
+                        ? "bg-green-100 text-green-800"
+                        : kycStatus.verification_status === "rejected"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {kycStatus.verification_status === "approved"
+                      ? "Approved"
+                      : kycStatus.verification_status === "rejected"
+                      ? "Rejected"
+                      : "Pending review"}
+                  </span>
+                  {kycStatus.rejection_reason && (
+                    <p className="mt-2 text-sm text-red-600">
+                      Reason: {kycStatus.rejection_reason}
+                    </p>
+                  )}
+                </div>
+              )}
+              <p className="text-sm text-gray-600 mb-4">
+                Upload a valid ID document (national ID, passport, or
+                driver&apos;s license) so we can verify your identity. PDF,
+                JPEG, or PNG, max 5MB.
+              </p>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!kycFile || kycUploading) return;
+                  setKycUploading(true);
+                  try {
+                    const form = new FormData();
+                    form.append("file", kycFile);
+                    form.append("documentType", kycDocumentType);
+                    const res = await fetch("/api/kyc/upload", {
+                      method: "POST",
+                      body: form,
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || "Upload failed");
+                    toast.success(data.message || "Document uploaded.");
+                    setKycFile(null);
+                    const statusRes = await fetch("/api/kyc/status");
+                    const statusData = await statusRes.json();
+                    if (statusRes.ok && statusData.kyc)
+                      setKycStatus(statusData.kyc);
+                  } catch (err: any) {
+                    toast.error(err.message || "Upload failed");
+                  } finally {
+                    setKycUploading(false);
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label
+                    htmlFor="kycDocumentType"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Document type
+                  </label>
+                  <select
+                    id="kycDocumentType"
+                    value={kycDocumentType}
+                    onChange={(e) => setKycDocumentType(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black bg-white"
+                  >
+                    <option value="national_id">National ID</option>
+                    <option value="passport">Passport</option>
+                    <option value="drivers_license">
+                      Driver&apos;s license
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="kycFile"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Document file
+                  </label>
+                  <input
+                    id="kycFile"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => setKycFile(e.target.files?.[0] || null)}
+                    className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-primary-50 file:text-primary-700"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!kycFile || kycUploading}
+                  className="px-4 py-2 text-sm font-medium text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: "#29772F" }}
+                >
+                  {kycUploading ? "Uploading..." : "Upload document"}
+                </button>
+              </form>
             </div>
           )}
         </div>

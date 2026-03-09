@@ -33,6 +33,16 @@ type SenderInfo = {
   email: string | null;
 };
 
+type DisputeItem = {
+  id: string;
+  dispute_type: string;
+  description: string;
+  status: string;
+  created_at: string;
+  resolution_notes?: string | null;
+  resolved_at?: string | null;
+};
+
 export default function ParcelDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -47,11 +57,33 @@ export default function ParcelDetailPage() {
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [senderInfo, setSenderInfo] = useState<SenderInfo | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [canRaiseDispute, setCanRaiseDispute] = useState(false);
+  const [disputes, setDisputes] = useState<DisputeItem[]>([]);
+  const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [disputeType, setDisputeType] = useState("delay");
+  const [disputeDescription, setDisputeDescription] = useState("");
+  const [disputeSubmitting, setDisputeSubmitting] = useState(false);
   const [paying, setPaying] = useState(false);
   const [confirmingDelivery, setConfirmingDelivery] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showPaymentSuccessModal, setShowPaymentSuccessModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isCourierForParcel, setIsCourierForParcel] = useState(false);
+  const [matchedCourierId, setMatchedCourierId] = useState<string | null>(null);
+  const [ratings, setRatings] = useState<
+    Array<{
+      id: string;
+      rating: number;
+      review_text: string | null;
+      created_at: string;
+      rater_name: string;
+    }>
+  >([]);
+  const [userHasRated, setUserHasRated] = useState(false);
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [ratingStars, setRatingStars] = useState(0);
+  const [ratingReviewText, setRatingReviewText] = useState("");
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -95,6 +127,40 @@ export default function ParcelDetailPage() {
         setPaymentInfo(data.paymentInfo ?? null);
         setSenderInfo(data.senderInfo ?? null);
         setIsOwner(data.isOwner ?? false);
+        setCanRaiseDispute(data.canRaiseDispute ?? false);
+        setIsCourierForParcel(data.isCourierForParcel ?? false);
+        setMatchedCourierId(data.matchedCourierId ?? null);
+
+        // Fetch ratings when parcel is delivered (sender or courier can rate)
+        if (
+          data.parcel?.status === "delivered" &&
+          (data.isOwner || data.isCourierForParcel)
+        ) {
+          try {
+            const ratRes = await fetch(`/api/ratings?parcel_id=${parcelId}`);
+            const ratData = await ratRes.json();
+            if (ratRes.ok && ratData.ratings) {
+              setRatings(ratData.ratings);
+              setUserHasRated(ratData.userHasRated ?? false);
+            }
+          } catch {
+            setRatings([]);
+          }
+        }
+
+        // Fetch disputes for this parcel (when user can raise dispute or view)
+        if (
+          data.parcel &&
+          (data.canRaiseDispute || data.isOwner || data.senderInfo)
+        ) {
+          try {
+            const dispRes = await fetch(`/api/disputes?parcel_id=${parcelId}`);
+            const dispData = await dispRes.json();
+            if (dispRes.ok && dispData.disputes) setDisputes(dispData.disputes);
+          } catch {
+            setDisputes([]);
+          }
+        }
 
         // Initialize form fields with existing data
         if (data.parcel) {
@@ -1270,6 +1336,71 @@ export default function ParcelDetailPage() {
               </div>
             )}
 
+            {/* Rating block — sender rates courier, courier rates sender (after delivery) */}
+            {parcel.status === "delivered" &&
+              (isOwner || isCourierForParcel) &&
+              (isOwner ? matchedCourierId : parcel.sender_id) && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h2 className="text-lg font-bold text-gray-900 mb-2">
+                    Rate this delivery
+                  </h2>
+                  {userHasRated ? (
+                    <p className="text-sm text-green-600 font-medium">
+                      ✓ You have rated this delivery.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {isOwner
+                          ? "How was your experience with the courier?"
+                          : "How was your experience with the sender?"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRatingStars(0);
+                          setRatingReviewText("");
+                          setRatingModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition font-medium"
+                        style={{ borderColor: "#29772F", color: "#29772F" }}
+                      >
+                        Leave a rating
+                      </button>
+                    </>
+                  )}
+                  {ratings.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <p className="text-sm font-medium text-gray-700 mb-2">
+                        Reviews ({ratings.length})
+                      </p>
+                      <div className="space-y-2">
+                        {ratings.map((r) => (
+                          <div
+                            key={r.id}
+                            className="text-sm border border-gray-100 rounded-lg p-3"
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-amber-500">
+                                {"★".repeat(r.rating)}
+                                {"☆".repeat(5 - r.rating)}
+                              </span>
+                              <span className="text-gray-500">
+                                {r.rater_name} ·{" "}
+                                {new Date(r.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            {r.review_text && (
+                              <p className="text-gray-700">{r.review_text}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
             {/* Courier (person) info — shown to sender when parcel is matched */}
             {isOwner &&
               parcel.status !== "pending" &&
@@ -1363,6 +1494,58 @@ export default function ParcelDetailPage() {
                 </div>
               )}
 
+            {/* Report issue / Disputes (sender or courier when parcel is matched/in transit/delivered) */}
+            {(canRaiseDispute || disputes.length > 0) && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-3">
+                  Report an issue
+                </h2>
+                {canRaiseDispute && (
+                  <button
+                    type="button"
+                    onClick={() => setDisputeModalOpen(true)}
+                    className="w-full px-4 py-2 text-sm font-medium border border-amber-500 text-amber-700 rounded-lg hover:bg-amber-50 transition"
+                  >
+                    Raise dispute
+                  </button>
+                )}
+                {disputes.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium text-gray-700">
+                      Your reported issues:
+                    </p>
+                    {disputes.map((d) => (
+                      <div
+                        key={d.id}
+                        className="text-sm border border-gray-200 rounded-lg p-3"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium capitalize">
+                            {d.dispute_type.replace("_", " ")}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs ${
+                              d.status === "resolved" || d.status === "closed"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {d.status}
+                          </span>
+                        </div>
+                        <p className="text-gray-600">{d.description}</p>
+                        {d.resolution_notes && (
+                          <p className="mt-2 text-xs text-gray-500">
+                            Resolution: {d.resolution_notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {isOwner && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">
@@ -1388,6 +1571,197 @@ export default function ParcelDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Raise dispute modal */}
+      {disputeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              Raise a dispute
+            </h3>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!disputeDescription.trim() || disputeSubmitting) return;
+                setDisputeSubmitting(true);
+                try {
+                  const res = await fetch("/api/disputes", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      parcel_id: parcelId,
+                      dispute_type: disputeType,
+                      description: disputeDescription.trim(),
+                    }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok)
+                    throw new Error(data.error || "Failed to submit");
+                  toast.success(data.message || "Dispute reported.");
+                  setDisputeModalOpen(false);
+                  setDisputeDescription("");
+                  const dispRes = await fetch(
+                    `/api/disputes?parcel_id=${parcelId}`
+                  );
+                  const dispData = await dispRes.json();
+                  if (dispRes.ok && dispData.disputes)
+                    setDisputes(dispData.disputes);
+                } catch (err: any) {
+                  toast.error(err.message || "Failed to submit dispute");
+                } finally {
+                  setDisputeSubmitting(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Issue type
+                </label>
+                <select
+                  value={disputeType}
+                  onChange={(e) => setDisputeType(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
+                >
+                  <option value="damage">Damage</option>
+                  <option value="delay">Delay</option>
+                  <option value="lost">Lost</option>
+                  <option value="wrong_delivery">Wrong delivery</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description *
+                </label>
+                <textarea
+                  value={disputeDescription}
+                  onChange={(e) => setDisputeDescription(e.target.value)}
+                  required
+                  rows={4}
+                  placeholder="Describe the issue..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDisputeModalOpen(false);
+                    setDisputeDescription("");
+                  }}
+                  disabled={disputeSubmitting}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={disputeSubmitting || !disputeDescription.trim()}
+                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  style={{ backgroundColor: "#29772F" }}
+                >
+                  {disputeSubmitting ? "Submitting..." : "Submit"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Rating modal */}
+      {ratingModalOpen && parcel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              Rate this delivery
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {isOwner
+                ? "How was your experience with the courier?"
+                : "How was your experience with the sender?"}
+            </p>
+            <div className="flex gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRatingStars(n)}
+                  className="text-2xl focus:outline-none"
+                  aria-label={`${n} stars`}
+                >
+                  <span
+                    className={
+                      n <= ratingStars ? "text-amber-500" : "text-gray-300"
+                    }
+                  >
+                    {n <= ratingStars ? "★" : "☆"}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={ratingReviewText}
+              onChange={(e) => setRatingReviewText(e.target.value)}
+              rows={3}
+              placeholder="Write a review (optional)"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setRatingModalOpen(false)}
+                disabled={ratingSubmitting}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!ratingStars || ratingSubmitting) return;
+                  const ratedId = isOwner ? matchedCourierId : parcel.sender_id;
+                  if (!ratedId) return;
+                  setRatingSubmitting(true);
+                  try {
+                    const res = await fetch("/api/ratings", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        parcel_id: parcelId,
+                        rated_id: ratedId,
+                        rating: ratingStars,
+                        review_text: ratingReviewText.trim() || undefined,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok)
+                      throw new Error(data.error || "Failed to submit");
+                    toast.success("Thank you for your rating!");
+                    setRatingModalOpen(false);
+                    setUserHasRated(true);
+                    const ratRes = await fetch(
+                      `/api/ratings?parcel_id=${parcelId}`
+                    );
+                    const ratData = await ratRes.json();
+                    if (ratRes.ok && ratData.ratings)
+                      setRatings(ratData.ratings);
+                  } catch (e: any) {
+                    toast.error(e.message || "Failed to submit rating");
+                  } finally {
+                    setRatingSubmitting(false);
+                  }
+                }}
+                disabled={ratingSubmitting || !ratingStars}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                style={{ backgroundColor: "#29772F" }}
+              >
+                {ratingSubmitting ? "Submitting…" : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

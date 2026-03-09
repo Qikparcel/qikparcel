@@ -63,6 +63,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Require approved KYC to create trips
+    const { data: kyc } = await supabase
+      .from("courier_kyc")
+      .select("verification_status")
+      .eq("courier_id", session.user.id)
+      .maybeSingle<{ verification_status: string }>();
+
+    if (!kyc || kyc.verification_status !== "approved") {
+      return NextResponse.json(
+        {
+          error:
+            "Your ID verification must be approved before you can create trips. Please complete ID verification in Settings.",
+        },
+        { status: 403 }
+      );
+    }
+
     const { allowed: tripLimitAllowed, count: tripCount } =
       await checkCreateRateLimit(
         supabase,
@@ -95,6 +112,8 @@ export async function POST(request: NextRequest) {
       departure_time,
       estimated_arrival,
       available_capacity,
+      travel_mode,
+      travel_reference,
     } = body;
 
     // Log coordinates for debugging
@@ -192,6 +211,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const validTravelModes = ["car", "airplane", "train", "bus", "other"];
+    const travelModeVal =
+      travel_mode && validTravelModes.includes(travel_mode)
+        ? travel_mode
+        : null;
+
     // Create trip
     const tripData: TripInsert = {
       courier_id: session.user.id,
@@ -206,6 +231,8 @@ export async function POST(request: NextRequest) {
       departure_time: departure_time, // Required field
       estimated_arrival: estimated_arrival, // Required field
       available_capacity: available_capacity || null,
+      travel_mode: travelModeVal,
+      travel_reference: travel_reference?.trim() || null,
       status: "scheduled",
     };
 

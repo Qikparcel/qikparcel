@@ -150,6 +150,8 @@ export async function PUT(
       departure_time,
       estimated_arrival,
       available_capacity,
+      travel_mode,
+      travel_reference,
     } = body;
 
     // Validate required fields
@@ -236,6 +238,14 @@ export async function PUT(
       );
     }
 
+    const validTravelModes = ["car", "airplane", "train", "bus", "other"];
+    const travelModeVal =
+      travel_mode !== undefined
+        ? travel_mode && validTravelModes.includes(travel_mode)
+          ? travel_mode
+          : null
+        : undefined;
+
     // Prepare update data
     const updateData: TripUpdate = {
       origin_address,
@@ -247,6 +257,10 @@ export async function PUT(
       departure_time,
       estimated_arrival,
       available_capacity: available_capacity || null,
+      ...(travelModeVal !== undefined && { travel_mode: travelModeVal }),
+      ...(travel_reference !== undefined && {
+        travel_reference: travel_reference?.trim() || null,
+      }),
       updated_at: new Date().toISOString(),
     };
 

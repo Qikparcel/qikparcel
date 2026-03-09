@@ -29,8 +29,12 @@ export default function SignUpPage() {
   const [postcode, setPostcode] = useState("");
   const [country, setCountry] = useState("");
   const [email, setEmail] = useState(""); // For sender only
-  const [documentFile, setDocumentFile] = useState<File | null>(null); // For courier only
+  const [documentFile, setDocumentFile] = useState<File | null>(null); // ID document - courier only
   const [documentType, setDocumentType] = useState("national_id");
+  const [proofOfAddressFile, setProofOfAddressFile] = useState<File | null>(
+    null
+  ); // Proof of address - courier only
+  const [selfieWithIdFile, setSelfieWithIdFile] = useState<File | null>(null); // Selfie with ID - courier only
 
   // OTP step
   const [otp, setOtp] = useState("");
@@ -55,7 +59,7 @@ export default function SignUpPage() {
         setCountry(data.country || "");
         setEmail(data.email || "");
         setDocumentType(data.documentType || "national_id");
-        // Note: documentFile cannot be restored from localStorage, but we'll upload it before redirect
+        // Note: documentFile, proofOfAddressFile, selfieWithIdFile cannot be restored from localStorage
       } catch (err) {
         console.error("Error loading saved form data:", err);
       }
@@ -100,8 +104,10 @@ export default function SignUpPage() {
           postcode: data.postcode,
           country: data.country,
           email: data.role === "sender" ? data.email : undefined,
-          documentPath: data.documentPath, // Should be set if document was uploaded before redirect
+          documentPath: data.documentPath,
           documentType: data.documentType,
+          proofOfAddressPath: data.proofOfAddressPath,
+          selfieWithIdPath: data.selfieWithIdPath,
         }),
       });
 
@@ -274,6 +280,16 @@ export default function SignUpPage() {
           setLoading(false);
           return;
         }
+        if (!proofOfAddressFile) {
+          setError("Please upload proof of address");
+          setLoading(false);
+          return;
+        }
+        if (!selfieWithIdFile) {
+          setError("Please upload a selfie with your ID");
+          setLoading(false);
+          return;
+        }
       }
 
       // Normalize phone number - remove leading 0 if present, then combine with country code
@@ -386,27 +402,43 @@ export default function SignUpPage() {
         throw new Error(data.error || "Invalid OTP");
       }
 
-      // Upload document if courier (using admin client, so no auth needed)
+      // Upload documents if courier (ID, proof of address, selfie with ID)
       let documentPath: string | null = null;
-      if (role === "courier" && documentFile && data.user?.id) {
+      let proofOfAddressPath: string | null = null;
+      let selfieWithIdPath: string | null = null;
+      const userId = data.user?.id;
+      const uploadFile = async (file: File): Promise<string | null> => {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("userId", userId);
+        const res = await fetch("/api/auth/upload-document", {
+          method: "POST",
+          body: fd,
+        });
+        const d = await res.json();
+        return res.ok && d.filePath ? d.filePath : null;
+      };
+      if (role === "courier" && userId) {
         try {
-          const uploadFormData = new FormData();
-          uploadFormData.append("file", documentFile);
-          uploadFormData.append("userId", data.user.id);
-
-          const uploadResponse = await fetch("/api/auth/upload-document", {
-            method: "POST",
-            body: uploadFormData,
-          });
-
-          const uploadData = await uploadResponse.json();
-          if (uploadResponse.ok && uploadData.filePath) {
-            documentPath = uploadData.filePath;
-            console.log("Document uploaded successfully:", documentPath);
-          } else {
-            console.error("Document upload failed:", uploadData.error);
-            toast.error("Document upload failed, but you can upload it later");
-          }
+          const [idPath, proofPath, selfiePath] = await Promise.all([
+            documentFile ? uploadFile(documentFile) : Promise.resolve(null),
+            proofOfAddressFile
+              ? uploadFile(proofOfAddressFile)
+              : Promise.resolve(null),
+            selfieWithIdFile
+              ? uploadFile(selfieWithIdFile)
+              : Promise.resolve(null),
+          ]);
+          documentPath = idPath;
+          proofOfAddressPath = proofPath;
+          selfieWithIdPath = selfiePath;
+          if (documentPath) console.log("ID document uploaded:", documentPath);
+          if (proofOfAddressPath) console.log("Proof of address uploaded");
+          if (selfieWithIdPath) console.log("Selfie with ID uploaded");
+          if (!documentPath)
+            toast.error(
+              "ID document upload failed, but you can upload it later"
+            );
         } catch (uploadErr: any) {
           console.error("Document upload error:", uploadErr);
           toast.error("Document upload failed, but you can upload it later");
@@ -426,7 +458,9 @@ export default function SignUpPage() {
         country,
         email,
         documentType,
-        documentPath, // Include uploaded document path if available
+        documentPath,
+        proofOfAddressPath,
+        selfieWithIdPath,
       };
 
       // Save to localStorage with error handling
@@ -478,26 +512,58 @@ export default function SignUpPage() {
     }
   };
 
+  const allowedDocTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/jpg",
+    "application/pdf",
+  ];
+  const maxFileSize = 5 * 1024 * 1024; // 5MB
+
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/jpg",
-        "application/pdf",
-      ];
-      if (!allowedTypes.includes(file.type)) {
+      if (!allowedDocTypes.includes(file.type)) {
         toast.error("Please upload a JPEG, PNG, or PDF file");
         return;
       }
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > maxFileSize) {
         toast.error("File size must be less than 5MB");
         return;
       }
       setDocumentFile(file);
+    }
+  };
+
+  const handleProofOfAddressChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!allowedDocTypes.includes(file.type)) {
+        toast.error("Please upload a JPEG, PNG, or PDF file");
+        return;
+      }
+      if (file.size > maxFileSize) {
+        toast.error("File size must be less than 5MB");
+        return;
+      }
+      setProofOfAddressFile(file);
+    }
+  };
+
+  const handleSelfieWithIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!allowedDocTypes.includes(file.type)) {
+        toast.error("Please upload a JPEG, PNG, or PDF file");
+        return;
+      }
+      if (file.size > maxFileSize) {
+        toast.error("File size must be less than 5MB");
+        return;
+      }
+      setSelfieWithIdFile(file);
     }
   };
 
@@ -760,6 +826,58 @@ export default function SignUpPage() {
                     <p className="mt-1 text-xs text-green-600">
                       Selected: {documentFile.name} (
                       {(documentFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="proofOfAddress"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Proof of Address * (JPEG, PNG, or PDF, max 5MB)
+                  </label>
+                  <input
+                    type="file"
+                    id="proofOfAddress"
+                    accept="image/jpeg,image/png,image/jpg,application/pdf"
+                    onChange={handleProofOfAddressChange}
+                    required={!proofOfAddressFile}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    e.g. utility bill, bank statement, lease agreement
+                  </p>
+                  {proofOfAddressFile && (
+                    <p className="mt-1 text-xs text-green-600">
+                      Selected: {proofOfAddressFile.name} (
+                      {(proofOfAddressFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="selfieWithId"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Selfie with ID * (JPEG, PNG, or PDF, max 5MB)
+                  </label>
+                  <input
+                    type="file"
+                    id="selfieWithId"
+                    accept="image/jpeg,image/png,image/jpg,application/pdf"
+                    onChange={handleSelfieWithIdChange}
+                    required={!selfieWithIdFile}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    A photo of you holding your ID document
+                  </p>
+                  {selfieWithIdFile && (
+                    <p className="mt-1 text-xs text-green-600">
+                      Selected: {selfieWithIdFile.name} (
+                      {(selfieWithIdFile.size / 1024 / 1024).toFixed(2)} MB)
                     </p>
                   )}
                 </div>
