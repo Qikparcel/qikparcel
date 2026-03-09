@@ -169,6 +169,8 @@ export interface Database {
           estimated_arrival: string | null;
           status: "scheduled" | "in_progress" | "completed" | "cancelled";
           available_capacity: string | null;
+          travel_mode: "car" | "airplane" | "train" | "bus" | "other" | null;
+          travel_reference: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -187,6 +189,8 @@ export interface Database {
           estimated_arrival?: string | null;
           status?: "scheduled" | "in_progress" | "completed" | "cancelled";
           available_capacity?: string | null;
+          travel_mode?: "car" | "airplane" | "train" | "bus" | "other" | null;
+          travel_reference?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -205,8 +209,42 @@ export interface Database {
           estimated_arrival?: string | null;
           status?: "scheduled" | "in_progress" | "completed" | "cancelled";
           available_capacity?: string | null;
+          travel_mode?: "car" | "airplane" | "train" | "bus" | "other" | null;
+          travel_reference?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      ratings: {
+        Row: {
+          id: string;
+          parcel_id: string;
+          match_id: string;
+          rater_id: string;
+          rated_id: string;
+          rating: number;
+          review_text: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          parcel_id: string;
+          match_id: string;
+          rater_id: string;
+          rated_id: string;
+          rating: number;
+          review_text?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          parcel_id?: string;
+          match_id?: string;
+          rater_id?: string;
+          rated_id?: string;
+          rating?: number;
+          review_text?: string | null;
+          created_at?: string;
         };
       };
       parcel_trip_matches: {
@@ -389,6 +427,8 @@ export interface Database {
           courier_id: string;
           id_document_url: string | null;
           id_document_type: string | null;
+          proof_of_address_url: string | null;
+          selfie_with_id_url: string | null;
           verification_status: "pending" | "approved" | "rejected";
           verified_by: string | null;
           verified_at: string | null;
@@ -401,6 +441,8 @@ export interface Database {
           courier_id: string;
           id_document_url?: string | null;
           id_document_type?: string | null;
+          proof_of_address_url?: string | null;
+          selfie_with_id_url?: string | null;
           verification_status?: "pending" | "approved" | "rejected";
           verified_by?: string | null;
           verified_at?: string | null;
@@ -413,6 +455,8 @@ export interface Database {
           courier_id?: string;
           id_document_url?: string | null;
           id_document_type?: string | null;
+          proof_of_address_url?: string | null;
+          selfie_with_id_url?: string | null;
           verification_status?: "pending" | "approved" | "rejected";
           verified_by?: string | null;
           verified_at?: string | null;
@@ -475,6 +519,35 @@ export interface Database {
           resolution_notes?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      dispute_status_history: {
+        Row: {
+          id: string;
+          dispute_id: string;
+          from_status: string | null;
+          to_status: string;
+          changed_by: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          dispute_id: string;
+          from_status?: string | null;
+          to_status: string;
+          changed_by: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          dispute_id?: string;
+          from_status?: string | null;
+          to_status?: string;
+          changed_by?: string;
+          notes?: string | null;
+          created_at?: string;
         };
       };
       payouts: {

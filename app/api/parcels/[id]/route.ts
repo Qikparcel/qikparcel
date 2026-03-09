@@ -200,15 +200,56 @@ export async function GET(
 
     const isOwner = parcel.sender_id === session.user.id;
 
+    let isCourierForParcel = false;
+    if (parcel.matched_trip_id && profile?.role === "courier") {
+      const { data: tripForCourier } = await supabase
+        .from("trips")
+        .select("courier_id")
+        .eq("id", parcel.matched_trip_id)
+        .single<Pick<Trip, "courier_id">>();
+      isCourierForParcel = tripForCourier?.courier_id === session.user.id;
+    }
+    const canRaiseDispute =
+      (isOwner || isCourierForParcel) &&
+      ["matched", "in_transit", "delivered"].includes(parcel.status);
+
+    // For rating: get match id and courier id (sender rates courier; courier rates sender)
+    let matchedCourierId: string | undefined;
+    let matchId: string | undefined;
+    if (parcel.matched_trip_id) {
+      const [matchRow, tripRow] = await Promise.all([
+        adminClient
+          .from("parcel_trip_matches")
+          .select("id")
+          .eq("parcel_id", parcelId)
+          .eq("trip_id", parcel.matched_trip_id)
+          .eq("status", "accepted")
+          .single<{ id: string }>(),
+        adminClient
+          .from("trips")
+          .select("courier_id")
+          .eq("id", parcel.matched_trip_id)
+          .single<{ courier_id: string }>(),
+      ]);
+      matchId = matchRow.data?.id;
+      matchedCourierId = tripRow.data?.courier_id;
+    }
+
     // isOwner: true only when viewer is the parcel sender (senders see actions; admins/couriers do not)
     return NextResponse.json({
       success: true,
       parcel,
       statusHistory: statusHistory || [],
-      matchedCourier: matchedCourier ?? undefined,
+      matchedCourier: matchedCourier
+        ? { ...matchedCourier, id: matchedCourierId }
+        : undefined,
+      matchedCourierId,
+      matchId,
       paymentInfo: paymentInfo ?? undefined,
       senderInfo: senderInfo ?? undefined,
       isOwner, // true only when viewer is the parcel's sender (hide Edit/Delete/Pay/Confirm for admin/courier)
+      isCourierForParcel,
+      canRaiseDispute, // true when sender or courier and parcel is matched/in_transit/delivered
     });
   } catch (error: any) {
     console.error("Error in GET /api/parcels/[id]:", error);

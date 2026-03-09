@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/components/DashboardLayout";
 import { createSupabaseClient } from "@/lib/supabase/client";
@@ -11,6 +12,11 @@ export default function CreateTripPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [roleCheckLoading, setRoleCheckLoading] = useState(true);
+  const [kycStatus, setKycStatus] = useState<{
+    verification_status: string;
+    rejection_reason?: string | null;
+  } | null>(null);
+  const [kycBlocked, setKycBlocked] = useState(false);
 
   // Origin address fields
   const [originStreetAddress, setOriginStreetAddress] = useState("");
@@ -42,6 +48,8 @@ export default function CreateTripPage() {
   const [departureTime, setDepartureTime] = useState("");
   const [estimatedArrival, setEstimatedArrival] = useState("");
   const [availableCapacity, setAvailableCapacity] = useState("");
+  const [travelMode, setTravelMode] = useState("");
+  const [travelReference, setTravelReference] = useState("");
 
   // Suggested travel time from origin to destination (best-case drive)
   const [suggestedDurationSeconds, setSuggestedDurationSeconds] = useState<
@@ -167,9 +175,9 @@ export default function CreateTripPage() {
     destinationCoordinates?.longitude,
   ]);
 
-  // Verify user role on mount
+  // Verify user role and KYC on mount
   useEffect(() => {
-    async function checkRole() {
+    async function checkRoleAndKyc() {
       const supabase = createSupabaseClient();
       const {
         data: { session },
@@ -192,10 +200,28 @@ export default function CreateTripPage() {
         return;
       }
 
+      // Check KYC status – couriers need approved KYC to create trips
+      const kycRes = await fetch("/api/kyc/status");
+      const kycData = await kycRes.json();
+      if (kycRes.ok && kycData.kyc) {
+        const status = kycData.kyc.verification_status;
+        setKycStatus({
+          verification_status: status,
+          rejection_reason: kycData.kyc.rejection_reason ?? null,
+        });
+        if (status !== "approved") {
+          setKycBlocked(true);
+        }
+      } else {
+        // No KYC record or not yet submitted – treat as blocked
+        setKycStatus({ verification_status: "pending" });
+        setKycBlocked(true);
+      }
+
       setRoleCheckLoading(false);
     }
 
-    checkRole();
+    checkRoleAndKyc();
   }, [router]);
 
   const buildAddressString = (
@@ -450,6 +476,8 @@ export default function CreateTripPage() {
           departure_time: convertLocalToUTC(departureTime)!,
           estimated_arrival: convertLocalToUTC(estimatedArrival)!,
           available_capacity: availableCapacity || null,
+          travel_mode: travelMode || null,
+          travel_reference: travelReference.trim() || null,
         }),
       });
 
@@ -479,6 +507,36 @@ export default function CreateTripPage() {
       <DashboardLayout>
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (kycBlocked) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center">
+            <h2 className="text-xl font-semibold text-amber-800">
+              ID verification required
+            </h2>
+            <p className="mt-2 text-amber-700">
+              {kycStatus?.verification_status === "rejected"
+                ? "Your ID verification was rejected. Please upload a new document from Settings."
+                : "Your ID must be verified before you can create trips. Please complete ID verification in Settings."}
+            </p>
+            {kycStatus?.rejection_reason && (
+              <p className="mt-1 text-sm text-amber-600">
+                Reason: {kycStatus.rejection_reason}
+              </p>
+            )}
+            <Link
+              href="/dashboard/settings"
+              className="mt-4 inline-block px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
+            >
+              Go to Settings
+            </Link>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -677,6 +735,68 @@ export default function CreateTripPage() {
                 <option value="large">Large (upto 10kg)</option>
               </select>
             </div>
+
+            <div>
+              <label
+                htmlFor="travel_mode"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Mode of travel
+              </label>
+              <select
+                id="travel_mode"
+                value={travelMode}
+                onChange={(e) => {
+                  setTravelMode(e.target.value);
+                  setTravelReference("");
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+              >
+                <option value="">Select mode</option>
+                <option value="car">Car</option>
+                <option value="airplane">Airplane</option>
+                <option value="train">Train</option>
+                <option value="bus">Bus</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {travelMode && (
+              <div>
+                <label
+                  htmlFor="travel_reference"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  {travelMode === "airplane"
+                    ? "Flight number"
+                    : travelMode === "car"
+                    ? "Vehicle registration"
+                    : travelMode === "train"
+                    ? "Train number"
+                    : travelMode === "bus"
+                    ? "Bus number"
+                    : "Reference (optional)"}
+                </label>
+                <input
+                  type="text"
+                  id="travel_reference"
+                  value={travelReference}
+                  onChange={(e) => setTravelReference(e.target.value)}
+                  placeholder={
+                    travelMode === "airplane"
+                      ? "e.g. EK123"
+                      : travelMode === "car"
+                      ? "e.g. ABC-1234"
+                      : travelMode === "train"
+                      ? "e.g. TGV 1234"
+                      : travelMode === "bus"
+                      ? "e.g. Bus 42"
+                      : ""
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex gap-4 pt-4">

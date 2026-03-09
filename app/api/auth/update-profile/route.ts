@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
       email,
       documentPath,
       documentType,
+      proofOfAddressPath,
+      selfieWithIdPath,
       userId,
       phoneNumber,
     } = body;
@@ -215,20 +217,19 @@ export async function POST(request: NextRequest) {
 
       // Continue with courier KYC if needed
       if (role === "courier" && documentPath) {
+        const kycPayload: Record<string, unknown> = {
+          courier_id: userId,
+          id_document_url: documentPath,
+          id_document_type: documentType || "national_id",
+          verification_status: "pending",
+          updated_at: new Date().toISOString(),
+        };
+        if (proofOfAddressPath)
+          kycPayload.proof_of_address_url = proofOfAddressPath;
+        if (selfieWithIdPath) kycPayload.selfie_with_id_url = selfieWithIdPath;
         const { error: kycError } = await (
           adminSupabase.from("courier_kyc") as any
-        ).upsert(
-          {
-            courier_id: userId,
-            id_document_url: documentPath,
-            id_document_type: documentType || "national_id",
-            verification_status: "pending",
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "courier_id",
-          }
-        );
+        ).upsert(kycPayload, { onConflict: "courier_id" });
 
         if (kycError) {
           console.error("KYC update error:", kycError);
@@ -351,20 +352,19 @@ export async function POST(request: NextRequest) {
 
     // If courier and document provided, update courier_kyc table
     if (role === "courier" && documentPath) {
+      const kycPayload: Record<string, unknown> = {
+        courier_id: userId,
+        id_document_url: documentPath,
+        id_document_type: documentType || "national_id",
+        verification_status: "pending",
+        updated_at: new Date().toISOString(),
+      };
+      if (proofOfAddressPath)
+        kycPayload.proof_of_address_url = proofOfAddressPath;
+      if (selfieWithIdPath) kycPayload.selfie_with_id_url = selfieWithIdPath;
       const { error: kycError } = await (
         adminSupabase.from("courier_kyc") as any
-      ).upsert(
-        {
-          courier_id: userId,
-          id_document_url: documentPath,
-          id_document_type: documentType || "national_id",
-          verification_status: "pending",
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "courier_id",
-        }
-      );
+      ).upsert(kycPayload, { onConflict: "courier_id" });
 
       if (kycError) {
         console.error("KYC update error:", kycError);

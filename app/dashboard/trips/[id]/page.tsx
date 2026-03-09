@@ -73,6 +73,8 @@ export default function TripDetailPage() {
   const [departureTime, setDepartureTime] = useState("");
   const [estimatedArrival, setEstimatedArrival] = useState("");
   const [availableCapacity, setAvailableCapacity] = useState("");
+  const [travelMode, setTravelMode] = useState("");
+  const [travelReference, setTravelReference] = useState("");
 
   const loadMatches = useCallback(async () => {
     if (!tripId) return;
@@ -125,6 +127,8 @@ export default function TripDetailPage() {
         // Initialize form fields with existing data
         if (data.trip) {
           setAvailableCapacity(data.trip.available_capacity || "");
+          setTravelMode((data.trip as any).travel_mode || "");
+          setTravelReference((data.trip as any).travel_reference || "");
 
           // Convert UTC dates to local datetime-local format
           if (data.trip.departure_time) {
@@ -390,6 +394,9 @@ export default function TripDetailPage() {
     setDestinationPostcode(destinationParsed.postcode);
     setDestinationCountry(destinationParsed.country);
 
+    setTravelMode((trip as any).travel_mode || "");
+    setTravelReference((trip as any).travel_reference || "");
+
     setIsEditing(true);
   };
 
@@ -398,6 +405,8 @@ export default function TripDetailPage() {
     // Reset form fields to original values
     if (trip) {
       setAvailableCapacity(trip.available_capacity || "");
+      setTravelMode((trip as any).travel_mode || "");
+      setTravelReference((trip as any).travel_reference || "");
       if (trip.departure_time) {
         const depDate = new Date(trip.departure_time);
         const year = depDate.getFullYear();
@@ -620,6 +629,8 @@ export default function TripDetailPage() {
           departure_time: convertLocalToUTC(departureTime)!,
           estimated_arrival: convertLocalToUTC(estimatedArrival)!,
           available_capacity: availableCapacity || null,
+          travel_mode: travelMode || null,
+          travel_reference: travelReference.trim() || null,
         }),
       });
 
@@ -887,6 +898,68 @@ export default function TripDetailPage() {
                         <option value="large">Large (upto 10kg)</option>
                       </select>
                     </div>
+
+                    <div>
+                      <label
+                        htmlFor="travel_mode"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Mode of travel
+                      </label>
+                      <select
+                        id="travel_mode"
+                        value={travelMode}
+                        onChange={(e) => {
+                          setTravelMode(e.target.value);
+                          setTravelReference("");
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                      >
+                        <option value="">Select mode</option>
+                        <option value="car">Car</option>
+                        <option value="airplane">Airplane</option>
+                        <option value="train">Train</option>
+                        <option value="bus">Bus</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    {travelMode && (
+                      <div>
+                        <label
+                          htmlFor="travel_reference"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          {travelMode === "airplane"
+                            ? "Flight number"
+                            : travelMode === "car"
+                            ? "Vehicle registration"
+                            : travelMode === "train"
+                            ? "Train number"
+                            : travelMode === "bus"
+                            ? "Bus number"
+                            : "Reference (optional)"}
+                        </label>
+                        <input
+                          type="text"
+                          id="travel_reference"
+                          value={travelReference}
+                          onChange={(e) => setTravelReference(e.target.value)}
+                          placeholder={
+                            travelMode === "airplane"
+                              ? "e.g. EK123"
+                              : travelMode === "car"
+                              ? "e.g. ABC-1234"
+                              : travelMode === "train"
+                              ? "e.g. TGV 1234"
+                              : travelMode === "bus"
+                              ? "e.g. Bus 42"
+                              : ""
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t">
@@ -963,6 +1036,36 @@ export default function TripDetailPage() {
                       <dd className="mt-1 text-sm text-gray-900 capitalize">
                         {trip.available_capacity}
                       </dd>
+                    </div>
+                  )}
+
+                  {((trip as any).travel_mode ||
+                    (trip as any).travel_reference) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      {(trip as any).travel_mode && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">
+                            Mode of travel
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900 capitalize">
+                            {(trip as any).travel_mode.replace("_", " ")}
+                          </dd>
+                        </div>
+                      )}
+                      {(trip as any).travel_reference && (
+                        <div>
+                          <dt className="text-sm font-medium text-gray-500">
+                            {(trip as any).travel_mode === "airplane"
+                              ? "Flight number"
+                              : (trip as any).travel_mode === "car"
+                              ? "Vehicle registration"
+                              : "Reference"}
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {(trip as any).travel_reference}
+                          </dd>
+                        </div>
+                      )}
                     </div>
                   )}
 

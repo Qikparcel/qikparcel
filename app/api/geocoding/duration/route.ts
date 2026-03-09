@@ -57,7 +57,11 @@ export async function GET(req: NextRequest) {
     const origin = `${olat},${olng}`;
     const destination = `${dlat},${dlng}`;
 
-    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=driving&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(
+      origin
+    )}&destination=${encodeURIComponent(
+      destination
+    )}&mode=driving&key=${apiKey}`;
 
     const res = await fetch(url);
     if (!res.ok) {

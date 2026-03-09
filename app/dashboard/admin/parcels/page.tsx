@@ -235,28 +235,28 @@ export default function AdminParcelsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Parcel ID
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Sender
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Pickup
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Delivery
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Matches
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -264,12 +264,12 @@ export default function AdminParcelsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {parcels.map((parcel) => (
                   <tr key={parcel.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2 align-top">
                       <div className="text-sm font-medium text-gray-900">
                         {parcel.id.slice(0, 8)}...
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2 align-top">
                       <div className="text-sm text-gray-900">
                         <button
                           type="button"
@@ -298,17 +298,17 @@ export default function AdminParcelsPage() {
                           ""}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-2">
                       <div className="text-sm text-gray-900 max-w-xs truncate">
                         {parcel.pickup_address}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-2">
                       <div className="text-sm text-gray-900 max-w-xs truncate">
                         {parcel.delivery_address}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap align-top">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
                           statusConfig[parcel.status]?.color ||
@@ -318,11 +318,14 @@ export default function AdminParcelsPage() {
                         {statusConfig[parcel.status]?.label || parcel.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-2 align-top">
                       {parcel.matches && parcel.matches.length > 0 ? (
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           {parcel.matches.map((match) => (
-                            <div key={match.id} className="text-xs">
+                            <div
+                              key={match.id}
+                              className="text-xs leading-tight"
+                            >
                               <div className="flex items-center gap-2">
                                 <span
                                   className={`px-2 py-0.5 rounded text-xs ${
@@ -342,7 +345,7 @@ export default function AdminParcelsPage() {
                                 )}
                               </div>
                               {match.trip && (
-                                <div className="mt-1 text-gray-600">
+                                <div className="text-gray-600">
                                   <Link
                                     href={`/dashboard/trips/${match.trip.id}`}
                                     className="hover:underline"
@@ -370,10 +373,10 @@ export default function AdminParcelsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 align-top">
                       {formatDate(parcel.created_at)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm font-medium align-top">
                       <Link
                         href={`/dashboard/parcels/${parcel.id}`}
                         className="text-primary-600 hover:text-primary-900"

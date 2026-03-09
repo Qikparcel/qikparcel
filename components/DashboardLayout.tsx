@@ -538,15 +538,37 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   Matches Overview
                 </Link>
                 <Link
-                  href="/dashboard/chat"
+                  href="/dashboard/admin/kyc"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`relative block py-2 px-3 rounded-lg text-sm font-medium ${
-                    isActive("/dashboard/chat")
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/admin/kyc")
                       ? "bg-primary-50 text-primary-600"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  Chat {chatBadge}
+                  KYC Review
+                </Link>
+                <Link
+                  href="/dashboard/admin/payouts"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/admin/payouts")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Payouts
+                </Link>
+                <Link
+                  href="/dashboard/admin/disputes"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                    isActive("/dashboard/admin/disputes")
+                      ? "bg-primary-50 text-primary-600"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  Disputes
                 </Link>
                 <Link
                   href="/dashboard/settings"
@@ -770,14 +792,34 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 Matches Overview
               </Link>
               <Link
-                href="/dashboard/chat"
-                className={`relative py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  isActive("/dashboard/chat")
+                href="/dashboard/admin/kyc"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/admin/kyc")
                     ? "border-primary-500 text-primary-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                Chat {chatBadge}
+                KYC Review
+              </Link>
+              <Link
+                href="/dashboard/admin/payouts"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/admin/payouts")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Payouts
+              </Link>
+              <Link
+                href="/dashboard/admin/disputes"
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  isActive("/dashboard/admin/disputes")
+                    ? "border-primary-500 text-primary-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Disputes
               </Link>
               <Link
                 href="/dashboard/settings"
