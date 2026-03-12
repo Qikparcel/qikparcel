@@ -16,6 +16,36 @@ const MIN_SCORE_THRESHOLD = parseInt(
   10
 ); // Minimum score threshold: 60%
 
+function validatePreferredPickupTime(
+  preferredPickupTime: unknown
+): string | null | undefined {
+  if (
+    preferredPickupTime === undefined ||
+    preferredPickupTime === null ||
+    preferredPickupTime === ""
+  ) {
+    return null;
+  }
+
+  const value =
+    typeof preferredPickupTime === "string"
+      ? preferredPickupTime.trim()
+      : String(preferredPickupTime);
+
+  if (!value) return null;
+
+  const pickupDate = new Date(value);
+  if (Number.isNaN(pickupDate.getTime())) {
+    throw new Error("Invalid preferred pickup time format");
+  }
+
+  if (pickupDate.getTime() < Date.now()) {
+    throw new Error("Preferred pickup time cannot be in the past");
+  }
+
+  return value;
+}
+
 /**
  * GET /api/parcels/[id]
  * Get a specific parcel by ID
@@ -446,6 +476,15 @@ export async function PUT(
       );
     }
 
+    let preferredPickupTimeValue: string | null;
+    try {
+      preferredPickupTimeValue = validatePreferredPickupTime(
+        preferred_pickup_time
+      );
+    } catch (error: any) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     // Prepare update data
     const updateData: ParcelUpdate & {
       estimated_value_currency?: string | null;
@@ -463,7 +502,7 @@ export async function PUT(
         typeof dimensions === "string" ? dimensions.trim() : dimensions,
       estimated_value: valueNum,
       estimated_value_currency: estimated_value_currency || "USD",
-      preferred_pickup_time: preferred_pickup_time || null,
+      preferred_pickup_time: preferredPickupTimeValue,
       updated_at: new Date().toISOString(),
     };
 
