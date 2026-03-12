@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Parcel = Database["public"]["Tables"]["parcels"]["Row"];
+type ParcelStatusHistory =
+  Database["public"]["Tables"]["parcel_status_history"]["Row"];
 
 export async function GET(request: NextRequest) {
   try {
@@ -151,6 +153,64 @@ export async function GET(request: NextRequest) {
       return parcel;
     });
 
+    // Build proof summary for admin list view
+    const parcelIds = (normalizedParcels || []).map(
+      (p: { id: string }) => p.id
+    );
+    const proofStatuses = new Set(["picked_up", "in_transit", "delivered"]);
+    const proofSummaryByParcelId = new Map<
+      string,
+      {
+        required_steps: number;
+        uploaded_steps: number;
+        missing_steps: number;
+        has_missing: boolean;
+        has_any_uploaded: boolean;
+      }
+    >();
+
+    if (parcelIds.length > 0) {
+      const { data: historyRows } = await adminClient
+        .from("parcel_status_history")
+        .select("parcel_id, status, proof_photo_path")
+        .in("parcel_id", parcelIds)
+        .order("created_at", { ascending: true });
+
+      const grouped = new Map<string, ParcelStatusHistory[]>();
+      (historyRows || []).forEach((row) => {
+        const parcelId = (row as ParcelStatusHistory).parcel_id;
+        if (!grouped.has(parcelId)) grouped.set(parcelId, []);
+        grouped.get(parcelId)?.push(row as ParcelStatusHistory);
+      });
+
+      grouped.forEach((rows, parcelId) => {
+        const relevant = rows.filter((r) => proofStatuses.has(r.status));
+        const requiredSteps = relevant.length;
+        const uploadedSteps = relevant.filter((r) =>
+          Boolean(r.proof_photo_path)
+        ).length;
+        const missingSteps = relevant.filter((r) => !r.proof_photo_path).length;
+        proofSummaryByParcelId.set(parcelId, {
+          required_steps: requiredSteps,
+          uploaded_steps: uploadedSteps,
+          missing_steps: missingSteps,
+          has_missing: missingSteps > 0,
+          has_any_uploaded: uploadedSteps > 0,
+        });
+      });
+    }
+
+    const parcelsWithProofSummary = normalizedParcels.map((parcel: any) => ({
+      ...parcel,
+      proof_summary: proofSummaryByParcelId.get(parcel.id) || {
+        required_steps: 0,
+        uploaded_steps: 0,
+        missing_steps: 0,
+        has_missing: false,
+        has_any_uploaded: false,
+      },
+    }));
+
     // Get total count for pagination
     let countQuery = adminClient
       .from("parcels")
@@ -184,7 +244,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      parcels: normalizedParcels,
+      parcels: parcelsWithProofSummary,
       total: count || 0,
       limit,
       offset,

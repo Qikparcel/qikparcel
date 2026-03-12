@@ -1,119 +1,158 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import toast from 'react-hot-toast'
-import DashboardLayout from '@/components/DashboardLayout'
-import { Database } from '@/types/database'
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import toast from "react-hot-toast";
+import DashboardLayout from "@/components/DashboardLayout";
+import { Database } from "@/types/database";
 
-type Parcel = Database['public']['Tables']['parcels']['Row']
-type StatusHistory = Database['public']['Tables']['parcel_status_history']['Row']
-type Trip = Database['public']['Tables']['trips']['Row']
+type Parcel = Database["public"]["Tables"]["parcels"]["Row"];
+type StatusHistory =
+  Database["public"]["Tables"]["parcel_status_history"]["Row"];
+type Trip = Database["public"]["Tables"]["trips"]["Row"];
 
 interface ParcelWithTrip extends Parcel {
-  matched_trip: Trip | null
+  matched_trip: Trip | null;
   sender: {
-    id: string
-    full_name: string | null
-    phone_number: string
-    whatsapp_number: string | null
-  } | null
+    id: string;
+    full_name: string | null;
+    phone_number: string;
+    whatsapp_number: string | null;
+  } | null;
+  payment_status?: "pending" | "paid" | "refunded" | "failed" | null;
 }
 
 export default function MatchedParcelsPage() {
-  const router = useRouter()
-  const [parcels, setParcels] = useState<ParcelWithTrip[]>([])
-  const [loading, setLoading] = useState(true)
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const router = useRouter();
+  const [parcels, setParcels] = useState<ParcelWithTrip[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [proofFiles, setProofFiles] = useState<Record<string, File | null>>({});
 
   useEffect(() => {
-    loadMatchedParcels()
-  }, [])
+    loadMatchedParcels();
+  }, []);
 
   async function loadMatchedParcels() {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await fetch('/api/courier/matched-parcels')
-      const data = await response.json()
+      const response = await fetch("/api/courier/matched-parcels");
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to load matched parcels')
+        throw new Error(data.error || "Failed to load matched parcels");
       }
 
-      setParcels(data.parcels || [])
+      setParcels(data.parcels || []);
     } catch (error: any) {
-      console.error('Error loading matched parcels:', error)
-      toast.error(error.message || 'Failed to load matched parcels')
+      console.error("Error loading matched parcels:", error);
+      toast.error(error.message || "Failed to load matched parcels");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
-  async function updateParcelStatus(parcelId: string, status: string, notes?: string) {
-    setUpdatingStatus(parcelId)
+  async function updateParcelStatus(
+    parcelId: string,
+    status: string,
+    notes?: string
+  ) {
+    setUpdatingStatus(parcelId);
     try {
-      const response = await fetch(`/api/parcels/${parcelId}/status`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status, notes }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update status')
+      const selectedProof = proofFiles[parcelId] || null;
+      const requiresProofPhoto = [
+        "picked_up",
+        "in_transit",
+        "delivered",
+      ].includes(status);
+      if (requiresProofPhoto && !selectedProof) {
+        throw new Error(
+          `Please upload a proof photo before marking as ${status.replace(
+            "_",
+            " "
+          )}`
+        );
       }
 
-      toast.success(`Parcel status updated to ${status.replace('_', ' ')}`)
-      await loadMatchedParcels()
+      const response = await (async () => {
+        if (selectedProof) {
+          const formData = new FormData();
+          formData.append("status", status);
+          if (notes) formData.append("notes", notes);
+          formData.append("proof_photo", selectedProof);
+          return fetch(`/api/parcels/${parcelId}/status`, {
+            method: "POST",
+            body: formData,
+          });
+        }
+
+        return fetch(`/api/parcels/${parcelId}/status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status, notes }),
+        });
+      })();
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update status");
+      }
+
+      toast.success(`Parcel status updated to ${status.replace("_", " ")}`);
+      setProofFiles((prev) => ({ ...prev, [parcelId]: null }));
+      await loadMatchedParcels();
     } catch (error: any) {
-      console.error('Error updating parcel status:', error)
-      toast.error(error.message || 'Failed to update status')
+      console.error("Error updating parcel status:", error);
+      toast.error(error.message || "Failed to update status");
     } finally {
-      setUpdatingStatus(null)
+      setUpdatingStatus(null);
     }
   }
 
-  const statusConfig: Record<string, { label: string; color: string; nextStatuses: string[] }> = {
+  const statusConfig: Record<
+    string,
+    { label: string; color: string; nextStatuses: string[] }
+  > = {
     matched: {
-      label: 'Matched',
-      color: 'bg-blue-100 text-blue-800',
-      nextStatuses: ['picked_up', 'cancelled'],
+      label: "Matched",
+      color: "bg-blue-100 text-blue-800",
+      nextStatuses: ["picked_up", "cancelled"],
     },
     picked_up: {
-      label: 'Picked Up',
-      color: 'bg-purple-100 text-purple-800',
-      nextStatuses: ['in_transit', 'cancelled'],
+      label: "Picked Up",
+      color: "bg-purple-100 text-purple-800",
+      nextStatuses: ["in_transit", "cancelled"],
     },
     in_transit: {
-      label: 'In Transit',
-      color: 'bg-yellow-100 text-yellow-800',
-      nextStatuses: ['delivered', 'cancelled'],
+      label: "In Transit",
+      color: "bg-yellow-100 text-yellow-800",
+      nextStatuses: ["delivered", "cancelled"],
     },
     delivered: {
-      label: 'Delivered',
-      color: 'bg-green-100 text-green-800',
+      label: "Delivered",
+      color: "bg-green-100 text-green-800",
       nextStatuses: [],
     },
     cancelled: {
-      label: 'Cancelled',
-      color: 'bg-red-100 text-red-800',
+      label: "Cancelled",
+      color: "bg-red-100 text-red-800",
       nextStatuses: [],
     },
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+    return new Date(dateString).toLocaleString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   if (loading) {
     return (
@@ -122,7 +161,7 @@ export default function MatchedParcelsPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       </DashboardLayout>
-    )
+    );
   }
 
   return (
@@ -133,13 +172,15 @@ export default function MatchedParcelsPage() {
             <Link
               href="/dashboard"
               className="text-primary-600 hover:text-primary-700 text-sm font-medium inline-block"
-              style={{ color: '#29772F' }}
+              style={{ color: "#29772F" }}
             >
               ← Back to Dashboard
             </Link>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Matched Parcels</h1>
-          <p className="text-gray-600 mt-2">Manage parcels matched to your trips</p>
+          <p className="text-gray-600 mt-2">
+            Manage parcels matched to your trips
+          </p>
         </div>
 
         {parcels.length === 0 ? (
@@ -156,14 +197,19 @@ export default function MatchedParcelsPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusConfig[parcel.status]?.color || 'bg-gray-100 text-gray-800'}`}>
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          statusConfig[parcel.status]?.color ||
+                          "bg-gray-100 text-gray-800"
+                        }`}
+                      >
                         {statusConfig[parcel.status]?.label || parcel.status}
                       </span>
                       {parcel.matched_trip && (
                         <Link
                           href={`/dashboard/trips/${parcel.matched_trip.id}`}
                           className="text-sm text-primary-600 hover:text-primary-700"
-                          style={{ color: '#29772F' }}
+                          style={{ color: "#29772F" }}
                         >
                           View Trip →
                         </Link>
@@ -171,7 +217,7 @@ export default function MatchedParcelsPage() {
                     </div>
                     {parcel.sender && (
                       <p className="text-sm text-gray-600 mb-2">
-                        <span className="font-medium">Sender:</span>{' '}
+                        <span className="font-medium">Sender:</span>{" "}
                         {parcel.sender.full_name || parcel.sender.phone_number}
                       </p>
                     )}
@@ -180,19 +226,31 @@ export default function MatchedParcelsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Pickup Address</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{parcel.pickup_address}</dd>
+                    <dt className="text-sm font-medium text-gray-500">
+                      Pickup Address
+                    </dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {parcel.pickup_address}
+                    </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">Delivery Address</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{parcel.delivery_address}</dd>
+                    <dt className="text-sm font-medium text-gray-500">
+                      Delivery Address
+                    </dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {parcel.delivery_address}
+                    </dd>
                   </div>
                 </div>
 
                 {parcel.description && (
                   <div className="mb-4">
-                    <dt className="text-sm font-medium text-gray-500">Description</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{parcel.description}</dd>
+                    <dt className="text-sm font-medium text-gray-500">
+                      Description
+                    </dt>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {parcel.description}
+                    </dd>
                   </div>
                 )}
 
@@ -212,35 +270,76 @@ export default function MatchedParcelsPage() {
                 {/* Status Update Actions */}
                 {statusConfig[parcel.status]?.nextStatuses.length > 0 && (
                   <div className="border-t pt-4 mt-4">
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">Update Status</h3>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">
+                      Update Status
+                    </h3>
+                    {parcel.payment_status !== "paid" && (
+                      <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                        <p className="text-xs text-amber-800">
+                          We are waiting for payment from sender side. You
+                          cannot move this parcel forward yet.
+                        </p>
+                      </div>
+                    )}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Proof photo (required for each timeline step except
+                        Cancelled)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          setProofFiles((prev) => ({
+                            ...prev,
+                            [parcel.id]: file,
+                          }));
+                        }}
+                        className="block w-full text-xs text-gray-700 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+                      />
+                      {proofFiles[parcel.id] && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Selected: {proofFiles[parcel.id]?.name}
+                        </p>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-2">
-                      {statusConfig[parcel.status].nextStatuses.map((nextStatus) => (
-                        <button
-                          key={nextStatus}
-                          onClick={() => updateParcelStatus(parcel.id, nextStatus)}
-                          disabled={updatingStatus === parcel.id}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                            nextStatus === 'cancelled'
-                              ? 'bg-red-600 text-white hover:bg-red-700'
-                              : 'bg-primary-600 text-white hover:bg-primary-700'
-                          }`}
-                          style={
-                            nextStatus !== 'cancelled'
-                              ? { backgroundColor: '#29772F' }
-                              : undefined
-                          }
-                        >
-                          {updatingStatus === parcel.id
-                            ? 'Updating...'
-                            : nextStatus === 'picked_up'
-                            ? 'Mark as Picked Up'
-                            : nextStatus === 'in_transit'
-                            ? 'Mark as In Transit'
-                            : nextStatus === 'delivered'
-                            ? 'Mark as Delivered'
-                            : 'Cancel Parcel'}
-                        </button>
-                      ))}
+                      {statusConfig[parcel.status].nextStatuses.map(
+                        (nextStatus) => (
+                          <button
+                            key={nextStatus}
+                            onClick={() =>
+                              updateParcelStatus(parcel.id, nextStatus)
+                            }
+                            disabled={
+                              updatingStatus === parcel.id ||
+                              (nextStatus !== "cancelled" &&
+                                parcel.payment_status !== "paid")
+                            }
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                              nextStatus === "cancelled"
+                                ? "bg-red-600 text-white hover:bg-red-700"
+                                : "bg-primary-600 text-white hover:bg-primary-700"
+                            }`}
+                            style={
+                              nextStatus !== "cancelled"
+                                ? { backgroundColor: "#29772F" }
+                                : undefined
+                            }
+                          >
+                            {updatingStatus === parcel.id
+                              ? "Updating..."
+                              : nextStatus === "picked_up"
+                              ? "Mark as Picked Up"
+                              : nextStatus === "in_transit"
+                              ? "Mark as In Transit"
+                              : nextStatus === "delivered"
+                              ? "Mark as Delivered"
+                              : "Cancel Parcel"}
+                          </button>
+                        )
+                      )}
                     </div>
                   </div>
                 )}
@@ -249,7 +348,7 @@ export default function MatchedParcelsPage() {
                   <Link
                     href={`/dashboard/parcels/${parcel.id}`}
                     className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                    style={{ color: '#29772F' }}
+                    style={{ color: "#29772F" }}
                   >
                     View Full Details →
                   </Link>
@@ -260,5 +359,5 @@ export default function MatchedParcelsPage() {
         )}
       </div>
     </DashboardLayout>
-  )
+  );
 }

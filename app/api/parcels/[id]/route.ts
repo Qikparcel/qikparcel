@@ -106,6 +106,41 @@ export async function GET(
       console.error("Error fetching status history:", historyError);
     }
 
+    const adminClient = createSupabaseAdminClient();
+    const statusHistoryRows = (statusHistory || []) as Array<
+      Database["public"]["Tables"]["parcel_status_history"]["Row"]
+    >;
+
+    const proofStatuses = new Set(["picked_up", "in_transit", "delivered"]);
+    const responseStatusHistory = isAdmin
+      ? await Promise.all(
+          statusHistoryRows.map(async (entry) => {
+            const proofRequired = proofStatuses.has(entry.status);
+            const hasProofPhoto = Boolean(entry.proof_photo_path);
+
+            if (!entry.proof_photo_path) {
+              return {
+                ...entry,
+                proof_required: proofRequired,
+                has_proof_photo: hasProofPhoto,
+                proof_photo_url: null,
+              };
+            }
+            const { data: signed } = await adminClient.storage
+              .from("parcel-proof-photos")
+              .createSignedUrl(entry.proof_photo_path, 3600);
+            return {
+              ...entry,
+              proof_required: proofRequired,
+              has_proof_photo: hasProofPhoto,
+              proof_photo_url: signed?.signedUrl ?? null,
+            };
+          })
+        )
+      : statusHistoryRows.map(
+          ({ proof_photo_path, proof_photo_uploaded_by, ...rest }) => rest
+        );
+
     // When sender views their matched parcel, include courier info and payment details
     // When admin views any parcel, include sender info and (if matched) courier + payment
     let matchedCourier: {
@@ -126,7 +161,6 @@ export async function GET(
       id: string;
     } | null = null;
 
-    const adminClient = createSupabaseAdminClient();
     const senderViewingOwnMatched =
       parcel.matched_trip_id &&
       profile?.role === "sender" &&
@@ -239,7 +273,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       parcel,
-      statusHistory: statusHistory || [],
+      statusHistory: responseStatusHistory,
       matchedCourier: matchedCourier
         ? { ...matchedCourier, id: matchedCourierId }
         : undefined,

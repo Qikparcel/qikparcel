@@ -1494,11 +1494,11 @@ export default function ParcelDetailPage() {
                 </div>
               )}
 
-            {/* Report issue / Disputes (sender or courier when parcel is matched/in transit/delivered) */}
+            {/* Report a problem (sender or courier when parcel is matched/in transit/delivered) */}
             {(canRaiseDispute || disputes.length > 0) && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-3">
-                  Report an issue
+                  Report a problem
                 </h2>
                 {canRaiseDispute && (
                   <button
@@ -1506,13 +1506,13 @@ export default function ParcelDetailPage() {
                     onClick={() => setDisputeModalOpen(true)}
                     className="w-full px-4 py-2 text-sm font-medium border border-amber-500 text-amber-700 rounded-lg hover:bg-amber-50 transition"
                   >
-                    Raise dispute
+                    Report a problem
                   </button>
                 )}
                 {disputes.length > 0 && (
                   <div className="mt-4 space-y-2">
                     <p className="text-sm font-medium text-gray-700">
-                      Your reported issues:
+                      Your reported problems:
                     </p>
                     {disputes.map((d) => (
                       <div
@@ -1572,12 +1572,12 @@ export default function ParcelDetailPage() {
         </div>
       </div>
 
-      {/* Raise dispute modal */}
+      {/* Report problem modal */}
       {disputeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
-              Raise a dispute
+              Report a problem
             </h3>
             <form
               onSubmit={async (e) => {
@@ -1597,7 +1597,7 @@ export default function ParcelDetailPage() {
                   const data = await res.json();
                   if (!res.ok)
                     throw new Error(data.error || "Failed to submit");
-                  toast.success(data.message || "Dispute reported.");
+                  toast.success(data.message || "Problem reported.");
                   setDisputeModalOpen(false);
                   setDisputeDescription("");
                   const dispRes = await fetch(
@@ -1607,7 +1607,7 @@ export default function ParcelDetailPage() {
                   if (dispRes.ok && dispData.disputes)
                     setDisputes(dispData.disputes);
                 } catch (err: any) {
-                  toast.error(err.message || "Failed to submit dispute");
+                  toast.error(err.message || "Failed to report problem");
                 } finally {
                   setDisputeSubmitting(false);
                 }

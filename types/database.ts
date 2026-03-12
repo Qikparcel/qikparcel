@@ -601,6 +601,8 @@ export interface Database {
           status: string;
           notes: string | null;
           location: string | null;
+          proof_photo_path: string | null;
+          proof_photo_uploaded_by: string | null;
           created_at: string;
         };
         Insert: {
@@ -609,6 +611,8 @@ export interface Database {
           status: string;
           notes?: string | null;
           location?: string | null;
+          proof_photo_path?: string | null;
+          proof_photo_uploaded_by?: string | null;
           created_at?: string;
         };
         Update: {
@@ -617,6 +621,8 @@ export interface Database {
           status?: string;
           notes?: string | null;
           location?: string | null;
+          proof_photo_path?: string | null;
+          proof_photo_uploaded_by?: string | null;
           created_at?: string;
         };
       };

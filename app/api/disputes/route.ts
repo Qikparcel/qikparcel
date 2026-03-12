@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Dispute reported. Our team will look into it.",
+      message: "Problem reported. Our team will look into it.",
     });
   } catch (error: any) {
     console.error("POST /api/disputes error:", error);
