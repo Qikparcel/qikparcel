@@ -31,7 +31,7 @@ function areAddressesSame(address1: string, address2: string): boolean {
 
 function validatePreferredPickupTime(
   preferredPickupTime: unknown
-): string | null | undefined {
+): string | null {
   if (
     preferredPickupTime === undefined ||
     preferredPickupTime === null ||

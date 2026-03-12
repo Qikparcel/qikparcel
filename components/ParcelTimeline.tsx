@@ -191,6 +191,7 @@ export default function ParcelTimeline({
                             rel="noopener noreferrer"
                             className="inline-block"
                           >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={historyEntry.proof_photo_url}
                               alt={`${status} proof`}

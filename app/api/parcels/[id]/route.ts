@@ -18,7 +18,7 @@ const MIN_SCORE_THRESHOLD = parseInt(
 
 function validatePreferredPickupTime(
   preferredPickupTime: unknown
-): string | null | undefined {
+): string | null {
   if (
     preferredPickupTime === undefined ||
     preferredPickupTime === null ||
