@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
+import { verifyPaidChatAccessForParcel } from "@/lib/chat/access";
 import { Database } from "@/types/database";
 
 type ChatThread = Database["public"]["Tables"]["chat_threads"]["Row"];
@@ -37,46 +38,21 @@ export async function GET(request: NextRequest) {
     // Fetch parcel with admin client to bypass RLS (couriers can't SELECT parcels
     // due to migration 008 removing "Couriers can view matched parcels" policy)
     const adminClient = createSupabaseAdminClient();
-    const { data: parcel, error: parcelError } = await adminClient
-      .from("parcels")
-      .select("id, sender_id, matched_trip_id, status")
-      .eq("id", parcelId)
-      .single<{
-        id: string;
-        sender_id: string;
-        matched_trip_id: string | null;
-        status: string;
-      }>();
+    const access = await verifyPaidChatAccessForParcel(
+      adminClient,
+      parcelId,
+      userId
+    );
 
-    if (parcelError || !parcel) {
-      return NextResponse.json({ error: "Parcel not found" }, { status: 404 });
-    }
-
-    const isSender = parcel.sender_id === userId;
-    let isCourier = false;
-    if (parcel.matched_trip_id) {
-      const { data: trip } = await supabase
-        .from("trips")
-        .select("courier_id")
-        .eq("id", parcel.matched_trip_id)
-        .single<{ courier_id: string }>();
-      isCourier = trip?.courier_id === userId;
-    }
-
-    if (!isSender && !isCourier) {
+    if (!access.allowed) {
       return NextResponse.json(
-        { error: "You cannot access this parcel's chat" },
-        { status: 403 }
+        {
+          thread: null,
+          messages: [],
+          error: access.error,
+        },
+        { status: access.status }
       );
-    }
-
-    // Chat only available for matched parcels
-    if (parcel.status === "pending" || !parcel.matched_trip_id) {
-      return NextResponse.json({
-        thread: null,
-        messages: [],
-        error: "Chat is available once a courier is matched",
-      });
     }
 
     // Get or create thread (use admin client to bypass RLS - auth.uid() can be

@@ -139,6 +139,23 @@ export async function PUT(
       );
     }
 
+    // Do not allow editing once a parcel has been accepted/matched to this trip.
+    const adminClient = createSupabaseAdminClient();
+    const { data: acceptedMatch } = await adminClient
+      .from("parcel_trip_matches")
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("status", "accepted")
+      .limit(1)
+      .maybeSingle();
+
+    if (acceptedMatch) {
+      return NextResponse.json(
+        { error: "Cannot edit trip once it has a matched parcel" },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const {
       origin_address,
@@ -379,7 +396,6 @@ export async function PUT(
     console.log(
       `[TRIP UPDATE] Triggering matching for updated trip: ${tripId}`
     );
-    const adminClient = createSupabaseAdminClient();
     findAndCreateMatchesForTrip(adminClient, tripId)
       .then((result) => {
         console.log(

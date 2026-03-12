@@ -27,6 +27,13 @@ type Match = {
 type Parcel = Database["public"]["Tables"]["parcels"]["Row"] & {
   sender?: Pick<Profile, "id" | "full_name" | "phone_number" | "email">;
   matches?: Match[];
+  proof_summary?: {
+    required_steps: number;
+    uploaded_steps: number;
+    missing_steps: number;
+    has_missing: boolean;
+    has_any_uploaded: boolean;
+  };
 };
 
 export default function AdminParcelsPage() {
@@ -257,6 +264,9 @@ export default function AdminParcelsPage() {
                     Created
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Proof
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -375,6 +385,30 @@ export default function AdminParcelsPage() {
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 align-top">
                       {formatDate(parcel.created_at)}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap align-top">
+                      {(() => {
+                        const proof = parcel.proof_summary;
+                        if (!proof || proof.required_steps === 0) {
+                          return (
+                            <span className="text-xs text-gray-400">
+                              Not required yet
+                            </span>
+                          );
+                        }
+                        if (proof.has_missing) {
+                          return (
+                            <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-800">
+                              Missing proof ({proof.missing_steps})
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="px-2 py-1 rounded text-xs bg-green-100 text-green-800">
+                            Proof uploaded
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-sm font-medium align-top">
                       <Link

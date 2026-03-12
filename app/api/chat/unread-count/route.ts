@@ -53,10 +53,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ count: 0 });
     }
 
+    // Chat is only enabled after accepted match payment is completed.
+    const { data: paidMatches } = await adminClient
+      .from("parcel_trip_matches")
+      .select("parcel_id")
+      .in("parcel_id", parcelIds)
+      .eq("status", "accepted")
+      .eq("payment_status", "paid");
+
+    const paidParcelIds = Array.from(
+      new Set(
+        (paidMatches || []).map((m: { parcel_id: string }) => m.parcel_id)
+      )
+    );
+
+    if (paidParcelIds.length === 0) {
+      return NextResponse.json({ count: 0 });
+    }
+
     const { data: threads } = await adminClient
       .from("chat_threads")
       .select("id")
-      .in("parcel_id", parcelIds);
+      .in("parcel_id", paidParcelIds);
     const threadIds = (threads || []).map((t: { id: string }) => t.id);
 
     if (threadIds.length === 0) {

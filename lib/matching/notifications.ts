@@ -27,6 +27,17 @@ interface MatchWithDetails {
   >;
 }
 
+function getAppBaseUrl(): string {
+  let baseUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+  if (!baseUrl && process.env.VERCEL_URL) {
+    baseUrl = `https://${process.env.VERCEL_URL}`;
+  }
+  if (!baseUrl) {
+    baseUrl = "http://localhost:3000";
+  }
+  return baseUrl.replace(/\/$/, "");
+}
+
 /**
  * Notify courier when a parcel matches their trip
  */
@@ -418,9 +429,8 @@ You can track your parcel status in your dashboard. Thank you for using QikParce
     // Send WhatsApp message using Twilio Content Template
     const whatsappClient = createWhatsAppClient();
 
-    // Use the pre-created template content ID
-    // Template Content ID: HX6092c1e14a50ab625e62df982bd79493
-    // Message: "Parcel Update\nGood news! Your parcel has been successfully matched with a courier for the trip, and the courier has accepted it.\nYou can track the progress in our app."
+    // Use the pre-created template content ID.
+    // Template now expects variable {{1}} for a payment link.
     const templateContentId = process.env.TWILIO_PARCEL_ACCEPTED_TEMPLATE_SID;
 
     if (!templateContentId) {
@@ -433,22 +443,22 @@ You can track your parcel status in your dashboard. Thank you for using QikParce
     }
 
     try {
-      // Send using the template - NO VARIABLES NEEDED
-      // These templates are static messages with no placeholders
-      // Do NOT pass a third parameter (contentVariables) - it will cause errors
+      const paymentPageUrl = `${getAppBaseUrl()}/dashboard/parcels/${
+        parcel.id
+      }`;
       console.log(
         `[NOTIFICATIONS] Sending template message to sender ${senderWhatsApp}...`
       );
       console.log(
         `[NOTIFICATIONS] Using template Content SID: ${templateContentId}`
       );
-      console.log(
-        `[NOTIFICATIONS] NOT sending any template variables (template is static)`
-      );
+      console.log(`[NOTIFICATIONS] Template variable {{1}} payment link`, {
+        paymentPageUrl,
+      });
       await whatsappClient.sendContentTemplate(
         senderWhatsApp,
-        templateContentId
-        // Intentionally NOT passing third parameter - no variables needed
+        templateContentId,
+        { "1": paymentPageUrl }
       );
       console.log(
         `[NOTIFICATIONS] ✅ Sent acceptance notification to sender ${senderWhatsApp} using template ${templateContentId}`

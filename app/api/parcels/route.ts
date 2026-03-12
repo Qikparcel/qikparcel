@@ -29,6 +29,36 @@ function areAddressesSame(address1: string, address2: string): boolean {
   return normalizeAddress(address1) === normalizeAddress(address2);
 }
 
+function validatePreferredPickupTime(
+  preferredPickupTime: unknown
+): string | null | undefined {
+  if (
+    preferredPickupTime === undefined ||
+    preferredPickupTime === null ||
+    preferredPickupTime === ""
+  ) {
+    return null;
+  }
+
+  const value =
+    typeof preferredPickupTime === "string"
+      ? preferredPickupTime.trim()
+      : String(preferredPickupTime);
+
+  if (!value) return null;
+
+  const pickupDate = new Date(value);
+  if (Number.isNaN(pickupDate.getTime())) {
+    throw new Error("Invalid preferred pickup time format");
+  }
+
+  if (pickupDate.getTime() < Date.now()) {
+    throw new Error("Preferred pickup time cannot be in the past");
+  }
+
+  return value;
+}
+
 /**
  * POST /api/parcels
  * Create a new parcel request
@@ -176,6 +206,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let preferredPickupTimeValue: string | null;
+    try {
+      preferredPickupTimeValue = validatePreferredPickupTime(
+        preferred_pickup_time
+      );
+    } catch (error: any) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
     // Create parcel
     const parcelData: ParcelInsert = {
       sender_id: session.user.id,
@@ -192,7 +231,7 @@ export async function POST(request: NextRequest) {
       dimensions: dimensions.trim(),
       estimated_value: valueNum,
       estimated_value_currency: estimated_value_currency || "USD",
-      preferred_pickup_time: preferred_pickup_time || null,
+      preferred_pickup_time: preferredPickupTimeValue,
       status: "pending",
     } as any;
 

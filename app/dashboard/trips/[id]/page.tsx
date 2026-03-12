@@ -374,6 +374,10 @@ export default function TripDetailPage() {
 
   const handleEdit = () => {
     if (!trip) return;
+    if (matches.some((match) => match.status === "accepted")) {
+      toast.error("You cannot edit this trip after a parcel is matched.");
+      return;
+    }
 
     // Parse and initialize address fields from existing trip data
     const originParsed = parseAddressString(trip.origin_address || "");
@@ -708,6 +712,7 @@ export default function TripDetailPage() {
     if (!dateString) return "Not set";
     return formatDate(dateString);
   };
+  const hasAcceptedMatch = matches.some((match) => match.status === "accepted");
 
   return (
     <DashboardLayout>
@@ -729,45 +734,48 @@ export default function TripDetailPage() {
               >
                 {statusConfig[trip.status].label}
               </span>
-              {!isEditing && trip.status === "scheduled" && isCourier && (
-                <>
-                  <button
-                    onClick={handleEdit}
-                    className="px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition"
-                    style={{ borderColor: "#29772F", color: "#29772F" }}
-                  >
-                    Edit Trip
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (
-                        !window.confirm(
-                          "Delete this trip? This cannot be undone."
+              {!isEditing &&
+                trip.status === "scheduled" &&
+                isCourier &&
+                !hasAcceptedMatch && (
+                  <>
+                    <button
+                      onClick={handleEdit}
+                      className="px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-600 rounded-lg hover:bg-primary-50 transition"
+                      style={{ borderColor: "#29772F", color: "#29772F" }}
+                    >
+                      Edit Trip
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            "Delete this trip? This cannot be undone."
+                          )
                         )
-                      )
-                        return;
-                      setDeleting(true);
-                      fetch(`/api/trips/${tripId}`, { method: "DELETE" })
-                        .then(async (res) => {
-                          const data = await res.json();
-                          if (res.ok) {
-                            toast.success("Trip deleted");
-                            router.push("/dashboard");
-                          } else {
-                            toast.error(data.error || "Failed to delete");
-                          }
-                        })
-                        .catch(() => toast.error("Failed to delete trip"))
-                        .finally(() => setDeleting(false));
-                    }}
-                    disabled={deleting}
-                    className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
-                  >
-                    {deleting ? "Deleting…" : "Delete"}
-                  </button>
-                </>
-              )}
+                          return;
+                        setDeleting(true);
+                        fetch(`/api/trips/${tripId}`, { method: "DELETE" })
+                          .then(async (res) => {
+                            const data = await res.json();
+                            if (res.ok) {
+                              toast.success("Trip deleted");
+                              router.push("/dashboard");
+                            } else {
+                              toast.error(data.error || "Failed to delete");
+                            }
+                          })
+                          .catch(() => toast.error("Failed to delete trip"))
+                          .finally(() => setDeleting(false));
+                      }}
+                      disabled={deleting}
+                      className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
+                    >
+                      {deleting ? "Deleting…" : "Delete"}
+                    </button>
+                  </>
+                )}
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
+import { verifyPaidChatAccessForParcel } from "@/lib/chat/access";
 import { notifyChatRecipientOfNewMessage } from "@/lib/matching/notifications";
 
 /**
@@ -45,31 +46,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Thread not found" }, { status: 404 });
     }
 
-    const { data: parcel } = await adminClient
-      .from("parcels")
-      .select("sender_id, matched_trip_id")
-      .eq("id", thread.parcel_id)
-      .single<{ sender_id: string; matched_trip_id: string | null }>();
-
-    if (!parcel) {
-      return NextResponse.json({ error: "Parcel not found" }, { status: 404 });
-    }
-
-    const isSender = parcel.sender_id === userId;
-    let isCourier = false;
-    if (parcel.matched_trip_id) {
-      const { data: trip } = await adminClient
-        .from("trips")
-        .select("courier_id")
-        .eq("id", parcel.matched_trip_id)
-        .single<{ courier_id: string }>();
-      isCourier = trip?.courier_id === userId;
-    }
-
-    if (!isSender && !isCourier) {
+    const access = await verifyPaidChatAccessForParcel(
+      adminClient,
+      thread.parcel_id,
+      userId
+    );
+    if (!access.allowed) {
       return NextResponse.json(
-        { error: "You cannot send messages in this thread" },
-        { status: 403 }
+        { error: access.error },
+        { status: access.status }
       );
     }
 
