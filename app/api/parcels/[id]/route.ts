@@ -455,6 +455,12 @@ export async function PUT(
     const areAddressesSame = (address1: string, address2: string): boolean => {
       return normalizeAddress(address1) === normalizeAddress(address2);
     };
+    const parseNullableNumber = (value: unknown): number | null => {
+      if (value === undefined || value === null || value === "") return null;
+      if (typeof value === "number") return Number.isNaN(value) ? null : value;
+      const parsed = parseFloat(String(value));
+      return Number.isNaN(parsed) ? null : parsed;
+    };
 
     // Validate that pickup and delivery addresses are different
     if (areAddressesSame(pickupAddressValue, deliveryAddressValue)) {
@@ -476,11 +482,15 @@ export async function PUT(
     }
 
     const MAX_WEIGHT_KG = 10;
+    const weightNum = parseNullableNumber(weight_kg);
     if (weight_kg != null && weight_kg !== "") {
-      const w =
-        typeof weight_kg === "number"
-          ? weight_kg
-          : parseFloat(String(weight_kg));
+      const w = weightNum;
+      if (w === null) {
+        return NextResponse.json(
+          { error: "Weight must be a valid number (0 or more)" },
+          { status: 400 }
+        );
+      }
       if (Number.isNaN(w) || w < 0) {
         return NextResponse.json(
           { error: "Weight must be a valid number (0 or more)" },
@@ -608,22 +618,34 @@ export async function PUT(
     }
 
     // Prepare update data
+    const pickupLatitudeValue = parseNullableNumber(pickup_latitude);
+    const pickupLongitudeValue = parseNullableNumber(pickup_longitude);
+    const deliveryLatitudeValue = parseNullableNumber(delivery_latitude);
+    const deliveryLongitudeValue = parseNullableNumber(delivery_longitude);
+    const descriptionValue =
+      typeof description === "string" ? description.trim() || null : null;
+    const dimensionsValue =
+      typeof dimensions === "string" ? dimensions.trim() || null : null;
+    const estimatedValueCurrencyValue =
+      typeof estimated_value_currency === "string" &&
+      estimated_value_currency.trim()
+        ? estimated_value_currency.trim()
+        : "USD";
     const updateData: ParcelUpdate & {
       estimated_value_currency?: string | null;
       preferred_pickup_time?: string | null;
     } = {
       pickup_address: pickupAddressValue,
-      pickup_latitude: pickup_latitude || null,
-      pickup_longitude: pickup_longitude || null,
+      pickup_latitude: pickupLatitudeValue,
+      pickup_longitude: pickupLongitudeValue,
       delivery_address: deliveryAddressValue,
-      delivery_latitude: delivery_latitude || null,
-      delivery_longitude: delivery_longitude || null,
-      description: description || null,
-      weight_kg: weight_kg || null,
-      dimensions:
-        typeof dimensions === "string" ? dimensions.trim() : dimensions,
+      delivery_latitude: deliveryLatitudeValue,
+      delivery_longitude: deliveryLongitudeValue,
+      description: descriptionValue,
+      weight_kg: weightNum,
+      dimensions: dimensionsValue,
       estimated_value: valueNum,
-      estimated_value_currency: estimated_value_currency || "USD",
+      estimated_value_currency: estimatedValueCurrencyValue,
       preferred_pickup_time: preferredPickupTimeValue,
       updated_at: new Date().toISOString(),
     };
