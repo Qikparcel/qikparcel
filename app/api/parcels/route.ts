@@ -268,79 +268,79 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    if (!parcelPhoto) {
+      return NextResponse.json(
+        { error: "Parcel picture is required" },
+        { status: 400 }
+      );
+    }
+
     let parcelPhotoPath: string | null = null;
-    if (parcelPhoto) {
-      const allowedTypes = [
-        "image/jpeg",
-        "image/png",
-        "image/jpg",
-        "image/webp",
-      ];
-      if (!allowedTypes.includes(parcelPhoto.type)) {
-        return NextResponse.json(
-          { error: "Invalid image type. Allowed: JPEG, PNG, WEBP." },
-          { status: 400 }
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    if (!allowedTypes.includes(parcelPhoto.type)) {
+      return NextResponse.json(
+        { error: "Invalid image type. Allowed: JPEG, PNG, WEBP." },
+        { status: 400 }
+      );
+    }
+    const maxSize = 8 * 1024 * 1024; // 8MB
+    if (parcelPhoto.size > maxSize) {
+      return NextResponse.json(
+        { error: "Image size exceeds 8MB limit." },
+        { status: 400 }
+      );
+    }
+
+    const safeFileName = parcelPhoto.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+    parcelPhotoPath = `${session.user.id}/${Date.now()}-${safeFileName}`;
+    const photoBuffer = Buffer.from(await parcelPhoto.arrayBuffer());
+
+    const uploadWithBucket = async () =>
+      adminClient.storage
+        .from("parcel-photos")
+        .upload(parcelPhotoPath as string, photoBuffer, {
+          contentType: parcelPhoto.type,
+          upsert: false,
+        });
+
+    let { error: uploadError } = await uploadWithBucket();
+
+    // Self-heal missing bucket in environments where migration wasn't run yet.
+    if ((uploadError as any)?.statusCode === "404") {
+      const { error: createBucketError } =
+        await adminClient.storage.createBucket("parcel-photos", {
+          public: false,
+          fileSizeLimit: 8 * 1024 * 1024,
+          allowedMimeTypes: [
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "image/webp",
+          ],
+        });
+
+      if (!createBucketError) {
+        const retry = await uploadWithBucket();
+        uploadError = retry.error;
+      } else {
+        console.error(
+          "Error creating parcel-photos bucket:",
+          createBucketError
         );
       }
-      const maxSize = 8 * 1024 * 1024; // 8MB
-      if (parcelPhoto.size > maxSize) {
-        return NextResponse.json(
-          { error: "Image size exceeds 8MB limit." },
-          { status: 400 }
-        );
-      }
+    }
 
-      const safeFileName = parcelPhoto.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-      parcelPhotoPath = `${session.user.id}/${Date.now()}-${safeFileName}`;
-      const photoBuffer = Buffer.from(await parcelPhoto.arrayBuffer());
-
-      const uploadWithBucket = async () =>
-        adminClient.storage
-          .from("parcel-photos")
-          .upload(parcelPhotoPath as string, photoBuffer, {
-            contentType: parcelPhoto.type,
-            upsert: false,
-          });
-
-      let { error: uploadError } = await uploadWithBucket();
-
-      // Self-heal missing bucket in environments where migration wasn't run yet.
-      if ((uploadError as any)?.statusCode === "404") {
-        const { error: createBucketError } =
-          await adminClient.storage.createBucket("parcel-photos", {
-            public: false,
-            fileSizeLimit: 8 * 1024 * 1024,
-            allowedMimeTypes: [
-              "image/jpeg",
-              "image/jpg",
-              "image/png",
-              "image/webp",
-            ],
-          });
-
-        if (!createBucketError) {
-          const retry = await uploadWithBucket();
-          uploadError = retry.error;
-        } else {
-          console.error(
-            "Error creating parcel-photos bucket:",
-            createBucketError
-          );
-        }
-      }
-
-      if (uploadError) {
-        console.error("Error uploading parcel photo:", uploadError);
-        return NextResponse.json(
-          {
-            error: "Failed to upload parcel photo",
-            details:
-              uploadError.message ||
-              "Storage bucket missing or inaccessible. Please run latest migrations.",
-          },
-          { status: 500 }
-        );
-      }
+    if (uploadError) {
+      console.error("Error uploading parcel photo:", uploadError);
+      return NextResponse.json(
+        {
+          error: "Failed to upload parcel photo",
+          details:
+            uploadError.message ||
+            "Storage bucket missing or inaccessible. Please run latest migrations.",
+        },
+        { status: 500 }
+      );
     }
 
     // Create parcel

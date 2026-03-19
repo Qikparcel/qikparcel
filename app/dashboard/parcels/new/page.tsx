@@ -309,6 +309,11 @@ export default function CreateParcelPage() {
       return;
     }
 
+    if (!parcelPhoto) {
+      toast.error("Parcel picture is required");
+      return;
+    }
+
     if (!formData.weight_kg.trim()) {
       toast.error("Weight is required");
       return;
@@ -682,7 +687,7 @@ export default function CreateParcelPage() {
                 htmlFor="parcel_photo"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Parcel Picture
+                Parcel Picture <span className="text-red-500">*</span>
               </label>
               <input
                 type="file"
@@ -690,10 +695,11 @@ export default function CreateParcelPage() {
                 name="parcel_photo"
                 accept="image/jpeg,image/png,image/jpg,image/webp"
                 onChange={handleParcelPhotoChange}
+                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
               />
               <p className="mt-1 text-xs text-gray-500">
-                Optional. Upload one picture of the parcel (max 8MB).
+                Upload one picture of the parcel (max 8MB).
               </p>
               {parcelPhoto && (
                 <p className="mt-1 text-xs text-green-600">

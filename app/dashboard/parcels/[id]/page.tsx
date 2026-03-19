@@ -86,6 +86,7 @@ export default function ParcelDetailPage() {
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editParcelPhoto, setEditParcelPhoto] = useState<File | null>(null);
 
   // Edit form fields
   const [pickupStreetAddress, setPickupStreetAddress] = useState("");
@@ -355,6 +356,7 @@ export default function ParcelDetailPage() {
     setDeliveryPostcode(deliveryParsed.postcode);
     setDeliveryCountry(deliveryParsed.country);
 
+    setEditParcelPhoto(null);
     setIsEditing(true);
   };
 
@@ -399,6 +401,33 @@ export default function ParcelDetailPage() {
     setDeliveryState("");
     setDeliveryPostcode("");
     setDeliveryCountry("");
+    setEditParcelPhoto(null);
+  };
+
+  const handleEditParcelPhotoChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setEditParcelPhoto(null);
+      return;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please upload a JPEG, PNG, or WEBP image");
+      e.target.value = "";
+      return;
+    }
+
+    const maxSize = 8 * 1024 * 1024; // 8MB
+    if (file.size > maxSize) {
+      toast.error("Image size must be less than 8MB");
+      e.target.value = "";
+      return;
+    }
+
+    setEditParcelPhoto(file);
   };
 
   const buildAddressString = (
@@ -575,23 +604,31 @@ export default function ParcelDetailPage() {
         deliveryCountry
       );
 
+      const payload = new FormData();
+      payload.append("pickup_address", pickupAddress);
+      payload.append("delivery_address", deliveryAddress);
+      payload.append("description", formData.description.trim() || "");
+      payload.append("weight_kg", formData.weight_kg || "");
+      payload.append("dimensions", formData.dimensions.trim());
+      payload.append(
+        "estimated_value",
+        String(parseFloat(formData.estimated_value))
+      );
+      payload.append(
+        "estimated_value_currency",
+        formData.estimated_value_currency
+      );
+      payload.append(
+        "preferred_pickup_time",
+        formData.preferred_pickup_time.trim()
+          ? formData.preferred_pickup_time
+          : ""
+      );
+      if (editParcelPhoto) payload.append("parcel_photo", editParcelPhoto);
+
       const response = await fetch(`/api/parcels/${parcelId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pickup_address: pickupAddress,
-          delivery_address: deliveryAddress,
-          description: formData.description.trim() || null,
-          weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
-          dimensions: formData.dimensions.trim(),
-          estimated_value: parseFloat(formData.estimated_value),
-          estimated_value_currency: formData.estimated_value_currency,
-          preferred_pickup_time: formData.preferred_pickup_time.trim()
-            ? formData.preferred_pickup_time
-            : null,
-        }),
+        body: payload,
       });
 
       const data = await response.json();
@@ -930,6 +967,48 @@ export default function ParcelDetailPage() {
                         rows={4}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                       />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="edit_parcel_photo"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Parcel Picture
+                      </label>
+                      {(parcel as any).parcel_photo_url && (
+                        <a
+                          href={(parcel as any).parcel_photo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block mb-2"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={(parcel as any).parcel_photo_url}
+                            alt="Current parcel"
+                            className="w-20 h-20 object-cover rounded-md border border-gray-200"
+                          />
+                        </a>
+                      )}
+                      <input
+                        type="file"
+                        id="edit_parcel_photo"
+                        name="edit_parcel_photo"
+                        accept="image/jpeg,image/png,image/jpg,image/webp"
+                        onChange={handleEditParcelPhotoChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Upload a new picture to replace the current parcel
+                        photo.
+                      </p>
+                      {editParcelPhoto && (
+                        <p className="mt-1 text-xs text-green-600">
+                          Selected: {editParcelPhoto.name} (
+                          {(editParcelPhoto.size / 1024 / 1024).toFixed(2)} MB)
+                        </p>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
