@@ -28,7 +28,7 @@ export default function SignUpPage() {
   const [state, setState] = useState("");
   const [postcode, setPostcode] = useState("");
   const [country, setCountry] = useState("");
-  const [email, setEmail] = useState(""); // For sender only
+  const [email, setEmail] = useState("");
   const [documentFile, setDocumentFile] = useState<File | null>(null); // ID document - courier only
   const [documentType, setDocumentType] = useState("national_id");
   const [proofOfAddressFile, setProofOfAddressFile] = useState<File | null>(
@@ -103,7 +103,7 @@ export default function SignUpPage() {
           state: data.state,
           postcode: data.postcode,
           country: data.country,
-          email: data.role === "sender" ? data.email : undefined,
+          email: data.email,
           documentPath: data.documentPath,
           documentType: data.documentType,
           proofOfAddressPath: data.proofOfAddressPath,
@@ -161,7 +161,7 @@ export default function SignUpPage() {
           state,
           postcode,
           country,
-          email: role === "sender" ? email : undefined,
+          email,
           documentPath,
           documentType,
         }),
@@ -254,9 +254,13 @@ export default function SignUpPage() {
       }
 
       // Validate role-specific fields
-      if (role === "sender") {
+      if (role === "sender" || role === "courier") {
         if (!email || !email.trim()) {
-          setError("Email address is required for senders");
+          setError(
+            role === "courier"
+              ? "Email address is required for couriers"
+              : "Email address is required for senders"
+          );
           setLoading(false);
           return;
         }
@@ -391,7 +395,7 @@ export default function SignUpPage() {
           state: state.trim(),
           postcode: postcode.trim(),
           country: country.trim(),
-          email: role === "sender" ? email.trim() : undefined,
+          email: email.trim(),
           documentType: documentType || undefined,
         }),
       });
@@ -762,7 +766,7 @@ export default function SignUpPage() {
               />
             </div>
 
-            {role === "sender" && (
+            {(role === "sender" || role === "courier") && (
               <div>
                 <label
                   htmlFor="email"

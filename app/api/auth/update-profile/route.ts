@@ -43,14 +43,64 @@ export async function POST(request: NextRequest) {
 
     const adminSupabase = createSupabaseAdminClient();
 
+    // Check if profile exists first
+    const { data: existingProfile, error: checkError } = await (
+      adminSupabase.from("profiles") as any
+    )
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error("Error checking profile existence:", checkError);
+      return NextResponse.json(
+        { error: `Failed to check profile: ${checkError.message}` },
+        { status: 500 }
+      );
+    }
+
+    const targetRole = role ?? existingProfile?.role;
+    const providedEmail =
+      email === undefined || email === null ? undefined : String(email).trim();
+    const existingEmail =
+      existingProfile?.email == null
+        ? ""
+        : String(existingProfile.email).trim();
+    const effectiveEmail = providedEmail ?? existingEmail;
+    if (targetRole === "courier" && !effectiveEmail) {
+      return NextResponse.json(
+        { error: "Email address is required for couriers" },
+        { status: 400 }
+      );
+    }
+
+    const isSenderOrCourier =
+      existingProfile?.role === "sender" || existingProfile?.role === "courier";
+
+    // Legal name is immutable for existing sender/courier accounts.
+    if (
+      existingProfile &&
+      isSenderOrCourier &&
+      fullName !== undefined &&
+      fullName !== null &&
+      fullName.trim() !== (existingProfile.full_name || "").trim()
+    ) {
+      return NextResponse.json(
+        {
+          error: "Legal name cannot be changed for sender or courier accounts.",
+        },
+        { status: 403 }
+      );
+    }
+
     // Prepare update data
     const updateData: any = {
       updated_at: new Date().toISOString(),
     };
 
     // Always update these fields if provided (even if empty string for optional fields)
-    // These fields apply to both sender and courier
-    if (fullName !== undefined && fullName !== null)
+    // full_name is immutable for existing sender/courier accounts.
+    if (fullName !== undefined && fullName !== null && !isSenderOrCourier)
       updateData.full_name = fullName.trim();
     if (role !== undefined && role !== null) updateData.role = role;
     if (streetAddress !== undefined && streetAddress !== null)
@@ -73,22 +123,6 @@ export async function POST(request: NextRequest) {
     ) {
       updateData.phone_number = String(phoneNumber).trim();
       updateData.whatsapp_number = String(phoneNumber).trim();
-    }
-
-    // Check if profile exists first
-    const { data: existingProfile, error: checkError } = await (
-      adminSupabase.from("profiles") as any
-    )
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (checkError) {
-      console.error("Error checking profile existence:", checkError);
-      return NextResponse.json(
-        { error: `Failed to check profile: ${checkError.message}` },
-        { status: 500 }
-      );
     }
 
     console.log("Profile check result:", {
