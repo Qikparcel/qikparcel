@@ -13,6 +13,7 @@ export default function CreateParcelPage() {
   const [loading, setLoading] = useState(false);
   const [roleCheckLoading, setRoleCheckLoading] = useState(true);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [parcelPhoto, setParcelPhoto] = useState<File | null>(null);
 
   // Pickup address fields
   const [pickupStreetAddress, setPickupStreetAddress] = useState("");
@@ -389,27 +390,47 @@ export default function CreateParcelPage() {
     setLoading(true);
 
     try {
+      const payload = new FormData();
+      payload.append("pickup_address", pickupAddress);
+      payload.append(
+        "pickup_latitude",
+        String(pickupCoordinates?.latitude || "")
+      );
+      payload.append(
+        "pickup_longitude",
+        String(pickupCoordinates?.longitude || "")
+      );
+      payload.append("pickup_country", pickupCountry.trim() || "");
+      payload.append("delivery_address", deliveryAddress);
+      payload.append(
+        "delivery_latitude",
+        String(deliveryCoordinates?.latitude || "")
+      );
+      payload.append(
+        "delivery_longitude",
+        String(deliveryCoordinates?.longitude || "")
+      );
+      payload.append("delivery_country", deliveryCountry.trim() || "");
+      payload.append("description", formData.description.trim());
+      payload.append("weight_kg", String(parseFloat(formData.weight_kg)));
+      payload.append("dimensions", formData.dimensions.trim());
+      payload.append(
+        "estimated_value",
+        String(parseFloat(formData.estimated_value))
+      );
+      payload.append(
+        "estimated_value_currency",
+        formData.estimated_value_currency
+      );
+      payload.append(
+        "preferred_pickup_time",
+        formData.preferred_pickup_time.trim() || ""
+      );
+      if (parcelPhoto) payload.append("parcel_photo", parcelPhoto);
+
       const response = await fetch("/api/parcels", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          pickup_address: pickupAddress,
-          pickup_latitude: pickupCoordinates?.latitude || null,
-          pickup_longitude: pickupCoordinates?.longitude || null,
-          pickup_country: pickupCountry.trim() || null,
-          delivery_address: deliveryAddress,
-          delivery_latitude: deliveryCoordinates?.latitude || null,
-          delivery_longitude: deliveryCoordinates?.longitude || null,
-          delivery_country: deliveryCountry.trim() || null,
-          description: formData.description.trim(),
-          weight_kg: parseFloat(formData.weight_kg),
-          dimensions: formData.dimensions.trim(),
-          estimated_value: parseFloat(formData.estimated_value),
-          estimated_value_currency: formData.estimated_value_currency,
-          preferred_pickup_time: formData.preferred_pickup_time || null,
-        }),
+        body: payload,
       });
 
       const data = await response.json();
@@ -437,6 +458,30 @@ export default function CreateParcelPage() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleParcelPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setParcelPhoto(null);
+      return;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Please upload a JPEG, PNG, or WEBP image");
+      e.target.value = "";
+      return;
+    }
+
+    const maxSize = 8 * 1024 * 1024; // 8MB
+    if (file.size > maxSize) {
+      toast.error("Image size must be less than 8MB");
+      e.target.value = "";
+      return;
+    }
+
+    setParcelPhoto(file);
   };
 
   if (roleCheckLoading) {
@@ -630,6 +675,32 @@ export default function CreateParcelPage() {
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
               />
+            </div>
+
+            <div>
+              <label
+                htmlFor="parcel_photo"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Parcel Picture
+              </label>
+              <input
+                type="file"
+                id="parcel_photo"
+                name="parcel_photo"
+                accept="image/jpeg,image/png,image/jpg,image/webp"
+                onChange={handleParcelPhotoChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Optional. Upload one picture of the parcel (max 8MB).
+              </p>
+              {parcelPhoto && (
+                <p className="mt-1 text-xs text-green-600">
+                  Selected: {parcelPhoto.name} (
+                  {(parcelPhoto.size / 1024 / 1024).toFixed(2)} MB)
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

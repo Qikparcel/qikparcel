@@ -299,10 +299,21 @@ export async function GET(
       matchedCourierId = tripRow.data?.courier_id;
     }
 
+    let parcelPhotoUrl: string | null = null;
+    if (parcel.parcel_photo_path) {
+      const { data: signed } = await adminClient.storage
+        .from("parcel-photos")
+        .createSignedUrl(parcel.parcel_photo_path, 3600);
+      parcelPhotoUrl = signed?.signedUrl ?? null;
+    }
+
     // isOwner: true only when viewer is the parcel sender (senders see actions; admins/couriers do not)
     return NextResponse.json({
       success: true,
-      parcel,
+      parcel: {
+        ...parcel,
+        parcel_photo_url: parcelPhotoUrl,
+      },
       statusHistory: responseStatusHistory,
       matchedCourier: matchedCourier
         ? { ...matchedCourier, id: matchedCourierId }
