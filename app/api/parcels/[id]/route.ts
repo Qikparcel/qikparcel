@@ -385,7 +385,39 @@ export async function PUT(
       );
     }
 
-    const body = await request.json();
+    const adminClient = createSupabaseAdminClient();
+    const contentType = request.headers.get("content-type") || "";
+    let body: Record<string, unknown> = {};
+    let parcelPhoto: File | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      const readValue = (key: string): string | null => {
+        const value = formData.get(key);
+        if (typeof value !== "string") return null;
+        const trimmed = value.trim();
+        return trimmed === "" ? null : trimmed;
+      };
+      body = {
+        pickup_address: readValue("pickup_address"),
+        pickup_latitude: readValue("pickup_latitude"),
+        pickup_longitude: readValue("pickup_longitude"),
+        delivery_address: readValue("delivery_address"),
+        delivery_latitude: readValue("delivery_latitude"),
+        delivery_longitude: readValue("delivery_longitude"),
+        description: readValue("description"),
+        weight_kg: readValue("weight_kg"),
+        dimensions: readValue("dimensions"),
+        estimated_value: readValue("estimated_value"),
+        estimated_value_currency: readValue("estimated_value_currency"),
+        preferred_pickup_time: readValue("preferred_pickup_time"),
+      };
+      const file = formData.get("parcel_photo");
+      parcelPhoto = file instanceof File && file.size > 0 ? file : null;
+    } else {
+      body = await request.json();
+    }
+
     const {
       pickup_address,
       pickup_latitude,
@@ -408,6 +440,8 @@ export async function PUT(
         { status: 400 }
       );
     }
+    const pickupAddressValue = String(pickup_address).trim();
+    const deliveryAddressValue = String(delivery_address).trim();
 
     // Normalize address for comparison
     const normalizeAddress = (address: string): string => {
@@ -423,7 +457,7 @@ export async function PUT(
     };
 
     // Validate that pickup and delivery addresses are different
-    if (areAddressesSame(pickup_address, delivery_address)) {
+    if (areAddressesSame(pickupAddressValue, deliveryAddressValue)) {
       return NextResponse.json(
         { error: "Pickup and delivery addresses cannot be the same" },
         { status: 400 }
@@ -444,7 +478,9 @@ export async function PUT(
     const MAX_WEIGHT_KG = 10;
     if (weight_kg != null && weight_kg !== "") {
       const w =
-        typeof weight_kg === "number" ? weight_kg : parseFloat(weight_kg);
+        typeof weight_kg === "number"
+          ? weight_kg
+          : parseFloat(String(weight_kg));
       if (Number.isNaN(w) || w < 0) {
         return NextResponse.json(
           { error: "Weight must be a valid number (0 or more)" },
@@ -470,7 +506,7 @@ export async function PUT(
     const valueNum =
       typeof estimated_value === "number"
         ? estimated_value
-        : parseFloat(estimated_value);
+        : parseFloat(String(estimated_value));
     if (Number.isNaN(valueNum) || valueNum < 0) {
       return NextResponse.json(
         { error: "Estimated value must be a valid number (0 or more)" },
@@ -496,15 +532,90 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    let parcelPhotoPath: string | undefined;
+    if (parcelPhoto) {
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/jpg",
+        "image/webp",
+      ];
+      if (!allowedTypes.includes(parcelPhoto.type)) {
+        return NextResponse.json(
+          { error: "Invalid image type. Allowed: JPEG, PNG, WEBP." },
+          { status: 400 }
+        );
+      }
+      const maxSize = 8 * 1024 * 1024; // 8MB
+      if (parcelPhoto.size > maxSize) {
+        return NextResponse.json(
+          { error: "Image size exceeds 8MB limit." },
+          { status: 400 }
+        );
+      }
+
+      const safeFileName = parcelPhoto.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      parcelPhotoPath = `${session.user.id}/${Date.now()}-${safeFileName}`;
+      const photoBuffer = Buffer.from(await parcelPhoto.arrayBuffer());
+
+      const uploadWithBucket = async () =>
+        adminClient.storage
+          .from("parcel-photos")
+          .upload(parcelPhotoPath as string, photoBuffer, {
+            contentType: parcelPhoto.type,
+            upsert: false,
+          });
+
+      let { error: uploadError } = await uploadWithBucket();
+
+      // Self-heal missing bucket in environments where migration wasn't run yet.
+      if ((uploadError as any)?.statusCode === "404") {
+        const { error: createBucketError } =
+          await adminClient.storage.createBucket("parcel-photos", {
+            public: false,
+            fileSizeLimit: 8 * 1024 * 1024,
+            allowedMimeTypes: [
+              "image/jpeg",
+              "image/jpg",
+              "image/png",
+              "image/webp",
+            ],
+          });
+
+        if (!createBucketError) {
+          const retry = await uploadWithBucket();
+          uploadError = retry.error;
+        } else {
+          console.error(
+            "Error creating parcel-photos bucket:",
+            createBucketError
+          );
+        }
+      }
+
+      if (uploadError) {
+        console.error("Error uploading parcel photo:", uploadError);
+        return NextResponse.json(
+          {
+            error: "Failed to upload parcel photo",
+            details:
+              uploadError.message ||
+              "Storage bucket missing or inaccessible. Please run latest migrations.",
+          },
+          { status: 500 }
+        );
+      }
+    }
+
     // Prepare update data
     const updateData: ParcelUpdate & {
       estimated_value_currency?: string | null;
       preferred_pickup_time?: string | null;
     } = {
-      pickup_address,
+      pickup_address: pickupAddressValue,
       pickup_latitude: pickup_latitude || null,
       pickup_longitude: pickup_longitude || null,
-      delivery_address,
+      delivery_address: deliveryAddressValue,
       delivery_latitude: delivery_latitude || null,
       delivery_longitude: delivery_longitude || null,
       description: description || null,
@@ -516,6 +627,9 @@ export async function PUT(
       preferred_pickup_time: preferredPickupTimeValue,
       updated_at: new Date().toISOString(),
     };
+    if (parcelPhotoPath) {
+      updateData.parcel_photo_path = parcelPhotoPath;
+    }
 
     // Update parcel
     const { data: updatedParcel, error: updateError } = await supabase
@@ -537,8 +651,6 @@ export async function PUT(
     // If parcel was matched, invalidate existing matches and clear matched_trip_id
     // Only if parcel is still in 'pending' status (can't change matched/accepted parcels)
     if (existingParcel.status === "pending") {
-      const adminClient = createSupabaseAdminClient();
-
       // Clear matched_trip_id if it was set
       if (existingParcel.matched_trip_id) {
         console.log(
@@ -635,7 +747,6 @@ export async function PUT(
     console.log(
       `[PARCEL UPDATE] Triggering matching for updated parcel: ${parcelId}`
     );
-    const adminClient = createSupabaseAdminClient();
     findAndCreateMatchesForParcel(adminClient, parcelId)
       .then((result) => {
         console.log(
