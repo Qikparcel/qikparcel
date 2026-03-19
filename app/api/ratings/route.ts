@@ -5,6 +5,15 @@ import { Database } from "@/types/database";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
+function isRatingsTableMissing(error: unknown): boolean {
+  const message =
+    (error as { message?: string } | null)?.message?.toLowerCase() || "";
+  return (
+    message.includes("could not find the table") &&
+    message.includes("public.ratings")
+  );
+}
+
 /**
  * GET /api/ratings?parcel_id=xxx | ?user_id=xxx
  * - parcel_id: list ratings for a parcel (to check if user already rated, show reviews)
@@ -78,6 +87,15 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error("Ratings fetch error:", error);
+        if (isRatingsTableMissing(error)) {
+          return NextResponse.json(
+            {
+              error:
+                "Ratings feature is not initialized in this environment. Please run latest database migrations.",
+            },
+            { status: 503 }
+          );
+        }
         return NextResponse.json(
           { error: "Failed to fetch ratings" },
           { status: 500 }
@@ -144,6 +162,15 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error("Ratings fetch error:", error);
+        if (isRatingsTableMissing(error)) {
+          return NextResponse.json(
+            {
+              error:
+                "Ratings feature is not initialized in this environment. Please run latest database migrations.",
+            },
+            { status: 503 }
+          );
+        }
         return NextResponse.json(
           { error: "Failed to fetch ratings" },
           { status: 500 }
@@ -395,6 +422,15 @@ export async function POST(request: NextRequest) {
 
     if (insertErr) {
       console.error("Rating insert error:", insertErr);
+      if (isRatingsTableMissing(insertErr)) {
+        return NextResponse.json(
+          {
+            error:
+              "Ratings feature is not initialized in this environment. Please run latest database migrations.",
+          },
+          { status: 503 }
+        );
+      }
       if ((insertErr as { code?: string }).code === "23505") {
         return NextResponse.json(
           { error: "You have already rated this delivery" },

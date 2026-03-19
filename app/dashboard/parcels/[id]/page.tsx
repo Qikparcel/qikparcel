@@ -1115,6 +1115,29 @@ export default function ParcelDetailPage() {
                     </div>
                   )}
 
+                  {(parcel as any).parcel_photo_url && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">
+                        Parcel Picture
+                      </dt>
+                      <dd className="mt-2">
+                        <a
+                          href={(parcel as any).parcel_photo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={(parcel as any).parcel_photo_url}
+                            alt="Parcel"
+                            className="w-28 h-28 object-cover rounded-md border border-gray-200"
+                          />
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-4">
                     {parcel.weight_kg && (
                       <div>

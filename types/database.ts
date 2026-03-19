@@ -86,6 +86,7 @@ export interface Database {
           delivery_longitude: number | null;
           delivery_country: string | null;
           description: string | null;
+          parcel_photo_path: string | null;
           weight_kg: number | null;
           dimensions: string | null;
           estimated_value: number | null;
@@ -112,6 +113,7 @@ export interface Database {
           delivery_longitude?: number | null;
           delivery_country?: string | null;
           description?: string | null;
+          parcel_photo_path?: string | null;
           weight_kg?: number | null;
           dimensions?: string | null;
           estimated_value?: number | null;
@@ -138,6 +140,7 @@ export interface Database {
           delivery_longitude?: number | null;
           delivery_country?: string | null;
           description?: string | null;
+          parcel_photo_path?: string | null;
           weight_kg?: number | null;
           dimensions?: string | null;
           estimated_value?: number | null;
