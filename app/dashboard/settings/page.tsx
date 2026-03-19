@@ -177,8 +177,12 @@ export default function SettingsPage() {
 
   const handleSavePersonal = async () => {
     if (!profile) return;
-    if (!fullNameEdit?.trim()) {
+    if (profile.role === "admin" && !fullNameEdit?.trim()) {
       toast.error("Full name is required");
+      return;
+    }
+    if (profile.role === "courier" && !emailEdit?.trim()) {
+      toast.error("Email address is required for couriers");
       return;
     }
     setSavingPersonal(true);
@@ -197,7 +201,9 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: session.user.id,
-          fullName: fullNameEdit.trim(),
+          ...(profile.role === "admin"
+            ? { fullName: fullNameEdit.trim() }
+            : {}),
           email: emailEdit?.trim() || null,
           phoneNumber: phoneNumberEdit?.trim() || null,
         }),
@@ -353,6 +359,7 @@ export default function SettingsPage() {
 
   const roleInfo =
     roleConfig[profile.role as keyof typeof roleConfig] || roleConfig.sender;
+  const canEditLegalName = profile.role === "admin";
 
   return (
     <DashboardLayout>
@@ -419,29 +426,44 @@ export default function SettingsPage() {
                     htmlFor="fullName"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    Full Name *
+                    Legal Name
                   </label>
                   <input
                     id="fullName"
                     type="text"
                     value={fullNameEdit}
-                    onChange={(e) => setFullNameEdit(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
-                    placeholder="Your full name"
+                    onChange={(e) => {
+                      if (canEditLegalName) setFullNameEdit(e.target.value);
+                    }}
+                    disabled={!canEditLegalName}
+                    readOnly={!canEditLegalName}
+                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg text-black ${
+                      canEditLegalName
+                        ? "focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        : "bg-gray-100 cursor-not-allowed"
+                    }`}
+                    placeholder="Your legal name"
                   />
+                  {!canEditLegalName && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Legal name cannot be changed for sender and courier
+                      accounts.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label
                     htmlFor="email"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    Email
+                    Email {profile.role === "courier" && "*"}
                   </label>
                   <input
                     id="email"
                     type="email"
                     value={emailEdit}
                     onChange={(e) => setEmailEdit(e.target.value)}
+                    required={profile.role === "courier"}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                     placeholder="your@email.com"
                   />

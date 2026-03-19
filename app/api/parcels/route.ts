@@ -160,24 +160,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (
+      !description ||
+      typeof description !== "string" ||
+      !description.trim()
+    ) {
+      return NextResponse.json(
+        { error: "Description is required" },
+        { status: 400 }
+      );
+    }
+
     const MAX_WEIGHT_KG = 10;
-    if (weight_kg != null && weight_kg !== "") {
-      const w =
-        typeof weight_kg === "number" ? weight_kg : parseFloat(weight_kg);
-      if (Number.isNaN(w) || w < 0) {
-        return NextResponse.json(
-          { error: "Weight must be a valid number (0 or more)" },
-          { status: 400 }
-        );
-      }
-      if (w > MAX_WEIGHT_KG) {
-        return NextResponse.json(
-          {
-            error: `Maximum package weight is ${MAX_WEIGHT_KG} kg. Please enter ${MAX_WEIGHT_KG} kg or less.`,
-          },
-          { status: 400 }
-        );
-      }
+    if (weight_kg == null || weight_kg === "") {
+      return NextResponse.json(
+        { error: "Weight is required" },
+        { status: 400 }
+      );
+    }
+    const weightNum =
+      typeof weight_kg === "number" ? weight_kg : parseFloat(weight_kg);
+    if (Number.isNaN(weightNum) || weightNum < 0) {
+      return NextResponse.json(
+        { error: "Weight must be a valid number (0 or more)" },
+        { status: 400 }
+      );
+    }
+    if (weightNum > MAX_WEIGHT_KG) {
+      return NextResponse.json(
+        {
+          error: `Maximum package weight is ${MAX_WEIGHT_KG} kg. Please enter ${MAX_WEIGHT_KG} kg or less.`,
+        },
+        { status: 400 }
+      );
     }
 
     if (estimated_value == null || estimated_value === "") {
@@ -226,8 +241,8 @@ export async function POST(request: NextRequest) {
       delivery_latitude: delivery_latitude || null,
       delivery_longitude: delivery_longitude || null,
       delivery_country: delivery_country || null,
-      description: description || null,
-      weight_kg: weight_kg || null,
+      description: description.trim(),
+      weight_kg: weightNum,
       dimensions: dimensions.trim(),
       estimated_value: valueNum,
       estimated_value_currency: estimated_value_currency || "USD",

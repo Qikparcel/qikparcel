@@ -51,6 +51,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (role === "courier") {
+      if (!email || !String(email).trim()) {
+        return NextResponse.json(
+          { error: "Email address is required for couriers" },
+          { status: 400 }
+        );
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(String(email).trim())) {
+        return NextResponse.json(
+          { error: "Please enter a valid email address" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Normalize phone number to match how it was stored
     const formattedPhone = normalizePhoneNumber(phoneNumber);
 

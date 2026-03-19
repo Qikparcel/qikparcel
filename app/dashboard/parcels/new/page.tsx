@@ -303,18 +303,28 @@ export default function CreateParcelPage() {
       return;
     }
 
-    const weightNum = formData.weight_kg.trim()
-      ? parseFloat(formData.weight_kg)
-      : null;
-    if (weightNum != null && !Number.isNaN(weightNum)) {
-      if (weightNum < 0) {
-        toast.error("Weight must be 0 or more");
-        return;
-      }
-      if (weightNum > 10) {
-        toast.error("Maximum package weight is 10 kg");
-        return;
-      }
+    if (!formData.description.trim()) {
+      toast.error("Description is required");
+      return;
+    }
+
+    if (!formData.weight_kg.trim()) {
+      toast.error("Weight is required");
+      return;
+    }
+
+    const weightNum = parseFloat(formData.weight_kg);
+    if (Number.isNaN(weightNum)) {
+      toast.error("Weight must be a valid number");
+      return;
+    }
+    if (weightNum < 0) {
+      toast.error("Weight must be 0 or more");
+      return;
+    }
+    if (weightNum > 10) {
+      toast.error("Maximum package weight is 10 kg");
+      return;
     }
 
     if (!formData.estimated_value.trim()) {
@@ -393,8 +403,8 @@ export default function CreateParcelPage() {
           delivery_latitude: deliveryCoordinates?.latitude || null,
           delivery_longitude: deliveryCoordinates?.longitude || null,
           delivery_country: deliveryCountry.trim() || null,
-          description: formData.description.trim() || null,
-          weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
+          description: formData.description.trim(),
+          weight_kg: parseFloat(formData.weight_kg),
           dimensions: formData.dimensions.trim(),
           estimated_value: parseFloat(formData.estimated_value),
           estimated_value_currency: formData.estimated_value_currency,
@@ -605,7 +615,7 @@ export default function CreateParcelPage() {
                 htmlFor="description"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Description{" "}
+                Description <span className="text-red-500">*</span>{" "}
                 <span className="text-gray-500 font-normal">
                   (e.g., goods box, electronics, documents)
                 </span>
@@ -617,6 +627,7 @@ export default function CreateParcelPage() {
                 onChange={handleChange}
                 placeholder="e.g., goods box, electronics, documents, clothing, etc."
                 rows={4}
+                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
               />
             </div>
@@ -627,7 +638,7 @@ export default function CreateParcelPage() {
                   htmlFor="weight_kg"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Weight (kg)
+                  Weight (kg) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -639,10 +650,11 @@ export default function CreateParcelPage() {
                   step="0.1"
                   min="0"
                   max="10"
+                  required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-black"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Optional. Maximum 10 kg per package.
+                  Maximum 10 kg per package.
                 </p>
               </div>
 

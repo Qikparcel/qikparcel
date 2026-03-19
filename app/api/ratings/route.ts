@@ -324,17 +324,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: match } = await adminClient
+    const { data: acceptedMatch } = await adminClient
       .from("parcel_trip_matches")
       .select("id")
       .eq("parcel_id", parcel_id)
       .eq("trip_id", parcel.matched_trip_id)
       .eq("status", "accepted")
-      .single<{ id: string }>();
+      .maybeSingle<{ id: string }>();
 
-    if (!match) {
+    // Fallback for legacy/inconsistent rows where the accepted flag is missing
+    // but parcel->trip linkage is valid and delivered.
+    let matchId = acceptedMatch?.id;
+    if (!matchId) {
+      const { data: fallbackMatch } = await adminClient
+        .from("parcel_trip_matches")
+        .select("id")
+        .eq("parcel_id", parcel_id)
+        .eq("trip_id", parcel.matched_trip_id)
+        .order("matched_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+      matchId = fallbackMatch?.id;
+    }
+
+    if (!matchId) {
       return NextResponse.json(
-        { error: "Accepted match not found" },
+        { error: "Match not found for this parcel and trip" },
         { status: 404 }
       );
     }
@@ -356,7 +371,7 @@ export async function POST(request: NextRequest) {
     const ratingsTable = adminClient.from("ratings");
     const insertPayload = {
       parcel_id,
-      match_id: match.id,
+      match_id: matchId,
       rater_id: session.user.id,
       rated_id,
       rating: ratingNum,
@@ -380,8 +395,18 @@ export async function POST(request: NextRequest) {
 
     if (insertErr) {
       console.error("Rating insert error:", insertErr);
+      if ((insertErr as { code?: string }).code === "23505") {
+        return NextResponse.json(
+          { error: "You have already rated this delivery" },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
-        { error: "Failed to save rating" },
+        {
+          error:
+            (insertErr as { message?: string }).message ||
+            "Failed to save rating",
+        },
         { status: 500 }
       );
     }
