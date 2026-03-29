@@ -36,6 +36,7 @@ const COUNTRY_CODES: CountryCode[] = [
   { code: "MX", dialCode: "+52", name: "Mexico", flag: "🇲🇽" },
   { code: "AR", dialCode: "+54", name: "Argentina", flag: "🇦🇷" },
   { code: "ZA", dialCode: "+27", name: "South Africa", flag: "🇿🇦" },
+  { code: "ZM", dialCode: "+260", name: "Zambia", flag: "🇿🇲" },
   { code: "ZW", dialCode: "+263", name: "Zimbabwe", flag: "🇿🇼" },
   { code: "EG", dialCode: "+20", name: "Egypt", flag: "🇪🇬" },
   { code: "NG", dialCode: "+234", name: "Nigeria", flag: "🇳🇬" },
@@ -190,11 +191,3 @@ export default function CountryCodeSelector({
     </div>
   );
 }
-
-
-
-
-
-
-
-

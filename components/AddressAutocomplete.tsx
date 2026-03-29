@@ -91,7 +91,9 @@ export default function AddressAutocomplete({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isGeocodingManual, setIsGeocodingManual] = useState(false);
-  const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(
+    null
+  );
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -130,6 +132,8 @@ export default function AddressAutocomplete({
         let countryParam = "";
         if (countryLower === "zimbabwe" || countryLower === "zw") {
           countryParam = "&country=ZW";
+        } else if (countryLower === "zambia" || countryLower === "zm") {
+          countryParam = "&country=ZM";
         }
 
         const url = `/api/geocoding/forward?q=${encodedQuery}&limit=10${countryParam}`;
@@ -137,17 +141,24 @@ export default function AddressAutocomplete({
         console.log("Fetching suggestions (Google) for:", query);
 
         const response = await fetch(url);
-        
+
         // Log response status for debugging
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("Geocoding API Error:", response.status, response.statusText, errorText);
-          throw new Error(`Failed to fetch address suggestions: ${response.status} ${response.statusText}`);
+          console.error(
+            "Geocoding API Error:",
+            response.status,
+            response.statusText,
+            errorText
+          );
+          throw new Error(
+            `Failed to fetch address suggestions: ${response.status} ${response.statusText}`
+          );
         }
 
         const data = await response.json();
         console.log("Geocoding API Response:", data);
-        
+
         // Check for API errors in response
         if (data.error) {
           console.error("Geocoding API Error:", data.error);
@@ -157,7 +168,11 @@ export default function AddressAutocomplete({
         }
 
         // Our API returns results in 'features' array (Mapbox-like shape)
-        if (data.features && Array.isArray(data.features) && data.features.length > 0) {
+        if (
+          data.features &&
+          Array.isArray(data.features) &&
+          data.features.length > 0
+        ) {
           console.log("✅ Found", data.features.length, "suggestions");
           setSuggestions(data.features);
           setShowSuggestions(true);
@@ -182,7 +197,7 @@ export default function AddressAutocomplete({
   const parseAddress = (suggestion: AddressSuggestion): AddressFields => {
     const context = suggestion.properties?.context || {};
     const featureType = suggestion.properties?.feature_type || "";
-    
+
     // Extract components from context object (Mapbox v6 structure)
     let parsedCity = "";
     let parsedState = "";
@@ -220,7 +235,7 @@ export default function AddressAutocomplete({
         // Check if context.address.name already includes the number
         const addressName = context.address.name || "";
         const addressNumber = context.address.address_number || "";
-        
+
         if (addressNumber && addressName.startsWith(addressNumber.trim())) {
           // Name already contains the number, use it as-is
           parsedStreet = addressName;
@@ -242,11 +257,14 @@ export default function AddressAutocomplete({
     }
 
     // Get coordinates
-    const coords = suggestion.properties?.coordinates || 
-                   (suggestion.geometry?.coordinates ? {
-                     longitude: suggestion.geometry.coordinates[0],
-                     latitude: suggestion.geometry.coordinates[1]
-                   } : undefined);
+    const coords =
+      suggestion.properties?.coordinates ||
+      (suggestion.geometry?.coordinates
+        ? {
+            longitude: suggestion.geometry.coordinates[0],
+            latitude: suggestion.geometry.coordinates[1],
+          }
+        : undefined);
 
     return {
       streetAddress: parsedStreet,
@@ -260,18 +278,22 @@ export default function AddressAutocomplete({
   };
 
   // Handle suggestion selection
-  const handleSelectSuggestion = useCallback((suggestion: AddressSuggestion) => {
-    const parsed = parseAddress(suggestion);
-    // Use full_address if available, otherwise use name
-    const displayName = suggestion.properties?.full_address || 
-                       suggestion.properties?.name || 
-                       suggestion.properties?.place_formatted || 
-                       "";
-    setSearchQuery(displayName);
-    setSelectedSuggestion(suggestion.id);
-    setShowSuggestions(false);
-    onAddressChange(parsed);
-  }, [onAddressChange]);
+  const handleSelectSuggestion = useCallback(
+    (suggestion: AddressSuggestion) => {
+      const parsed = parseAddress(suggestion);
+      // Use full_address if available, otherwise use name
+      const displayName =
+        suggestion.properties?.full_address ||
+        suggestion.properties?.name ||
+        suggestion.properties?.place_formatted ||
+        "";
+      setSearchQuery(displayName);
+      setSelectedSuggestion(suggestion.id);
+      setShowSuggestions(false);
+      onAddressChange(parsed);
+    },
+    [onAddressChange]
+  );
 
   // Geocode manual address input when user finishes typing
   const geocodeManualAddress = useCallback(
@@ -293,6 +315,8 @@ export default function AddressAutocomplete({
         let countryParam = "";
         if (countryLower === "zimbabwe" || countryLower === "zw") {
           countryParam = "&country=ZW";
+        } else if (countryLower === "zambia" || countryLower === "zm") {
+          countryParam = "&country=ZM";
         }
 
         const url = `/api/geocoding/forward?q=${encodedQuery}&limit=1${countryParam}`;
@@ -323,96 +347,95 @@ export default function AddressAutocomplete({
   );
 
   // Geocode when structured fields change (debounced)
-  const geocodeStructuredFields = useCallback(
-    async () => {
-      // Build full address string from structured fields
-      const fullAddress = [
-        streetAddress,
-        addressLine2,
-        city,
-        state,
-        postcode,
-        country,
-      ]
-        .filter((part) => part && part.trim())
-        .join(", ");
-
-      // Only geocode if we have at least city and country (minimum for geocoding)
-      if (fullAddress.length < 3 || (!city.trim() && !country.trim())) {
-        return;
-      }
-
-      // Don't geocode if user just selected a suggestion
-      if (selectedSuggestion) {
-        return;
-      }
-
-      setIsGeocodingManual(true);
-      try {
-        const encodedQuery = encodeURIComponent(fullAddress);
-
-        const countryLower = (country || "").trim().toLowerCase();
-        let countryParam = "";
-        if (countryLower === "zimbabwe" || countryLower === "zw") {
-          countryParam = "&country=ZW";
-        }
-
-        const url = `/api/geocoding/forward?q=${encodedQuery}&limit=1${countryParam}`;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error("Failed to geocode address");
-        }
-
-        const data = await response.json();
-
-        if (data.features && data.features.length > 0) {
-          const suggestion = data.features[0];
-          const coords =
-            suggestion.properties?.coordinates ||
-            (suggestion.geometry?.coordinates
-              ? {
-                  longitude: suggestion.geometry.coordinates[0],
-                  latitude: suggestion.geometry.coordinates[1],
-                }
-              : undefined);
-
-          if (coords) {
-            // Update coordinates without changing the address fields
-            onAddressChange({
-              streetAddress,
-              addressLine2,
-              city,
-              state,
-              postcode,
-              country,
-              coordinates: coords,
-            });
-            console.log("✅ Geocoded structured fields. Coordinates:", coords);
-          }
-        } else {
-          console.warn(
-            "⚠️ No geocoding results for structured fields:",
-            fullAddress
-          );
-        }
-      } catch (error) {
-        console.error("Error geocoding structured fields:", error);
-      } finally {
-        setIsGeocodingManual(false);
-      }
-    },
-    [
+  const geocodeStructuredFields = useCallback(async () => {
+    // Build full address string from structured fields
+    const fullAddress = [
       streetAddress,
       addressLine2,
       city,
       state,
       postcode,
       country,
-      selectedSuggestion,
-      onAddressChange,
     ]
-  );
+      .filter((part) => part && part.trim())
+      .join(", ");
+
+    // Only geocode if we have at least city and country (minimum for geocoding)
+    if (fullAddress.length < 3 || (!city.trim() && !country.trim())) {
+      return;
+    }
+
+    // Don't geocode if user just selected a suggestion
+    if (selectedSuggestion) {
+      return;
+    }
+
+    setIsGeocodingManual(true);
+    try {
+      const encodedQuery = encodeURIComponent(fullAddress);
+
+      const countryLower = (country || "").trim().toLowerCase();
+      let countryParam = "";
+      if (countryLower === "zimbabwe" || countryLower === "zw") {
+        countryParam = "&country=ZW";
+      } else if (countryLower === "zambia" || countryLower === "zm") {
+        countryParam = "&country=ZM";
+      }
+
+      const url = `/api/geocoding/forward?q=${encodedQuery}&limit=1${countryParam}`;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Failed to geocode address");
+      }
+
+      const data = await response.json();
+
+      if (data.features && data.features.length > 0) {
+        const suggestion = data.features[0];
+        const coords =
+          suggestion.properties?.coordinates ||
+          (suggestion.geometry?.coordinates
+            ? {
+                longitude: suggestion.geometry.coordinates[0],
+                latitude: suggestion.geometry.coordinates[1],
+              }
+            : undefined);
+
+        if (coords) {
+          // Update coordinates without changing the address fields
+          onAddressChange({
+            streetAddress,
+            addressLine2,
+            city,
+            state,
+            postcode,
+            country,
+            coordinates: coords,
+          });
+          console.log("✅ Geocoded structured fields. Coordinates:", coords);
+        }
+      } else {
+        console.warn(
+          "⚠️ No geocoding results for structured fields:",
+          fullAddress
+        );
+      }
+    } catch (error) {
+      console.error("Error geocoding structured fields:", error);
+    } finally {
+      setIsGeocodingManual(false);
+    }
+  }, [
+    streetAddress,
+    addressLine2,
+    city,
+    state,
+    postcode,
+    country,
+    selectedSuggestion,
+    onAddressChange,
+  ]);
 
   // Debounce search query
   useEffect(() => {
@@ -438,7 +461,7 @@ export default function AddressAutocomplete({
     const value = e.target.value;
     setSearchQuery(value);
     setSelectedSuggestion(null);
-    
+
     // If user clears the search, clear all fields
     if (!value.trim()) {
       onAddressChange({
@@ -456,7 +479,11 @@ export default function AddressAutocomplete({
   const handleBlur = useCallback(() => {
     // Wait a bit to allow suggestion click to register first
     setTimeout(() => {
-      if (searchQuery && !selectedSuggestion && searchQuery.trim().length >= 3) {
+      if (
+        searchQuery &&
+        !selectedSuggestion &&
+        searchQuery.trim().length >= 3
+      ) {
         // User typed manually without selecting - try to geocode
         geocodeManualAddress(searchQuery);
       }
@@ -489,13 +516,25 @@ export default function AddressAutocomplete({
     const timer = setTimeout(() => {
       // Only geocode if we have meaningful address data
       // Skip if we just selected a suggestion (to avoid double geocoding)
-      if (!selectedSuggestion && (streetAddress || city || postcode || country)) {
+      if (
+        !selectedSuggestion &&
+        (streetAddress || city || postcode || country)
+      ) {
         geocodeStructuredFields();
       }
     }, 1000); // 1 second debounce
 
     return () => clearTimeout(timer);
-  }, [streetAddress, addressLine2, city, state, postcode, country, selectedSuggestion, geocodeStructuredFields]);
+  }, [
+    streetAddress,
+    addressLine2,
+    city,
+    state,
+    postcode,
+    country,
+    selectedSuggestion,
+    geocodeStructuredFields,
+  ]);
 
   return (
     <div className="space-y-4" ref={wrapperRef}>
@@ -523,15 +562,16 @@ export default function AddressAutocomplete({
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
             </div>
           )}
-          
+
           {/* Suggestions dropdown */}
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
               {suggestions.map((suggestion) => {
-                const displayName = suggestion.properties?.full_address || 
-                                   suggestion.properties?.name || 
-                                   suggestion.properties?.place_formatted || 
-                                   "Unknown location";
+                const displayName =
+                  suggestion.properties?.full_address ||
+                  suggestion.properties?.name ||
+                  suggestion.properties?.place_formatted ||
+                  "Unknown location";
                 const featureType = suggestion.properties?.feature_type || "";
                 return (
                   <button
@@ -713,4 +753,3 @@ export default function AddressAutocomplete({
     </div>
   );
 }
-
