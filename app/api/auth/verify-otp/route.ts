@@ -149,36 +149,87 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     console.log("Checking for existing user with phone:", formattedPhone);
-    const { data: usersData, error: listError } =
-      await adminSupabase.auth.admin.listUsers();
+    const findUserByPhoneComparison = async (comparisons: string[]) => {
+      const targetSet = new Set(comparisons.filter(Boolean));
+      let page = 1;
+      const perPage = 1000;
+      let totalScanned = 0;
 
-    if (listError) {
-      console.error("❌ Error listing users:", {
-        error: listError,
-        message: listError.message,
-        code: listError.status,
-      });
-      return NextResponse.json(
-        { error: "Failed to check existing users", details: listError.message },
-        { status: 500 }
-      );
-    }
+      while (true) {
+        const { data, error } = await adminSupabase.auth.admin.listUsers({
+          page,
+          perPage,
+        });
 
-    console.log("Total users in system:", usersData?.users?.length || 0);
+        if (error) {
+          throw error;
+        }
+
+        const users = data?.users || [];
+        totalScanned += users.length;
+        const found = users.find((u: any) => {
+          const userPhone = u.phone || u.user_metadata?.phone || "";
+          const normalizedUserPhone = normalizePhoneForComparison(userPhone);
+          return targetSet.has(normalizedUserPhone);
+        });
+
+        if (found) {
+          console.log("Total users scanned before match:", totalScanned);
+          return found;
+        }
+
+        if (users.length < perPage) {
+          console.log("Total users scanned:", totalScanned);
+          break;
+        }
+        page += 1;
+      }
+
+      return null;
+    };
 
     const phoneForComparison = normalizePhoneForComparison(formattedPhone);
-    let existingUser = usersData?.users?.find((u: any) => {
-      const userPhone = u.phone || u.user_metadata?.phone || "";
-      const normalizedUserPhone = normalizePhoneForComparison(userPhone);
-      console.log("Comparing:", {
-        userPhone,
-        formattedPhone,
-        normalizedUserPhone,
-        phoneForComparison,
-        match: normalizedUserPhone === phoneForComparison,
-      });
-      return normalizedUserPhone === phoneForComparison;
-    });
+    const legacyZambiaPhone = formattedPhone.startsWith("+260")
+      ? `+26${formattedPhone.slice(4)}`
+      : null;
+    const legacyPhoneForComparison = legacyZambiaPhone
+      ? normalizePhoneForComparison(legacyZambiaPhone)
+      : "";
+    let existingUser = await findUserByPhoneComparison([
+      phoneForComparison,
+      legacyPhoneForComparison,
+    ]);
+    if (existingUser && legacyPhoneForComparison) {
+      const matchedComparison = normalizePhoneForComparison(
+        existingUser.phone || existingUser.user_metadata?.phone || ""
+      );
+      const matchedLegacyFormat =
+        matchedComparison === legacyPhoneForComparison;
+      if (matchedLegacyFormat) {
+        console.warn(
+          "[VERIFY-OTP] Found legacy Zambia phone format. Attempting to repair user phone.",
+          { userId: existingUser.id }
+        );
+        try {
+          const existingMetadata =
+            (existingUser.user_metadata as Record<string, unknown> | null) ||
+            {};
+          await adminSupabase.auth.admin.updateUserById(existingUser.id, {
+            phone: formattedPhone,
+            phone_confirm: true,
+            user_metadata: {
+              ...existingMetadata,
+              phone: formattedPhone,
+            },
+          });
+        } catch (repairError) {
+          console.error(
+            "[VERIFY-OTP] Failed to repair legacy Zambia phone format:",
+            repairError
+          );
+        }
+      }
+    }
 
     if (existingUser) {
       console.log("✅ User already exists:", {
@@ -231,14 +282,9 @@ export async function POST(request: NextRequest) {
           );
 
           // Search for user by email
-          const { data: searchUsersData } =
-            await adminSupabase.auth.admin.listUsers();
-          const foundUser = searchUsersData?.users?.find((u: any) => {
-            const userPhone = u.phone || u.user_metadata?.phone || "";
-            return (
-              normalizePhoneForComparison(userPhone) === phoneForComparison
-            );
-          });
+          const foundUser = await findUserByPhoneComparison([
+            phoneForComparison,
+          ]);
 
           if (foundUser) {
             console.log("✅ Found existing user:", foundUser.id);
