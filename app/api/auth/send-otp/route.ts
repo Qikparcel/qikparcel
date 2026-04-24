@@ -29,13 +29,78 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     const adminSupabase = createSupabaseAdminClient();
-    const { data: usersData } = await adminSupabase.auth.admin.listUsers();
+    const findUserByPhoneComparison = async (comparisons: string[]) => {
+      const targetSet = new Set(comparisons.filter(Boolean));
+      let page = 1;
+      const perPage = 1000;
+
+      while (true) {
+        const { data, error } = await adminSupabase.auth.admin.listUsers({
+          page,
+          perPage,
+        });
+        if (error) {
+          throw error;
+        }
+
+        const users = data?.users || [];
+        const found = users.find((u: any) => {
+          const userPhone = u.phone || u.user_metadata?.phone || "";
+          const normalized = normalizePhoneForComparison(userPhone);
+          return targetSet.has(normalized);
+        });
+        if (found) return found;
+
+        if (users.length < perPage) break;
+        page += 1;
+      }
+
+      return null;
+    };
 
     const phoneForComparison = normalizePhoneForComparison(formattedPhone);
-    const existingUser = usersData?.users?.find((u: any) => {
-      const userPhone = u.phone || u.user_metadata?.phone || "";
-      return normalizePhoneForComparison(userPhone) === phoneForComparison;
-    });
+    const legacyZambiaPhone = formattedPhone.startsWith("+260")
+      ? `+26${formattedPhone.slice(4)}`
+      : null;
+    const legacyPhoneForComparison = legacyZambiaPhone
+      ? normalizePhoneForComparison(legacyZambiaPhone)
+      : "";
+    let existingUser = await findUserByPhoneComparison([
+      phoneForComparison,
+      legacyPhoneForComparison,
+    ]);
+    if (existingUser && legacyPhoneForComparison) {
+      const matchedComparison = normalizePhoneForComparison(
+        existingUser.phone || existingUser.user_metadata?.phone || ""
+      );
+      const matchedLegacyFormat =
+        matchedComparison === legacyPhoneForComparison;
+
+      if (matchedLegacyFormat) {
+        console.warn(
+          "[AUTH] Found legacy Zambia phone format. Attempting to repair user phone.",
+          { userId: existingUser.id }
+        );
+        try {
+          const existingMetadata =
+            (existingUser.user_metadata as Record<string, unknown> | null) ||
+            {};
+          await adminSupabase.auth.admin.updateUserById(existingUser.id, {
+            phone: formattedPhone,
+            phone_confirm: true,
+            user_metadata: {
+              ...existingMetadata,
+              phone: formattedPhone,
+            },
+          });
+        } catch (repairError) {
+          console.error(
+            "[AUTH] Failed to repair legacy Zambia phone format:",
+            repairError
+          );
+        }
+      }
+    }
 
     const userExists = !!existingUser;
 
