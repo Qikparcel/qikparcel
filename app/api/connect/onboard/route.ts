@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { stripe, isStripeEnabled } from "@/lib/stripe/client";
 import { Database } from "@/types/database";
+import { resolveExpressCountry } from "@/lib/stripe/connect-countries";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -50,11 +51,21 @@ export async function POST(request: NextRequest) {
     let accountId = profile.stripe_account_id;
 
     if (!accountId) {
-      const country = (profile.country || "US").toUpperCase().slice(0, 2);
+      const { country, fellBack, originalInput } = resolveExpressCountry(
+        profile.country
+      );
+      if (fellBack) {
+        console.warn(
+          `[CONNECT] Country "${originalInput}" not supported for Stripe Express; falling back to ${country} for user ${session.user.id}`
+        );
+      }
       const account = await stripe.accounts.create({
         type: "express",
-        country: country === "EE" ? "EE" : country === "GB" ? "GB" : "US",
+        country,
         email: session.user.email ?? undefined,
+        capabilities: {
+          transfers: { requested: true },
+        },
       });
       accountId = account.id;
 
