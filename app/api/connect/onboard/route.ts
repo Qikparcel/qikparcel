@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
         country,
         email: session.user.email ?? undefined,
         capabilities: {
+          card_payments: { requested: true },
           transfers: { requested: true },
         },
       });
