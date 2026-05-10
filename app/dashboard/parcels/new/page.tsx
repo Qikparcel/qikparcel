@@ -51,6 +51,12 @@ export default function CreateParcelPage() {
     preferred_pickup_time: "",
   });
 
+  // Bidding settings
+  const [pricingMode, setPricingMode] = useState<"fixed" | "bidding">("fixed");
+  const [biddingWindowHours, setBiddingWindowHours] = useState(4);
+  const [fallbackMode, setFallbackMode] = useState<"fixed" | "rebid" | "cancel">("fixed");
+  const biddingEnabled = process.env.NEXT_PUBLIC_BIDDING_ENABLED === "1";
+
   // Estimated delivery cost (from pricing API)
   const [priceEstimate, setPriceEstimate] = useState<{
     total_amount: number;
@@ -117,6 +123,8 @@ export default function CreateParcelPage() {
       delivery_lng: String(deliveryCoordinates.longitude),
       pickup_country: pickupCountry.trim(),
       delivery_country: deliveryCountry.trim(),
+      pickup_city: pickupCity.trim(),
+      delivery_city: deliveryCity.trim(),
     });
     if (weight != null && !Number.isNaN(weight))
       params.set("weight_kg", String(weight));
@@ -159,6 +167,8 @@ export default function CreateParcelPage() {
     deliveryCoordinates?.longitude,
     pickupCountry,
     deliveryCountry,
+    pickupCity,
+    deliveryCity,
     formData.weight_kg,
   ]);
 
@@ -416,6 +426,13 @@ export default function CreateParcelPage() {
         String(deliveryCoordinates?.longitude || "")
       );
       payload.append("delivery_country", deliveryCountry.trim() || "");
+      payload.append("pickup_city", pickupCity.trim() || "");
+      payload.append("delivery_city", deliveryCity.trim() || "");
+      payload.append("pricing_mode", pricingMode);
+      if (pricingMode === "bidding") {
+        payload.append("bidding_window_hours", String(biddingWindowHours));
+        payload.append("fallback_mode", fallbackMode);
+      }
       payload.append("description", formData.description.trim());
       payload.append("weight_kg", String(parseFloat(formData.weight_kg)));
       payload.append("dimensions", formData.dimensions.trim());
@@ -816,6 +833,125 @@ export default function CreateParcelPage() {
             </div>
           </div>
 
+          {/* Pricing Mode — Bidding toggle (only when feature flag is on) */}
+          {biddingEnabled && (
+            <div className="space-y-4 border-t pt-6">
+              <h2 className="text-lg font-semibold text-gray-900">Pricing Mode</h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Fixed */}
+                <button
+                  type="button"
+                  onClick={() => setPricingMode("fixed")}
+                  className={`p-4 rounded-lg border-2 text-left transition ${
+                    pricingMode === "fixed"
+                      ? "border-green-600 bg-green-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <p className="font-semibold text-gray-900">Fixed price</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    First available courier accepts at the calculated rate.
+                  </p>
+                  {priceEstimate && (
+                    <p className="text-sm font-medium text-green-700 mt-2">
+                      {priceEstimate.currency}{" "}
+                      {priceEstimate.total_amount.toFixed(2)}
+                    </p>
+                  )}
+                </button>
+
+                {/* Bidding */}
+                <button
+                  type="button"
+                  onClick={() => setPricingMode("bidding")}
+                  className={`p-4 rounded-lg border-2 text-left transition ${
+                    pricingMode === "bidding"
+                      ? "border-green-600 bg-green-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <p className="font-semibold text-gray-900">Let couriers bid</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Couriers submit offers; you pick the best one.
+                  </p>
+                  {priceEstimate && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Estimate anchor:{" "}
+                      <span className="font-medium text-gray-700">
+                        {priceEstimate.currency}{" "}
+                        {priceEstimate.delivery_fee.toFixed(2)}
+                      </span>
+                    </p>
+                  )}
+                </button>
+              </div>
+
+              {pricingMode === "bidding" && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Bidding window
+                    </label>
+                    <select
+                      value={biddingWindowHours}
+                      onChange={(e) =>
+                        setBiddingWindowHours(Number(e.target.value))
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value={1}>1 hour</option>
+                      <option value={4}>4 hours (recommended)</option>
+                      <option value={12}>12 hours</option>
+                      <option value={24}>24 hours</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      After the window closes, you have 24 hours to pick a
+                      winner before the parcel falls back.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      If no winner is selected
+                    </label>
+                    <select
+                      value={fallbackMode}
+                      onChange={(e) =>
+                        setFallbackMode(
+                          e.target.value as "fixed" | "rebid" | "cancel"
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value="fixed">
+                        Switch to fixed-price matching
+                      </option>
+                      <option value="rebid">Re-open bidding (up to 2×)</option>
+                      <option value="cancel">Cancel the parcel</option>
+                    </select>
+                  </div>
+
+                  {priceEstimate && (
+                    <p className="text-xs text-amber-700">
+                      Bids accepted between{" "}
+                      <strong>
+                        {priceEstimate.currency}{" "}
+                        {(priceEstimate.delivery_fee * 0.5).toFixed(2)}
+                      </strong>{" "}
+                      and{" "}
+                      <strong>
+                        {priceEstimate.currency}{" "}
+                        {(priceEstimate.delivery_fee * 1.5).toFixed(2)}
+                      </strong>{" "}
+                      (50%–150% of estimate).
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Terms and Conditions */}
           <div className="border-t pt-6">
             <div className="flex items-start gap-3">
@@ -884,7 +1020,11 @@ export default function CreateParcelPage() {
               className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#29772F" }}
             >
-              {loading ? "Creating..." : "Create Parcel"}
+              {loading
+                ? "Creating..."
+                : pricingMode === "bidding"
+                ? "Create & Open for Bidding"
+                : "Create Parcel"}
             </button>
           </div>
         </form>

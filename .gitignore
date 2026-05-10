@@ -26,6 +26,8 @@ build/
 .next/
 out/
 *.tsbuildinfo
+playwright-report/
+test-results/
 
 # Vercel
 .vercel

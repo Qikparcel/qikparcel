@@ -422,6 +422,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 >
                   Matched Parcels
                 </Link>
+                {process.env.NEXT_PUBLIC_BIDDING_ENABLED === "1" && (
+                  <Link
+                    href="/dashboard/bidding-parcels"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`block py-2 px-3 rounded-lg text-sm font-medium ${
+                      isActive("/dashboard/bidding-parcels")
+                        ? "bg-primary-50 text-primary-600"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    Bid on Parcels
+                  </Link>
+                )}
                 <Link
                   href="/dashboard/chat"
                   onClick={() => setMobileMenuOpen(false)}
@@ -681,6 +694,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 Matched Parcels
               </Link>
+              {process.env.NEXT_PUBLIC_BIDDING_ENABLED === "1" && (
+                <Link
+                  href="/dashboard/bidding-parcels"
+                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                    isActive("/dashboard/bidding-parcels")
+                      ? "border-primary-500 text-primary-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  Bid on Parcels
+                </Link>
+              )}
               <Link
                 href="/dashboard/chat"
                 className={`relative py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${

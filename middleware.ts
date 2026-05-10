@@ -12,6 +12,10 @@ export async function middleware(req: NextRequest) {
     },
   });
 
+  if (process.env.E2E_BYPASS_AUTH === "1") {
+    return response;
+  }
+
   // Create Supabase client for middleware
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

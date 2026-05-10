@@ -13,6 +13,19 @@ type Parcel = Database["public"]["Tables"]["parcels"]["Row"];
 type StatusHistory =
   Database["public"]["Tables"]["parcel_status_history"]["Row"];
 
+type BidItem = {
+  id: string;
+  courier_id: string;
+  amount: number;
+  currency: string;
+  message: string | null;
+  estimated_pickup_at: string | null;
+  estimated_delivery_at: string | null;
+  status: "active" | "withdrawn" | "accepted" | "rejected" | "expired";
+  created_at: string;
+  courier?: { id: string; full_name: string | null; phone_number: string } | null;
+};
+
 type MatchedCourier = {
   full_name: string | null;
   phone_number: string;
@@ -70,6 +83,13 @@ export default function ParcelDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isCourierForParcel, setIsCourierForParcel] = useState(false);
   const [matchedCourierId, setMatchedCourierId] = useState<string | null>(null);
+
+  // Bidding
+  const [bids, setBids] = useState<BidItem[]>([]);
+  const [bidsLoading, setBidsLoading] = useState(false);
+  const [acceptingBid, setAcceptingBid] = useState<string | null>(null);
+  const [closingBidding, setClosingBidding] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const [ratings, setRatings] = useState<
     Array<{
       id: string;
@@ -225,6 +245,80 @@ export default function ParcelDetailPage() {
       router.replace(`/dashboard/parcels/${parcelId}`, { scroll: false });
     }
   }, [searchParams, parcelId, router]);
+
+  // Load bids whenever parcel is in bidding mode
+  useEffect(() => {
+    if (!parcel || !isOwner) return;
+    const p = parcel as Parcel & { pricing_mode?: string };
+    if (p.pricing_mode !== "bidding" && parcel.status !== "pending") return;
+    if (p.pricing_mode !== "bidding") return;
+    let cancelled = false;
+    setBidsLoading(true);
+    fetch(`/api/bidding/parcels/${parcelId}/bids`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setBids(d.bids ?? []); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setBidsLoading(false); });
+    return () => { cancelled = true; };
+  }, [parcel, parcelId, isOwner]);
+
+  // Countdown tick every second
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  async function handleAcceptBid(bidId: string) {
+    if (acceptingBid) return;
+    setAcceptingBid(bidId);
+    try {
+      const res = await fetch(
+        `/api/bidding/parcels/${parcelId}/bids/${bidId}/accept`,
+        { method: "POST" }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to accept bid");
+      toast.success("Bid accepted! Parcel is now matched.");
+      // Reload page data
+      const reload = await fetch(`/api/parcels/${parcelId}`);
+      const rd = await reload.json();
+      if (rd.parcel) { setParcel(rd.parcel); setPaymentInfo(rd.paymentInfo ?? null); }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to accept bid");
+    } finally {
+      setAcceptingBid(null);
+    }
+  }
+
+  async function handleCloseBidding() {
+    if (closingBidding) return;
+    if (!window.confirm("Close bidding without picking a winner? This will trigger the fallback flow.")) return;
+    setClosingBidding(true);
+    try {
+      const res = await fetch(`/api/bidding/parcels/${parcelId}/close`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to close bidding");
+      toast.success("Bidding closed. " + (data.result?.notes || ""));
+      const reload = await fetch(`/api/parcels/${parcelId}`);
+      const rd = await reload.json();
+      if (rd.parcel) setParcel(rd.parcel);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to close bidding");
+    } finally {
+      setClosingBidding(false);
+    }
+  }
+
+  function formatCountdown(closesAt: string): string {
+    const diff = new Date(closesAt).getTime() - now;
+    if (diff <= 0) return "Closed";
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  }
 
   async function handlePay() {
     if (!parcelId || paying) return;
@@ -1296,6 +1390,121 @@ export default function ParcelDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Bidding panel — sender sees live bids and can pick a winner */}
+            {isOwner &&
+              (parcel as any).pricing_mode === "bidding" &&
+              parcel.status === "pending" && (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-lg font-bold text-gray-900">Bids</h2>
+                    {(parcel as any).bidding_closes_at && (
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          new Date((parcel as any).bidding_closes_at).getTime() >
+                          now
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {new Date((parcel as any).bidding_closes_at).getTime() >
+                        now
+                          ? `Closes in ${formatCountdown(
+                              (parcel as any).bidding_closes_at
+                            )}`
+                          : "Window closed"}
+                      </span>
+                    )}
+                  </div>
+
+                  {(parcel as any).bidding_estimate_amount && (
+                    <p className="text-xs text-gray-500 mb-3">
+                      Estimate anchor:{" "}
+                      <strong className="text-gray-700">
+                        {(parcel as any).bidding_currency || "USD"}{" "}
+                        {Number(
+                          (parcel as any).bidding_estimate_amount
+                        ).toFixed(2)}
+                      </strong>{" "}
+                      · bids allowed{" "}
+                      {(parcel as any).bidding_min_amount
+                        ? `${(parcel as any).bidding_currency || "USD"} ${Number((parcel as any).bidding_min_amount).toFixed(2)}`
+                        : "—"}{" "}
+                      –{" "}
+                      {(parcel as any).bidding_max_amount
+                        ? `${(parcel as any).bidding_currency || "USD"} ${Number((parcel as any).bidding_max_amount).toFixed(2)}`
+                        : "—"}
+                    </p>
+                  )}
+
+                  {bidsLoading ? (
+                    <p className="text-sm text-gray-500">Loading bids…</p>
+                  ) : bids.filter((b) => b.status === "active").length === 0 ? (
+                    <p className="text-sm text-gray-500">
+                      No bids yet. Share your parcel link with couriers, or wait
+                      for the auto-match after the window closes.
+                    </p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {bids
+                        .filter((b) => b.status === "active")
+                        .sort((a, b) => a.amount - b.amount)
+                        .map((bid) => (
+                          <li
+                            key={bid.id}
+                            className="border border-gray-200 rounded-lg p-3"
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-semibold text-gray-900">
+                                {bid.currency} {bid.amount.toFixed(2)}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {new Date(bid.created_at).toLocaleTimeString()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600 mb-1">
+                              {bid.courier?.full_name || "Courier"} ·{" "}
+                              {bid.courier?.phone_number || ""}
+                            </p>
+                            {bid.message && (
+                              <p className="text-xs text-gray-500 italic mb-2">
+                                "{bid.message}"
+                              </p>
+                            )}
+                            {bid.estimated_delivery_at && (
+                              <p className="text-xs text-gray-500 mb-2">
+                                Est. delivery:{" "}
+                                {new Date(
+                                  bid.estimated_delivery_at
+                                ).toLocaleDateString()}
+                              </p>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleAcceptBid(bid.id)}
+                              disabled={!!acceptingBid}
+                              className="w-full mt-1 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
+                              style={{ backgroundColor: "#29772F" }}
+                            >
+                              {acceptingBid === bid.id
+                                ? "Accepting…"
+                                : "Pick this courier"}
+                            </button>
+                          </li>
+                        ))}
+                    </ul>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleCloseBidding}
+                    disabled={closingBidding}
+                    className="mt-4 w-full px-3 py-2 text-xs font-medium border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition"
+                  >
+                    {closingBidding ? "Closing…" : "Close bidding early"}
+                  </button>
+                </div>
+              )}
+
             {/* Payment — show Pay button when matched and payment pending (sender only) */}
             {isOwner &&
               paymentInfo &&
