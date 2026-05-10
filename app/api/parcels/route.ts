@@ -4,6 +4,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/client";
 import { Database } from "@/types/database";
 import { findAndCreateMatchesForParcel } from "@/lib/matching/service";
 import { checkCreateRateLimit } from "@/lib/rate-limit";
+import { BIDDING_CONFIG, isBiddingEnabled } from "@/lib/bidding/config";
+import { calculateDeliveryPricing } from "@/lib/pricing";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Parcel = Database["public"]["Tables"]["parcels"]["Row"];
@@ -27,6 +29,10 @@ function normalizeAddress(address: string): string {
  */
 function areAddressesSame(address1: string, address2: string): boolean {
   return normalizeAddress(address1) === normalizeAddress(address2);
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 function validatePreferredPickupTime(
@@ -132,16 +138,21 @@ export async function POST(request: NextRequest) {
         pickup_latitude: readValue("pickup_latitude"),
         pickup_longitude: readValue("pickup_longitude"),
         pickup_country: readValue("pickup_country"),
+        pickup_city: readValue("pickup_city"),
         delivery_address: readValue("delivery_address"),
         delivery_latitude: readValue("delivery_latitude"),
         delivery_longitude: readValue("delivery_longitude"),
         delivery_country: readValue("delivery_country"),
+        delivery_city: readValue("delivery_city"),
         description: readValue("description"),
         weight_kg: readValue("weight_kg"),
         dimensions: readValue("dimensions"),
         estimated_value: readValue("estimated_value"),
         estimated_value_currency: readValue("estimated_value_currency"),
         preferred_pickup_time: readValue("preferred_pickup_time"),
+        pricing_mode: readValue("pricing_mode"),
+        bidding_window_hours: readValue("bidding_window_hours"),
+        fallback_mode: readValue("fallback_mode"),
       };
 
       const file = formData.get("parcel_photo");
@@ -155,16 +166,21 @@ export async function POST(request: NextRequest) {
       pickup_latitude,
       pickup_longitude,
       pickup_country,
+      pickup_city,
       delivery_address,
       delivery_latitude,
       delivery_longitude,
       delivery_country,
+      delivery_city,
       description,
       weight_kg,
       dimensions,
       estimated_value,
       estimated_value_currency,
       preferred_pickup_time,
+      pricing_mode,
+      bidding_window_hours,
+      fallback_mode,
     } = body;
 
     // Log coordinates for debugging
@@ -343,6 +359,102 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Bidding mode (optional, requires feature flag).
+    const requestedPricingMode =
+      typeof pricing_mode === "string" ? pricing_mode : "fixed";
+    const useBidding =
+      requestedPricingMode === "bidding" && isBiddingEnabled();
+
+    let biddingFields: Record<string, unknown> = {
+      pricing_mode: "fixed",
+    };
+
+    if (useBidding) {
+      const windowHoursRaw =
+        typeof bidding_window_hours === "string"
+          ? parseFloat(bidding_window_hours)
+          : Number(bidding_window_hours);
+      const windowHours = (
+        BIDDING_CONFIG.windowOptionsHours as readonly number[]
+      ).includes(windowHoursRaw)
+        ? windowHoursRaw
+        : BIDDING_CONFIG.defaultWindowHours;
+
+      const validFallbacks: ReadonlyArray<"fixed" | "rebid" | "cancel"> = [
+        "fixed",
+        "rebid",
+        "cancel",
+      ];
+      const fallback =
+        typeof fallback_mode === "string" &&
+        (validFallbacks as readonly string[]).includes(fallback_mode)
+          ? (fallback_mode as "fixed" | "rebid" | "cancel")
+          : BIDDING_CONFIG.defaultFallbackMode;
+
+      // Compute estimate to anchor min/max bid bounds.
+      let estimate: number | null = null;
+      let estCurrency = "USD";
+      try {
+        const lat1 = pickup_latitude ? parseFloat(String(pickup_latitude)) : null;
+        const lng1 = pickup_longitude ? parseFloat(String(pickup_longitude)) : null;
+        const lat2 = delivery_latitude ? parseFloat(String(delivery_latitude)) : null;
+        const lng2 = delivery_longitude ? parseFloat(String(delivery_longitude)) : null;
+        if (
+          lat1 != null &&
+          lng1 != null &&
+          lat2 != null &&
+          lng2 != null &&
+          !Number.isNaN(lat1) &&
+          !Number.isNaN(lng1) &&
+          !Number.isNaN(lat2) &&
+          !Number.isNaN(lng2)
+        ) {
+          const pricing = await calculateDeliveryPricing(adminClient, {
+            pickupLat: lat1,
+            pickupLng: lng1,
+            deliveryLat: lat2,
+            deliveryLng: lng2,
+            pickupCountry: pickup_country ? String(pickup_country) : null,
+            deliveryCountry: delivery_country ? String(delivery_country) : null,
+            pickupCity: pickup_city ? String(pickup_city) : null,
+            deliveryCity: delivery_city ? String(delivery_city) : null,
+            parcelSize:
+              weightNum <= 2 ? "small" : weightNum <= 5 ? "medium" : "large",
+          });
+          if (pricing) {
+            estimate = pricing.deliveryFee;
+            estCurrency = pricing.currency;
+          }
+        }
+      } catch (e) {
+        console.warn("[BIDDING] Estimate calculation failed:", e);
+      }
+
+      const opensAt = new Date();
+      const closesAt = new Date(
+        opensAt.getTime() + windowHours * 60 * 60 * 1000
+      );
+
+      biddingFields = {
+        pricing_mode: "bidding",
+        bidding_opens_at: opensAt.toISOString(),
+        bidding_closes_at: closesAt.toISOString(),
+        bidding_estimate_amount: estimate,
+        bidding_min_amount:
+          estimate != null
+            ? round2(estimate * BIDDING_CONFIG.minBidFactor)
+            : null,
+        bidding_max_amount:
+          estimate != null
+            ? round2(estimate * BIDDING_CONFIG.maxBidFactor)
+            : null,
+        bidding_currency: estCurrency,
+        bidding_attempt_count: 0,
+        max_bidding_attempts: BIDDING_CONFIG.defaultMaxBiddingAttempts,
+        fallback_mode: fallback,
+      };
+    }
+
     // Create parcel
     const parcelData: ParcelInsert = {
       sender_id: session.user.id,
@@ -362,6 +474,7 @@ export async function POST(request: NextRequest) {
       estimated_value_currency: estimated_value_currency || "USD",
       preferred_pickup_time: preferredPickupTimeValue,
       status: "pending",
+      ...biddingFields,
     } as any;
 
     const { data: parcel, error: insertError } = await supabase
@@ -413,22 +526,26 @@ export async function POST(request: NextRequest) {
       .from("parcel_status_history")
       .insert(statusHistoryData as any);
 
-    // Trigger automatic matching for this parcel
-    // Use admin client to bypass RLS and see all trips
-    // Do this asynchronously to not block the response
-    findAndCreateMatchesForParcel(adminClient, parcel.id)
-      .then((result) => {
-        console.log(
-          `[MATCHING] Automatic matching completed for parcel ${parcel.id}: ${result.created} matches created`
-        );
-      })
-      .catch((error) => {
-        console.error(
-          `[MATCHING] Error during automatic matching for parcel ${parcel.id}:`,
-          error
-        );
-        // Don't fail the request if matching fails - matching can be retried
-      });
+    // Trigger automatic matching for this parcel.
+    // Skip for bidding-mode parcels — they're handled by the bidding flow until close.
+    if (!useBidding) {
+      findAndCreateMatchesForParcel(adminClient, parcel.id)
+        .then((result) => {
+          console.log(
+            `[MATCHING] Automatic matching completed for parcel ${parcel.id}: ${result.created} matches created`
+          );
+        })
+        .catch((error) => {
+          console.error(
+            `[MATCHING] Error during automatic matching for parcel ${parcel.id}:`,
+            error
+          );
+        });
+    } else {
+      console.log(
+        `[BIDDING] Parcel ${parcel.id} created in bidding mode, auto-matching deferred until bidding close`
+      );
+    }
 
     return NextResponse.json(
       {

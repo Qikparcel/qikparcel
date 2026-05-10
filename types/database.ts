@@ -98,6 +98,16 @@ export interface Database {
             | "delivered"
             | "cancelled";
           matched_trip_id: string | null;
+          pricing_mode: "fixed" | "bidding";
+          bidding_opens_at: string | null;
+          bidding_closes_at: string | null;
+          bidding_min_amount: number | null;
+          bidding_max_amount: number | null;
+          bidding_estimate_amount: number | null;
+          bidding_currency: string | null;
+          bidding_attempt_count: number;
+          max_bidding_attempts: number;
+          fallback_mode: "fixed" | "rebid" | "cancel";
           created_at: string;
           updated_at: string;
         };
@@ -125,6 +135,16 @@ export interface Database {
             | "delivered"
             | "cancelled";
           matched_trip_id?: string | null;
+          pricing_mode?: "fixed" | "bidding";
+          bidding_opens_at?: string | null;
+          bidding_closes_at?: string | null;
+          bidding_min_amount?: number | null;
+          bidding_max_amount?: number | null;
+          bidding_estimate_amount?: number | null;
+          bidding_currency?: string | null;
+          bidding_attempt_count?: number;
+          max_bidding_attempts?: number;
+          fallback_mode?: "fixed" | "rebid" | "cancel";
           created_at?: string;
           updated_at?: string;
         };
@@ -152,8 +172,129 @@ export interface Database {
             | "delivered"
             | "cancelled";
           matched_trip_id?: string | null;
+          pricing_mode?: "fixed" | "bidding";
+          bidding_opens_at?: string | null;
+          bidding_closes_at?: string | null;
+          bidding_min_amount?: number | null;
+          bidding_max_amount?: number | null;
+          bidding_estimate_amount?: number | null;
+          bidding_currency?: string | null;
+          bidding_attempt_count?: number;
+          max_bidding_attempts?: number;
+          fallback_mode?: "fixed" | "rebid" | "cancel";
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      parcel_bids: {
+        Row: {
+          id: string;
+          parcel_id: string;
+          courier_id: string;
+          trip_id: string | null;
+          amount: number;
+          currency: string;
+          message: string | null;
+          estimated_pickup_at: string | null;
+          estimated_delivery_at: string | null;
+          status: "active" | "withdrawn" | "accepted" | "rejected" | "expired";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          parcel_id: string;
+          courier_id: string;
+          trip_id?: string | null;
+          amount: number;
+          currency?: string;
+          message?: string | null;
+          estimated_pickup_at?: string | null;
+          estimated_delivery_at?: string | null;
+          status?: "active" | "withdrawn" | "accepted" | "rejected" | "expired";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          parcel_id?: string;
+          courier_id?: string;
+          trip_id?: string | null;
+          amount?: number;
+          currency?: string;
+          message?: string | null;
+          estimated_pickup_at?: string | null;
+          estimated_delivery_at?: string | null;
+          status?: "active" | "withdrawn" | "accepted" | "rejected" | "expired";
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      parcel_courier_exclusions: {
+        Row: {
+          id: string;
+          parcel_id: string;
+          courier_id: string;
+          reason:
+            | "bid_won_withdrew"
+            | "bid_won_payment_timeout"
+            | "rejected_by_sender"
+            | "manual_block";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          parcel_id: string;
+          courier_id: string;
+          reason:
+            | "bid_won_withdrew"
+            | "bid_won_payment_timeout"
+            | "rejected_by_sender"
+            | "manual_block";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          parcel_id?: string;
+          courier_id?: string;
+          reason?:
+            | "bid_won_withdrew"
+            | "bid_won_payment_timeout"
+            | "rejected_by_sender"
+            | "manual_block";
+          created_at?: string;
+        };
+      };
+      courier_strikes: {
+        Row: {
+          id: string;
+          courier_id: string;
+          parcel_id: string | null;
+          reason: string;
+          cleared_at: string | null;
+          cleared_by: string | null;
+          cleared_notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          courier_id: string;
+          parcel_id?: string | null;
+          reason: string;
+          cleared_at?: string | null;
+          cleared_by?: string | null;
+          cleared_notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          courier_id?: string;
+          parcel_id?: string | null;
+          reason?: string;
+          cleared_at?: string | null;
+          cleared_by?: string | null;
+          cleared_notes?: string | null;
+          created_at?: string;
         };
       };
       trips: {
@@ -671,6 +812,10 @@ export interface Database {
       is_sender: {
         Args: { user_id: string };
         Returns: boolean;
+      };
+      active_courier_strike_count: {
+        Args: { p_courier_id: string; p_within_days?: number };
+        Returns: number;
       };
     };
     Enums: {

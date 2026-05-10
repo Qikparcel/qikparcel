@@ -17,6 +17,8 @@ export interface PricingInput {
   deliveryLng: number | null;
   pickupCountry: string | null;
   deliveryCountry: string | null;
+  pickupCity?: string | null;
+  deliveryCity?: string | null;
   parcelSize?: "small" | "medium" | "large";
 }
 
@@ -32,6 +34,100 @@ export interface PricingResult {
   estimatedDeliveryMinHours: number;
   /** Estimated delivery time max (hours). Cross-border: 10×24 = 240; domestic: same as min. */
   estimatedDeliveryMaxHours: number;
+}
+
+type ServiceTier = "economy" | "standard" | "priority";
+
+type TierPricing = Record<ServiceTier, number>;
+
+interface DistanceBandPricing {
+  maxDistanceKm: number;
+  prices: TierPricing;
+}
+
+const DOMESTIC_LOCAL_DISTANCE_BANDS: DistanceBandPricing[] = [
+  { maxDistanceKm: 5, prices: { economy: 3, standard: 5, priority: 8 } },
+  { maxDistanceKm: 10, prices: { economy: 4, standard: 6, priority: 10 } },
+  { maxDistanceKm: 20, prices: { economy: 5, standard: 8, priority: 12 } },
+];
+
+const INTERCITY_CORRIDOR_PRICING: Record<string, Record<string, TierPricing>> = {
+  ZA: {
+    "johannesburg|pretoria": { economy: 5, standard: 8, priority: 15 },
+    "johannesburg|durban": { economy: 12, standard: 20, priority: 35 },
+    "johannesburg|cape town": { economy: 20, standard: 35, priority: 55 },
+    "cape town|durban": { economy: 25, standard: 40, priority: 65 },
+    "pretoria|durban": { economy: 12, standard: 20, priority: 35 },
+  },
+  ZW: {
+    "harare|bulawayo": { economy: 7, standard: 12, priority: 20 },
+    "harare|mutare": { economy: 5, standard: 10, priority: 18 },
+    "harare|gweru": { economy: 5, standard: 10, priority: 18 },
+    "bulawayo|gweru": { economy: 4, standard: 8, priority: 15 },
+  },
+  GB: {
+    "london|birmingham": { economy: 12, standard: 22, priority: 40 },
+    "london|manchester": { economy: 18, standard: 30, priority: 50 },
+    "birmingham|manchester": { economy: 10, standard: 18, priority: 35 },
+  },
+};
+
+function normalizeCity(city: string | null | undefined): string {
+  if (!city) return "";
+  return city
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[^\w\s-]/g, "");
+}
+
+function corridorKey(cityA: string, cityB: string): string {
+  const [first, second] = [cityA, cityB].sort((a, b) => a.localeCompare(b));
+  return `${first}|${second}`;
+}
+
+function parcelSizeToTier(size?: "small" | "medium" | "large"): ServiceTier {
+  switch (size) {
+    case "small":
+      return "economy";
+    case "large":
+      return "priority";
+    case "medium":
+    default:
+      return "standard";
+  }
+}
+
+function getDomesticLocalBandPrice(
+  distanceKm: number,
+  tier: ServiceTier
+): number | null {
+  for (const band of DOMESTIC_LOCAL_DISTANCE_BANDS) {
+    if (distanceKm <= band.maxDistanceKm) {
+      return band.prices[tier];
+    }
+  }
+  return null;
+}
+
+function getIntercityCorridorPrice(
+  countryCode: string,
+  pickupCity: string | null | undefined,
+  deliveryCity: string | null | undefined,
+  tier: ServiceTier
+): number | null {
+  const cityA = normalizeCity(pickupCity);
+  const cityB = normalizeCity(deliveryCity);
+  if (!cityA || !cityB || cityA === cityB) return null;
+
+  const countryCorridors = INTERCITY_CORRIDOR_PRICING[countryCode];
+  if (!countryCorridors) return null;
+
+  const key = corridorKey(cityA, cityB);
+  const corridor = countryCorridors[key];
+  if (!corridor) return null;
+
+  return corridor[tier];
 }
 
 /**
@@ -152,12 +248,32 @@ export async function calculateDeliveryPricing(
     effectiveDistance = pricing.max_distance_km;
   }
 
+  const tier = parcelSizeToTier(input.parcelSize);
   const sizeMultiplier = getSizeMultiplier(input.parcelSize);
-  const deliveryFee = Math.max(
+  let deliveryFee = Math.max(
     0,
     (pricing.base_fee + effectiveDistance * pricing.rate_per_km) *
       sizeMultiplier
   );
+
+  if (pricing.is_domestic) {
+    const corridorPrice = getIntercityCorridorPrice(
+      originCode,
+      input.pickupCity,
+      input.deliveryCity,
+      tier
+    );
+
+    if (corridorPrice != null) {
+      deliveryFee = corridorPrice;
+    } else {
+      const localBandPrice = getDomesticLocalBandPrice(distanceKm, tier);
+      if (localBandPrice != null) {
+        deliveryFee = localBandPrice;
+      }
+    }
+  }
+
   const platformFee =
     Math.round(((deliveryFee * PLATFORM_COMMISSION_PERCENT) / 100) * 100) / 100;
   const totalAmount = Math.round((deliveryFee + platformFee) * 100) / 100;

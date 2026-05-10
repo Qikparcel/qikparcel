@@ -4,7 +4,7 @@ import { calculateDeliveryPricing } from "@/lib/pricing";
 
 /**
  * GET /api/pricing/estimate
- * Query: pickup_lat, pickup_lng, delivery_lat, delivery_lng, pickup_country, delivery_country, weight_kg (optional)
+ * Query: pickup_lat, pickup_lng, delivery_lat, delivery_lng, pickup_country, delivery_country, pickup_city, delivery_city, weight_kg (optional)
  * Returns estimated delivery fee, platform fee, and total for sender display when creating a parcel.
  */
 export async function GET(request: NextRequest) {
@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     const deliveryLng = searchParams.get("delivery_lng");
     const pickupCountry = searchParams.get("pickup_country") || null;
     const deliveryCountry = searchParams.get("delivery_country") || null;
+    const pickupCity = searchParams.get("pickup_city") || null;
+    const deliveryCity = searchParams.get("delivery_city") || null;
     const weightKg = searchParams.get("weight_kg");
 
     if (
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
     const parcelSize =
       weight != null && weight <= 2
         ? ("small" as const)
-        : weight != null && weight <= 10
+        : weight != null && weight <= 5
         ? ("medium" as const)
         : ("large" as const);
 
@@ -67,6 +69,8 @@ export async function GET(request: NextRequest) {
       deliveryLng: lng2,
       pickupCountry: pickupCountry?.trim() || null,
       deliveryCountry: deliveryCountry?.trim() || null,
+      pickupCity: pickupCity?.trim() || null,
+      deliveryCity: deliveryCity?.trim() || null,
       parcelSize,
     });
 
