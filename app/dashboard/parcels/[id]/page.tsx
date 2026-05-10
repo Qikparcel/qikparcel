@@ -1467,7 +1467,7 @@ export default function ParcelDetailPage() {
                             </p>
                             {bid.message && (
                               <p className="text-xs text-gray-500 italic mb-2">
-                                "{bid.message}"
+                                &ldquo;{bid.message}&rdquo;
                               </p>
                             )}
                             {bid.estimated_delivery_at && (

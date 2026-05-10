@@ -299,7 +299,7 @@ export default function BiddingParcelsPage() {
                         </p>
                         {myBid.message && (
                           <p className="text-xs text-green-700 italic mt-0.5">
-                            "{myBid.message}"
+                            &ldquo;{myBid.message}&rdquo;
                           </p>
                         )}
                         <p className="text-xs text-green-600 mt-0.5">
